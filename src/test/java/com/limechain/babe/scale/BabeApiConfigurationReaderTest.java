@@ -1,4 +1,4 @@
-package com.limechain.runtime.babeapi.scale;
+package com.limechain.babe.scale;
 
 import com.limechain.babe.api.scale.BabeApiConfigurationReader;
 import com.limechain.chain.lightsyncstate.BabeEpoch;
