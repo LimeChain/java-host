@@ -17,31 +17,29 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
-    //TODO: Probably that aren't the most optimal input arguments for that method
-    // we can get randomness from the epochData, but epoch number isn't in that epoch data which is strange
-    // after implementing claim secondary slot and claim slot function we can determine which are the best input params
-    public static PreDigest claimPrimarySlot(byte[] randomness,
-                                             long slotNumber,
-                                             long epochNumber,
-                                             BigInteger threshold,
-                                             Schnorrkel.KeyPair keyPair,
-                                             int authorityIndex) {
+    //TODO: Replace return type with PreDigest
+    public static Object claimPrimarySlot(final byte[] randomness,
+                                          final long slotNumber,
+                                          final long epochNumber,
+                                          final Schnorrkel.KeyPair keyPair,
+                                          final int authorityIndex,
+                                          final BigInteger threshold) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochNumber);
 
         Schnorrkel schnorrkel = Schnorrkel.getInstance();
         VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
-        byte[] makeBytes = schnorrkel.makeBytes(keyPair, transcript, vrfOutputAndProof);
+        byte[] vrfBytes = schnorrkel.makeBytes(keyPair, transcript, vrfOutputAndProof);
 
-        var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(makeBytes).compareTo(threshold) < 0;
+        if (vrfBytes.length != 16) {
+            throw new IllegalArgumentException("VRF byte array must be exactly 16 bytes long");
+        }
+
+        var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(vrfBytes).compareTo(threshold) < 0;
 
         if (isBelowThreshold) {
-            return new PreDigest(
-                    PreDigest.PreDigestType.PRIMARY,
-                    slotNumber,
-                    authorityIndex,
-                    vrfOutputAndProof
-            );
+            //TODO: Return PreDigest
+            return null;
         }
 
         return null;
@@ -103,9 +101,9 @@ public class Authorship {
 
     private static TranscriptData makeTranscript(byte[] randomness, Long slotNumber, Long epochNumber) {
         var transcript = new TranscriptData("BABE".getBytes());
-        transcript.appendMessage("slot number".getBytes(), LittleEndianUtils.longToLittleEndianBytes(slotNumber));
-        transcript.appendMessage("current epoch".getBytes(), LittleEndianUtils.longToLittleEndianBytes(epochNumber));
-        transcript.appendMessage("chain randomness".getBytes(), randomness);
+        transcript.appendMessage("slot number", LittleEndianUtils.longToLittleEndianBytes(slotNumber));
+        transcript.appendMessage("current epoch", LittleEndianUtils.longToLittleEndianBytes(epochNumber));
+        transcript.appendMessage("chain randomness", randomness);
         return transcript;
     }
 }
