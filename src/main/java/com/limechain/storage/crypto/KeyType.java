@@ -23,6 +23,10 @@ public enum KeyType {
      */
     GRANDPA("gran".getBytes(), Key.ED25519),
     /**
+     * Key type for the Beefy module
+     */
+    BEEFY("beef".getBytes(), Key.ECDSA),
+    /**
      * Key type for the ImOnline module
      */
     IM_ONLINE("imon".getBytes(), Key.SR25519),

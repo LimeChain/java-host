@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.blockannounce;
 
+import com.limechain.babe.state.EpochState;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshake;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
@@ -7,6 +8,9 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshakeScaleWriter;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleReader;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.dto.ConsensusEngine;
+import com.limechain.network.protocol.warp.dto.DigestType;
+import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
@@ -47,6 +51,9 @@ class BlockAnnounceEngineTest {
 
     @Mock
     private WarpSyncState warpSyncState;
+
+    @Mock
+    private EpochState epochState;
 
     @Mock
     private BlockAnnounceHandshake handshake;
@@ -95,7 +102,7 @@ class BlockAnnounceEngineTest {
                 MockedConstruction<ScaleCodecWriter> writerMock = mockConstruction(ScaleCodecWriter.class)
         ) {
             blockAnnounceEngine.receiveRequest(message, stream);
-            ScaleCodecWriter writer = writerMock.constructed().get(0);
+            ScaleCodecWriter writer = writerMock.constructed().getFirst();
 
             verify(writer).write(any(BlockAnnounceHandshakeScaleWriter.class), eq(handshake));
             verify(stream).writeAndFlush(any());
@@ -149,5 +156,22 @@ class BlockAnnounceEngineTest {
 
             verify(warpSyncState).syncBlockAnnounce(blockAnnounceMessage);
         }
+    }
+
+    @Test
+    void updateEpochStateIfBabeConsensusMessageExistsShouldUpdateEpochState() {
+        byte[] message = new byte[]{1, 2, 3};
+        BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
+        BlockHeader blockHeader = mock(BlockHeader.class);
+        when(blockAnnounceMessage.getHeader()).thenReturn(blockHeader);
+        HeaderDigest babeDigest = mock(HeaderDigest.class);
+        when(babeDigest.getType()).thenReturn(DigestType.CONSENSUS_MESSAGE);
+        when(babeDigest.getId()).thenReturn(ConsensusEngine.BABE);
+        when(babeDigest.getMessage()).thenReturn(message);
+        when(blockHeader.getDigest()).thenReturn(new HeaderDigest[]{babeDigest});
+
+        blockAnnounceEngine.updateEpochStateIfBabeConsensusMessageExists(blockAnnounceMessage);
+
+        verify(epochState).updateNextEpochBlockConfig(message);
     }
 }

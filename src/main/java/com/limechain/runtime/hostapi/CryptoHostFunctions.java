@@ -70,113 +70,113 @@ public class CryptoHostFunctions implements PartialHostApi {
     @Override
     public Map<Endpoint, ImportObject.FuncImport> getFunctionImports() {
         return Map.ofEntries(
-            newImportObjectPair(Endpoint.ext_crypto_ed25519_public_keys_version_1, argv -> {
-                return ed25519PublicKeysV1(argv.get(0).intValue()).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ed25519_generate_version_1, argv -> {
-                return ed25519GenerateV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ed25519_sign_version_1, argv -> {
-                return ed25519SignV1(
-                    argv.get(0).intValue(),
-                    argv.get(1).intValue(),
-                    new RuntimePointerSize(argv.get(2)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ed25519_verify_version_1, argv -> {
-                return ed25519VerifyV1(
-                    argv.get(0).intValue(),
-                    new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ed25519_batch_verify_version_1, argv -> {
-                return ed25519BatchVerifyV1(
-                    argv.get(0).intValue(),
-                    new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_sr25519_public_keys_version_1, argv -> {
-                return sr25519PublicKeysV1(argv.get(0).intValue()).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_sr25519_generate_version_1, argv -> {
-                return sr25519GenerateV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_sr25519_sign_version_1, argv -> {
-                return sr25519SignV1(
-                    argv.get(0).intValue(),
-                    argv.get(1).intValue(),
-                    new RuntimePointerSize(argv.get(2)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_sr25519_verify_version_1, argv -> {
-                return sr25519VerifyV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)), argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_sr25519_verify_version_2, argv -> {
-                // NOTE: Intentionally does the same as V1, see: https://spec.polkadot.network/chap-host-api#sect-ext-crypto-sr25519-verify
-                return sr25519VerifyV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)), argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_sr25519_batch_verify_version_1, argv -> {
-                return sr25519BatchVerifyV1(
-                    argv.get(0).intValue(),
-                    new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_public_keys_version_1, argv -> {
-                return ecdsaPublicKeysV1(argv.get(0).intValue()).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_generate_version_1, argv -> {
-                return ecdsaGenerateV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_sign_version_1, argv -> {
-                return ecdsaSignV1(argv.get(0).intValue(), argv.get(1).intValue(), new RuntimePointerSize(argv.get(2)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_sign_prehashed_version_1, argv -> {
-                return ecdsaSignPrehashedV1(
-                    argv.get(0).intValue(),
-                    argv.get(1).intValue(),
-                    new RuntimePointerSize(argv.get(2)));
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_verify_version_1, argv -> {
-                return ecdsaVerifyV1(
-                    argv.get(0).intValue(),
-                    new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_verify_version_2, argv -> {
-                return ecdsaVerifyV1(
-                    argv.get(0).intValue(),
-                    new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_verify_prehashed_version_1, argv -> {
-                return ecdsaVerifyPrehashedV1(
-                    argv.get(0).intValue(),
-                    argv.get(1).intValue(),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_ecdsa_batch_verify_version_1, argv -> {
-                return ecdsaBatchVerifyV1(
-                    argv.get(0).intValue(),
-                    new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_version_1, argv -> {
-                return secp256k1EcdsaRecoverV1(argv.get(0).intValue(), argv.get(1).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_version_2, argv -> {
-                // NOTE: Intentionally does the same as V1, see: https://spec.polkadot.network/chap-host-api#id-ext_crypto_secp256k1_ecdsa_recover
-                return secp256k1EcdsaRecoverV1(argv.get(0).intValue(), argv.get(1).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_compressed_version_1, argv -> {
-                return secp256k1EcdsaRecoverCompressedV1(argv.get(0).intValue(), argv.get(1).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_compressed_version_2, argv -> {
-                return secp256k1EcdsaRecoverCompressedV1(argv.get(0).intValue(), argv.get(1).intValue());
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_start_batch_verify_version_1, argv -> {
-                startBatchVerify();
-            }),
-            newImportObjectPair(Endpoint.ext_crypto_finish_batch_verify_version_1, argv -> {
-                return finishBatchVerify();
-            })
+                newImportObjectPair(Endpoint.ext_crypto_ed25519_public_keys_version_1, argv -> {
+                    return ed25519PublicKeysV1(argv.get(0).intValue()).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ed25519_generate_version_1, argv -> {
+                    return ed25519GenerateV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ed25519_sign_version_1, argv -> {
+                    return ed25519SignV1(
+                            argv.get(0).intValue(),
+                            argv.get(1).intValue(),
+                            new RuntimePointerSize(argv.get(2)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ed25519_verify_version_1, argv -> {
+                    return ed25519VerifyV1(
+                            argv.get(0).intValue(),
+                            new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ed25519_batch_verify_version_1, argv -> {
+                    return ed25519BatchVerifyV1(
+                            argv.get(0).intValue(),
+                            new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_sr25519_public_keys_version_1, argv -> {
+                    return sr25519PublicKeysV1(argv.get(0).intValue()).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_sr25519_generate_version_1, argv -> {
+                    return sr25519GenerateV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_sr25519_sign_version_1, argv -> {
+                    return sr25519SignV1(
+                            argv.get(0).intValue(),
+                            argv.get(1).intValue(),
+                            new RuntimePointerSize(argv.get(2)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_sr25519_verify_version_1, argv -> {
+                    return sr25519VerifyV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)), argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_sr25519_verify_version_2, argv -> {
+                    // NOTE: Intentionally does the same as V1, see: https://spec.polkadot.network/chap-host-api#sect-ext-crypto-sr25519-verify
+                    return sr25519VerifyV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)), argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_sr25519_batch_verify_version_1, argv -> {
+                    return sr25519BatchVerifyV1(
+                            argv.get(0).intValue(),
+                            new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_public_keys_version_1, argv -> {
+                    return ecdsaPublicKeysV1(argv.get(0).intValue()).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_generate_version_1, argv -> {
+                    return ecdsaGenerateV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_sign_version_1, argv -> {
+                    return ecdsaSignV1(argv.get(0).intValue(), argv.get(1).intValue(), new RuntimePointerSize(argv.get(2)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_sign_prehashed_version_1, argv -> {
+                    return ecdsaSignPrehashedV1(
+                            argv.get(0).intValue(),
+                            argv.get(1).intValue(),
+                            new RuntimePointerSize(argv.get(2)));
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_verify_version_1, argv -> {
+                    return ecdsaVerifyV1(
+                            argv.get(0).intValue(),
+                            new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_verify_version_2, argv -> {
+                    return ecdsaVerifyV1(
+                            argv.get(0).intValue(),
+                            new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_verify_prehashed_version_1, argv -> {
+                    return ecdsaVerifyPrehashedV1(
+                            argv.get(0).intValue(),
+                            argv.get(1).intValue(),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_ecdsa_batch_verify_version_1, argv -> {
+                    return ecdsaBatchVerifyV1(
+                            argv.get(0).intValue(),
+                            new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_version_1, argv -> {
+                    return secp256k1EcdsaRecoverV1(argv.get(0).intValue(), argv.get(1).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_version_2, argv -> {
+                    // NOTE: Intentionally does the same as V1, see: https://spec.polkadot.network/chap-host-api#id-ext_crypto_secp256k1_ecdsa_recover
+                    return secp256k1EcdsaRecoverV1(argv.get(0).intValue(), argv.get(1).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_compressed_version_1, argv -> {
+                    return secp256k1EcdsaRecoverCompressedV1(argv.get(0).intValue(), argv.get(1).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_secp256k1_ecdsa_recover_compressed_version_2, argv -> {
+                    return secp256k1EcdsaRecoverCompressedV1(argv.get(0).intValue(), argv.get(1).intValue());
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_start_batch_verify_version_1, argv -> {
+                    startBatchVerify();
+                }),
+                newImportObjectPair(Endpoint.ext_crypto_finish_batch_verify_version_1, argv -> {
+                    return finishBatchVerify();
+                })
         );
     }
 
@@ -449,7 +449,7 @@ public class CryptoHostFunctions implements PartialHostApi {
         byte[] keyTypeBytes = sharedMemory.readData(new RuntimePointerSize(keyTypeId, KeyType.KEY_TYPE_LEN));
         final KeyType keyType = KeyType.getByBytes(keyTypeBytes);
 
-        if (keyType == null || keyType.getKey() != Key.GENERIC) {
+        if (keyType == null || (keyType.getKey() != Key.ECDSA && keyType.getKey() != Key.GENERIC)) {
             throw new InvalidKeyTypeException(
                     String.format(TYPE_RECEIVED_STRING, keyType != null ? keyType.getKey() : null));
         }

@@ -30,7 +30,7 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
-    testImplementation("org.mockito:mockito-core:5.14.1")
+    testImplementation("org.mockito:mockito-core:5.14.2")
 
     // CLI
     implementation("commons-cli:commons-cli:1.9.0")
@@ -50,9 +50,9 @@ dependencies {
     implementation("com.github.luben:zstd-jni:1.5.6-6")
 
     // Prometheus
-    implementation("io.prometheus:prometheus-metrics-core:1.3.1")
-    implementation("io.prometheus:prometheus-metrics-instrumentation-jvm:1.3.1")
-    implementation("io.prometheus:prometheus-metrics-exporter-httpserver:1.3.1")
+    implementation("io.prometheus:prometheus-metrics-core:1.3.2")
+    implementation("io.prometheus:prometheus-metrics-instrumentation-jvm:1.3.2")
+    implementation("io.prometheus:prometheus-metrics-exporter-httpserver:1.3.2")
 
     // NOTE:
     //  We implicitly rely on Nabu's transitive dependency on Netty's public interfaces.
