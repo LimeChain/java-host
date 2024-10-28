@@ -31,7 +31,7 @@ public class ChainInformationBuildAction implements WarpSyncAction {
 
     @Override
     public void handle(WarpSyncMachine sync) {
-        ApiVersions versions = warpSyncState.getRuntime().getVersion().getApis();
+        ApiVersions versions = warpSyncState.getRuntime().getCachedVersion().getApis();
         sync.getChainInformation().setRuntimeAuraVersion(
                 versions.getApiVersion(ApiVersionName.AURA_API.getHashedName()));
         sync.getChainInformation().setRuntimeBabeVersion(

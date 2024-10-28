@@ -2,7 +2,6 @@ package com.limechain.rpc.methods.state;
 
 import com.limechain.rpc.methods.state.dto.StorageChangeSet;
 import com.limechain.runtime.Runtime;
-import com.limechain.runtime.RuntimeEndpoint;
 import com.limechain.storage.block.BlockState;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.trie.dto.node.StorageNode;
@@ -65,14 +64,14 @@ public class StateRPCImpl {
 
         // FIXME: This seems to not traverse the entire trie, but a single level deep only
         return trieStorage
-            .loadChildren(nextBranch.key(), nextBranchMerkle)
-            .stream()
-            .map(storageNode -> {
-                final String key = storageNode.key().toLowerHexString();
-                final String value = StringUtils.toHexWithPrefix(storageNode.nodeData().getValue());
-                return new String[]{key, value};
-            })
-            .toArray(String[][]::new);
+                .loadChildren(nextBranch.key(), nextBranchMerkle)
+                .stream()
+                .map(storageNode -> {
+                    final String key = storageNode.key().toLowerHexString();
+                    final String value = StringUtils.toHexWithPrefix(storageNode.nodeData().getValue());
+                    return new String[]{key, value};
+                })
+                .toArray(String[][]::new);
     }
 
     /**
@@ -94,10 +93,10 @@ public class StateRPCImpl {
         final Hash256 blockStateRoot = blockState.getBlockStateRoot(getHash256FromHex(blockHashHex));
 
         return trieStorage
-            .getKeysWithPrefixPaged(blockStateRoot, prefix, startKey, limit)
-            .stream()
-            .map(key -> StringUtils.HEX_PREFIX + key.toLowerHexString())
-            .toList();
+                .getKeysWithPrefixPaged(blockStateRoot, prefix, startKey, limit)
+                .stream()
+                .map(key -> StringUtils.HEX_PREFIX + key.toLowerHexString())
+                .toList();
     }
 
     /**
@@ -119,9 +118,9 @@ public class StateRPCImpl {
         byte[] blockStateRoot = blockState.getBlockStateRoot(blockHash).getBytes();
 
         return trieStorage.getByKeyFromMerkle(blockStateRoot, Nibbles.fromHexString(keyHex))
-            .map(NodeData::getValue)
-            .map(StringUtils::toHexWithPrefix)
-            .orElse(null);
+                .map(NodeData::getValue)
+                .map(StringUtils::toHexWithPrefix)
+                .orElse(null);
     }
 
     /**
@@ -140,9 +139,9 @@ public class StateRPCImpl {
         byte[] blockStateRoot = blockState.getBlockStateRoot(blockHash).getBytes();
 
         return trieStorage.getByKeyFromMerkle(blockStateRoot, Nibbles.fromHexString(keyHex))
-            .map(NodeData::getMerkleValue)
-            .map(StringUtils::toHexWithPrefix)
-            .orElse(null);
+                .map(NodeData::getMerkleValue)
+                .map(StringUtils::toHexWithPrefix)
+                .orElse(null);
     }
 
     /**
@@ -161,11 +160,11 @@ public class StateRPCImpl {
         byte[] blockStateRoot = blockState.getBlockStateRoot(blockHash).getBytes();
 
         return trieStorage
-            .getByKeyFromMerkle(blockStateRoot, Nibbles.fromHexString(keyHex))
-            .map(NodeData::getValue)
-            .map(Array::getLength)
-            .map(String::valueOf)
-            .orElse(null);
+                .getByKeyFromMerkle(blockStateRoot, Nibbles.fromHexString(keyHex))
+                .map(NodeData::getValue)
+                .map(Array::getLength)
+                .map(String::valueOf)
+                .orElse(null);
     }
 
     /**
@@ -182,7 +181,7 @@ public class StateRPCImpl {
         final Hash256 blockHash = getHash256FromHex(blockHashHex);
 
         final Runtime runtime = blockState.getRuntime(blockHash);
-        byte[] metadataBytes = runtime.call(RuntimeEndpoint.METADATA_METADATA);
+        byte[] metadataBytes = runtime.getMetadata();
 
         return StringUtils.toHexWithPrefix(metadataBytes);
     }
@@ -202,7 +201,7 @@ public class StateRPCImpl {
 
         Runtime runtime = blockState.getRuntime(blockHash);
         if (runtime != null) {
-            return runtime.getVersion().toString();
+            return runtime.getCachedVersion().toString();
         }
         return null;
     }
@@ -232,8 +231,8 @@ public class StateRPCImpl {
 
                 byte[] blockStateRoot = blockState.getBlockStateRoot(blockHash).getBytes();
                 final Optional<String> currentValueOpt = trieStorage.getByKeyFromMerkle(blockStateRoot, Nibbles.fromHexString(keyHex))
-                    .map(NodeData::getValue)
-                    .map(StringUtils::toHexWithPrefix);
+                        .map(NodeData::getValue)
+                        .map(StringUtils::toHexWithPrefix);
 
                 final String currentValue = currentValueOpt.orElse(null);
                 final String previousValue = previousValues.get(keyHex);
@@ -264,19 +263,19 @@ public class StateRPCImpl {
         final byte[] blockStateRoot = blockState.getBlockStateRoot(blockHash).getBytes();
 
         List<String> readProof = keyHexList
-            .stream()
-            .map(StringUtils::hexToBytes)
-            // TODO change implementation logic as this is not correct
-            .map(key -> trieStorage.getByKeyFromMerkle(blockStateRoot, Nibbles.fromBytes(key))
-                .orElse(null))
-            .filter(Objects::nonNull)
-            .map(NodeData::getMerkleValue)
-            .map(StringUtils::toHexWithPrefix)
-            .toList();
+                .stream()
+                .map(StringUtils::hexToBytes)
+                // TODO change implementation logic as this is not correct
+                .map(key -> trieStorage.getByKeyFromMerkle(blockStateRoot, Nibbles.fromBytes(key))
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .map(NodeData::getMerkleValue)
+                .map(StringUtils::toHexWithPrefix)
+                .toList();
 
         return Map.of(
-            "at", StringUtils.toHexWithPrefix(blockHash.getBytes()),
-            "proof", readProof
+                "at", StringUtils.toHexWithPrefix(blockHash.getBytes()),
+                "proof", readProof
         );
     }
 

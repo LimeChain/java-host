@@ -1,9 +1,9 @@
 package com.limechain.storage.block.map;
 
-import com.limechain.runtime.Runtime;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.NoArgsConstructor;
 import lombok.extern.java.Log;
+import com.limechain.runtime.Runtime;
 
 import java.util.HashMap;
 import java.util.HashSet;

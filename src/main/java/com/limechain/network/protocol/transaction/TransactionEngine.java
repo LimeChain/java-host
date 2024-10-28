@@ -123,7 +123,7 @@ public class TransactionEngine {
 
             ValidTransaction validTransaction;
             try {
-                validTransaction = transactionValidator.validateTransactions(current);
+                validTransaction = transactionValidator.validateExternalTransaction(current);
                 validTransaction.getIgnore().add(peerId);
             } catch (TransactionValidationException e) {
                 log.warning("Error when validating transaction " + current.toString()

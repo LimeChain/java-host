@@ -1,6 +1,8 @@
 package com.limechain.sync.fullsync;
 
 import com.google.protobuf.ByteString;
+import com.limechain.babe.api.BabeApiConfiguration;
+import com.limechain.babe.state.EpochState;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.Network;
@@ -14,8 +16,6 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
-import com.limechain.babe.api.BabeApiConfiguration;
-import com.limechain.babe.state.EpochState;
 import com.limechain.runtime.builder.RuntimeBuilder;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.block.BlockState;
@@ -82,8 +82,8 @@ public class FullSyncMachine {
         networkService.blockAnnounceHandshakeBootNodes();
 
         runtime = buildRuntimeFromState(trieAccessor);
-        StateVersion runtimeStateVersion = runtime.getVersion().getStateVersion();
-        BabeApiConfiguration babeApiConfiguration = runtime.callBabeApiConfiguration();
+        StateVersion runtimeStateVersion = runtime.getCachedVersion().getStateVersion();
+        BabeApiConfiguration babeApiConfiguration = runtime.getBabeApiConfiguration();
         epochState.initialize(babeApiConfiguration);
         trieAccessor.setCurrentStateVersion(runtimeStateVersion);
 
@@ -259,7 +259,7 @@ public class FullSyncMachine {
             if (blockUpdatedRuntime) {
                 log.info("Runtime updated, updating the runtime code");
                 runtime = buildRuntimeFromState(trieAccessor);
-                trieAccessor.setCurrentStateVersion(runtime.getVersion().getStateVersion());
+                trieAccessor.setCurrentStateVersion(runtime.getCachedVersion().getStateVersion());
                 blockState.storeRuntime(blockHeader.getHash(), runtime);
             }
         }

@@ -727,6 +727,20 @@ public class BlockState {
     }
 
     /**
+     * Get the runtime for the current best block.
+     *
+     * @return runtime for the best block.
+     * @throws BlockStorageGenericException if the block node is not found in the block tree.
+     */
+    public Runtime getBestBlockRuntime() {
+        try {
+            return blockTree.getBlockRuntime(bestBlockHash());
+        } catch (BlockNodeNotFoundException e) {
+            throw new BlockStorageGenericException("Exception when retrieving best block runtime: ", e);
+        }
+    }
+
+    /**
      * Store the runtime for a given block hash
      *
      * @param blockHash the block hash

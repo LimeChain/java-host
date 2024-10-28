@@ -7,8 +7,8 @@ import org.jetbrains.annotations.Nullable;
 public class TransactionValidationResponse {
 
     @Nullable
-    TransactionValidity validTx;
+    TransactionValidity validity;
 
     @Nullable
-    TransactionValidityError transactionValidityError;
+    TransactionValidityError validityError;
 }
