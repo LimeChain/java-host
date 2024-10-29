@@ -21,12 +21,12 @@ public class Authorship {
 
     public static BabePreDigest claimPrimarySlot(final byte[] randomness,
                                                  final BigInteger slotNumber,
-                                                 final long epochNumber,
+                                                 final BigInteger epochNumber,
                                                  final Schnorrkel.KeyPair keyPair,
                                                  final int authorityIndex,
                                                  final BigInteger threshold) {
 
-        var transcript = makeTranscript(randomness, slotNumber.longValue(), epochNumber);
+        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
 
         Schnorrkel schnorrkel = Schnorrkel.getInstance();
         VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
@@ -105,10 +105,10 @@ public class Authorship {
         return c;
     }
 
-    private static TranscriptData makeTranscript(byte[] randomness, long slotNumber, long epochNumber) {
+    private static TranscriptData makeTranscript(byte[] randomness, BigInteger slotNumber, BigInteger epochNumber) {
         var transcript = new TranscriptData("BABE".getBytes());
-        transcript.appendMessage("slot number", LittleEndianUtils.longToLittleEndianBytes(slotNumber));
-        transcript.appendMessage("current epoch", LittleEndianUtils.longToLittleEndianBytes(epochNumber));
+        transcript.appendMessage("slot number", LittleEndianUtils.toLittleEndianBytes(slotNumber));
+        transcript.appendMessage("current epoch", LittleEndianUtils.toLittleEndianBytes(epochNumber));
         transcript.appendMessage("chain randomness", randomness);
         return transcript;
     }
