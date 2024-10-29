@@ -1,5 +1,6 @@
 package com.limechain.babe;
 
+import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.math.BigRational;
 import com.limechain.chain.lightsyncstate.Authority;
@@ -8,6 +9,7 @@ import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.bouncycastle.jcajce.provider.digest.Blake2b;
 import org.javatuples.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -43,6 +45,46 @@ public class Authorship {
         }
 
         return null;
+    }
+
+    //TODO: Replace return type with PreDigest
+    public static Object claimSecondarySlotVrf(final byte[] randomness,
+                                               final long slotNumber,
+                                               final long epochNumber,
+                                               final List<Authority> authorities,
+                                               final Schnorrkel.KeyPair keyPair,
+                                               final int authorityIndex) {
+
+        var secondarySlotAuthor = getSecondarySlotAuthor(randomness, slotNumber, authorities);
+        if (secondarySlotAuthor == null) {
+            //TODO: throw an exception =? return null
+            throw new IllegalStateException("some exception");
+        }
+
+        if (BigInteger.valueOf(authorityIndex).compareTo(secondarySlotAuthor) != 0) {
+            //TODO: throw an exception =? return null
+            throw new IllegalStateException("other exception");
+        }
+
+        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
+
+        //TODO: Return PreDigest
+        return null;
+    }
+
+    private static BigInteger getSecondarySlotAuthor(final byte[] randomness,
+                                              final long slotNumber,
+                                              final List<Authority> authorities) {
+        if (authorities.isEmpty()) return null;
+
+        byte[] slotBytes = LittleEndianUtils.longToLittleEndianBytes(slotNumber);
+        byte[] concatenated = ByteArrayUtils.concatenate(randomness, slotBytes);
+        Blake2b.Blake2b256 blake2b256 = new Blake2b.Blake2b256();
+        byte[] hash = blake2b256.digest(concatenated);
+
+        BigInteger randBig = new BigInteger(1, hash);
+        BigInteger numAuthBig = BigInteger.valueOf(authorities.size());
+        return randBig.mod(numAuthBig);
     }
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
