@@ -199,3 +199,56 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+   ========================================================================
+       Apache 2.0 licenses
+   ========================================================================
+
+   The following components are provided under the Apache 2.0 License. See project link for details.
+
+       (ALv2 License) polkaj (https://github.com/splix/polkaj/blob/master/LICENSE)
+       (ALv2 License) chicory (https://github.com/dylibso/chicory/blob/main/LICENSE)
+       (ALv2 License) guava (https://github.com/google/guava/blob/master/LICENSE)
+       (ALv2 License) commons-cli (https://github.com/apache/commons-cli/blob/master/LICENSE.txt)
+       (ALv2 License) commons-io (https://github.com/apache/commons-io/blob/master/LICENSE.txt)
+       (ALv2 License) prometheus (https://github.com/prometheus/prometheus/blob/main/LICENSE)
+       (ALv2 License) javatuples (https://github.com/javatuples/javatuples/blob/master/LICENSE.txt)
+       (ALv2 License) zero-allocation-hashing (https://github.com/OpenHFT/Zero-Allocation-Hashing/blob/ea/LICENSE)
+       (ALv2 License) spring-boot (https://github.com/spring-projects/spring-boot/blob/main/LICENSE.txt)
+       (ALv2 License) web3j (https://github.com/hyperledger/web3j/blob/main/LICENSE)
+
+   ========================================================================
+       MIT licenses
+   ========================================================================
+
+   The following components are provided under the MIT License. See project link for details.
+
+       (MIT) wasmer-jni (https://github.com/LimeChain/wasmer-java/blob/dev/LICENSE)
+       (MIT) nabu (https://github.com/Peergos/nabu/blob/master/LICENSE)
+       (MIT) jsonrpc4j (https://github.com/Lendico/jsonrpc4j/blob/master/LICENSE)
+       (MIT) Java-WebSocket (https://github.com/TooTallNate/Java-WebSocket/blob/master/LICENSE)
+       (MIT) mockito (https://github.com/mockito/mockito/blob/main/LICENSE)
+
+   ========================================================================
+       BSD licenses
+   ========================================================================
+
+   The following components are provided under the BSD License. See project link for details.
+
+       (BSD) zstd-jni (https://github.com/luben/zstd-jni/blob/master/LICENSE)
+
+   ========================================================================
+       Eclipse 2.0 licenses
+   ========================================================================
+
+   The following components are custom licenses. See project link for details.
+
+       Junit (https://github.com/junit-team/junit5/blob/main/LICENSE.md)
+
+   ========================================================================
+       Custom licenses
+   ========================================================================
+
+   The following components are custom licenses. See project link for details.
+
+       lombok (https://github.com/projectlombok/lombok/blob/master/LICENSE)
