@@ -1,7 +1,11 @@
 package com.limechain.babe;
 
+import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.math.BigRational;
 import com.limechain.chain.lightsyncstate.Authority;
+import io.emeraldpay.polkaj.merlin.TranscriptData;
+import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
+import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.javatuples.Pair;
@@ -12,6 +16,34 @@ import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
+
+    //TODO: Replace return type with PreDigest
+    public static Object claimPrimarySlot(final byte[] randomness,
+                                          final long slotNumber,
+                                          final long epochNumber,
+                                          final Schnorrkel.KeyPair keyPair,
+                                          final int authorityIndex,
+                                          final BigInteger threshold) {
+
+        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
+
+        Schnorrkel schnorrkel = Schnorrkel.getInstance();
+        VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
+        byte[] vrfBytes = schnorrkel.makeBytes(keyPair, transcript, vrfOutputAndProof);
+
+        if (vrfBytes.length != 16) {
+            throw new IllegalArgumentException("VRF byte array must be exactly 16 bytes long");
+        }
+
+        var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(vrfBytes).compareTo(threshold) < 0;
+
+        if (isBelowThreshold) {
+            //TODO: Return PreDigest
+            return null;
+        }
+
+        return null;
+    }
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
     public static BigInteger calculatePrimaryThreshold(
@@ -65,5 +97,13 @@ public class Authorship {
         }
 
         return c;
+    }
+
+    private static TranscriptData makeTranscript(byte[] randomness, Long slotNumber, Long epochNumber) {
+        var transcript = new TranscriptData("BABE".getBytes());
+        transcript.appendMessage("slot number", LittleEndianUtils.longToLittleEndianBytes(slotNumber));
+        transcript.appendMessage("current epoch", LittleEndianUtils.longToLittleEndianBytes(epochNumber));
+        transcript.appendMessage("chain randomness", randomness);
+        return transcript;
     }
 }
