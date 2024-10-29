@@ -55,8 +55,8 @@ public class Authorship {
 
     //TODO: Replace return type with PreDigest
     public static Object claimSecondarySlotVrf(final byte[] randomness,
-                                               final long slotNumber,
-                                               final long epochNumber,
+                                               final BigInteger slotNumber,
+                                               final BigInteger epochNumber,
                                                final List<Authority> authorities,
                                                final Schnorrkel.KeyPair keyPair,
                                                final int authorityIndex) {
@@ -79,12 +79,13 @@ public class Authorship {
     }
 
     private static BigInteger getSecondarySlotAuthor(final byte[] randomness,
-                                              final long slotNumber,
-                                              final List<Authority> authorities) {
+                                                     final BigInteger slotNumber,
+                                                     final List<Authority> authorities) {
         if (authorities.isEmpty()) return null;
 
-        byte[] slotBytes = LittleEndianUtils.longToLittleEndianBytes(slotNumber);
+        byte[] slotBytes = LittleEndianUtils.toLittleEndianBytes(slotNumber);
         byte[] concatenated = ByteArrayUtils.concatenate(randomness, slotBytes);
+
         Blake2b.Blake2b256 blake2b256 = new Blake2b.Blake2b256();
         byte[] hash = blake2b256.digest(concatenated);
 
