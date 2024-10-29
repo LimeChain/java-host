@@ -39,26 +39,25 @@ class LittleEndianUtilsTest {
     }
 
     @Test
-    void testLongToLittleEndianBytesWithMaxLongValue() {
+    void testToLittleEndianBytesWithMaxLongValue() {
         long value = Long.MAX_VALUE;
         byte[] expected = new byte[]{-1, -1, -1, -1, -1, -1, -1, 127}; // Expected little-endian bytes for Long.MAX_VALUE
-        byte[] result = LittleEndianUtils.longToLittleEndianBytes(value);
+        byte[] result = LittleEndianUtils.toLittleEndianBytes(BigInteger.valueOf(value));
         assertArrayEquals(expected, result);
     }
 
     @Test
-    void testLongToLittleEndianBytesWithMinLongValue() {
+    void testToLittleEndianBytesWithMinLongValue() {
         long value = Long.MIN_VALUE;
         byte[] expected = new byte[]{0, 0, 0, 0, 0, 0, 0, -128}; // Expected little-endian bytes for Long.MIN_VALUE
-        byte[] result = LittleEndianUtils.longToLittleEndianBytes(value);
+        byte[] result = LittleEndianUtils.toLittleEndianBytes(BigInteger.valueOf(value));
         assertArrayEquals(expected, result);
     }
 
     @Test
-    void testLongToLittleEndianBytesWithZero() {
-        long value = 0L;
+    void testToLittleEndianBytesWithZero() {
         byte[] expected = new byte[]{0, 0, 0, 0, 0, 0, 0, 0}; // Expected little-endian bytes for 0
-        byte[] result = LittleEndianUtils.longToLittleEndianBytes(value);
+        byte[] result = LittleEndianUtils.toLittleEndianBytes(BigInteger.ZERO);
         assertArrayEquals(expected, result);
     }
 

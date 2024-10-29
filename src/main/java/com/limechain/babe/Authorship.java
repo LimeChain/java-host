@@ -1,5 +1,7 @@
 package com.limechain.babe;
 
+import com.limechain.babe.predigest.BabePreDigest;
+import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.math.BigRational;
@@ -19,13 +21,12 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
-    //TODO: Replace return type with PreDigest
-    public static Object claimPrimarySlot(final byte[] randomness,
-                                          final long slotNumber,
-                                          final long epochNumber,
-                                          final Schnorrkel.KeyPair keyPair,
-                                          final int authorityIndex,
-                                          final BigInteger threshold) {
+    public static BabePreDigest claimPrimarySlot(final byte[] randomness,
+                                                 final BigInteger slotNumber,
+                                                 final BigInteger epochNumber,
+                                                 final Schnorrkel.KeyPair keyPair,
+                                                 final int authorityIndex,
+                                                 final BigInteger threshold) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochNumber);
 
@@ -40,8 +41,13 @@ public class Authorship {
         var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(vrfBytes).compareTo(threshold) < 0;
 
         if (isBelowThreshold) {
-            //TODO: Return PreDigest
-            return null;
+            return new BabePreDigest(
+                    PreDigestType.BABE_PRIMARY,
+                    authorityIndex,
+                    slotNumber,
+                    vrfOutputAndProof.getOutput(),
+                    vrfOutputAndProof.getProof()
+            );
         }
 
         return null;
@@ -141,10 +147,10 @@ public class Authorship {
         return c;
     }
 
-    private static TranscriptData makeTranscript(byte[] randomness, Long slotNumber, Long epochNumber) {
+    private static TranscriptData makeTranscript(byte[] randomness, BigInteger slotNumber, BigInteger epochNumber) {
         var transcript = new TranscriptData("BABE".getBytes());
-        transcript.appendMessage("slot number", LittleEndianUtils.longToLittleEndianBytes(slotNumber));
-        transcript.appendMessage("current epoch", LittleEndianUtils.longToLittleEndianBytes(epochNumber));
+        transcript.appendMessage("slot number", LittleEndianUtils.toLittleEndianBytes(slotNumber));
+        transcript.appendMessage("current epoch", LittleEndianUtils.toLittleEndianBytes(epochNumber));
         transcript.appendMessage("chain randomness", randomness);
         return transcript;
     }

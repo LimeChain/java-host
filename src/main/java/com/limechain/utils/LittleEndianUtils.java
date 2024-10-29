@@ -62,16 +62,14 @@ public class LittleEndianUtils {
     }
 
     /**
-     * Converts a long value into a little-endian byte array.
+     * Converts a BigInteger value into a little-endian byte array.
      *
-     * @param value the long value to convert to a byte array
+     * @param value the BigInteger value to convert to a byte array
      * @return a byte array representing the long value in little-endian order
      */
-    public static byte[] longToLittleEndianBytes(long value) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.putLong(value);
-        return buffer.array();
+    public static byte[] toLittleEndianBytes(BigInteger value) {
+        byte[] bigEndianBytes = value.toByteArray();
+        return bytesToFixedLength(bigEndianBytes, 8);
     }
 
     /**
