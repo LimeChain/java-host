@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import java.math.BigInteger;
 import java.util.List;
 
+//TODO: Add logs for successfully claiming primary/secondary slot
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
@@ -53,27 +54,64 @@ public class Authorship {
         return null;
     }
 
-    //TODO: Should return Plain/VRF Secondary PreDigest or null
-    //TODO: You can take epoch.config.allowed_slots.is_secondary_vrf_slots_allowed from BabeApiConfigurations
-    public static BabePreDigest claimSecondarySlotVrf(final byte[] randomness,
-                                                      final BigInteger slotNumber,
-                                                      final BigInteger epochNumber,
-                                                      final List<Authority> authorities,
-                                                      final Schnorrkel.KeyPair keyPair,
-                                                      final int authorityIndex) {
+    public static BabePreDigest claimSecondarySlot(final byte[] randomness,
+                                                   final BigInteger slotNumber,
+                                                   final BigInteger epochNumber,
+                                                   final List<Authority> authorities,
+                                                   final Schnorrkel.KeyPair keyPair,
+                                                   final int authorityIndex,
+                                                   final boolean authorSecondaryVrfSlot) {
 
-        var secondarySlotAuthor = getSecondarySlotAuthor(randomness, slotNumber, authorities);
-        if (secondarySlotAuthor == null) {
+        var secondarySlotAuthorIndex = getSecondarySlotAuthor(randomness, slotNumber, authorities);
+        if (secondarySlotAuthorIndex == null) {
             return null;
         }
 
-        //TODO: Add implementation
-        return null;
+        //Not our turn to propose
+        if (secondarySlotAuthorIndex != authorityIndex) {
+            return null;
+        }
+
+        if (authorSecondaryVrfSlot) {
+            return buildSecondaryVrfPreDigest(
+                    randomness,
+                    slotNumber,
+                    epochNumber,
+                    keyPair,
+                    authorityIndex
+            );
+        } else {
+            return new BabePreDigest(
+                    PreDigestType.BABE_SECONDARY_PLAIN,
+                    authorityIndex,
+                    slotNumber,
+                    null,
+                    null
+            );
+        }
     }
 
-    private static Authority getSecondarySlotAuthor(final byte[] randomness,
-                                                    final BigInteger slotNumber,
-                                                    final List<Authority> authorities) {
+    private static BabePreDigest buildSecondaryVrfPreDigest(final byte[] randomness,
+                                                            final BigInteger slotNumber,
+                                                            final BigInteger epochNumber,
+                                                            final Schnorrkel.KeyPair keyPair,
+                                                            final int authorityIndex) {
+
+        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
+        VrfOutputAndProof vrfOutputAndProof = Schnorrkel.getInstance().vrfSign(keyPair, transcript);
+
+        return new BabePreDigest(
+                PreDigestType.BABE_SECONDARY_VRF,
+                authorityIndex,
+                slotNumber,
+                vrfOutputAndProof.getOutput(),
+                vrfOutputAndProof.getProof()
+        );
+    }
+
+    private static Integer getSecondarySlotAuthor(final byte[] randomness,
+                                                  final BigInteger slotNumber,
+                                                  final List<Authority> authorities) {
         if (authorities.isEmpty()) return null;
 
         byte[] concat = ByteArrayUtils.concatenate(randomness, slotNumber.toByteArray());
@@ -86,7 +124,7 @@ public class Authorship {
         var authorityIndex = rand.mod(authoritiesCount);
 
         if (authorityIndex.compareTo(authoritiesCount) < 0) {
-            return authorities.get(authorityIndex.intValue());
+            return authorityIndex.intValue();
         }
 
         return null;
