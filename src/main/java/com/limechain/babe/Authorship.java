@@ -53,45 +53,43 @@ public class Authorship {
         return null;
     }
 
-    //TODO: Replace return type with PreDigest
-    public static Object claimSecondarySlotVrf(final byte[] randomness,
-                                               final BigInteger slotNumber,
-                                               final BigInteger epochNumber,
-                                               final List<Authority> authorities,
-                                               final Schnorrkel.KeyPair keyPair,
-                                               final int authorityIndex) {
+    //TODO: Should return Plain/VRF Secondary PreDigest or null
+    //TODO: You can take epoch.config.allowed_slots.is_secondary_vrf_slots_allowed from BabeApiConfigurations
+    public static BabePreDigest claimSecondarySlotVrf(final byte[] randomness,
+                                                      final BigInteger slotNumber,
+                                                      final BigInteger epochNumber,
+                                                      final List<Authority> authorities,
+                                                      final Schnorrkel.KeyPair keyPair,
+                                                      final int authorityIndex) {
 
         var secondarySlotAuthor = getSecondarySlotAuthor(randomness, slotNumber, authorities);
         if (secondarySlotAuthor == null) {
-            //TODO: throw an exception =? return null
-            throw new IllegalStateException("some exception");
+            return null;
         }
 
-        if (BigInteger.valueOf(authorityIndex).compareTo(secondarySlotAuthor) != 0) {
-            //TODO: throw an exception =? return null
-            throw new IllegalStateException("other exception");
-        }
-
-        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
-
-        //TODO: Return PreDigest
+        //TODO: Add implementation
         return null;
     }
 
-    private static BigInteger getSecondarySlotAuthor(final byte[] randomness,
-                                                     final BigInteger slotNumber,
-                                                     final List<Authority> authorities) {
+    private static Authority getSecondarySlotAuthor(final byte[] randomness,
+                                                    final BigInteger slotNumber,
+                                                    final List<Authority> authorities) {
         if (authorities.isEmpty()) return null;
 
-        byte[] slotBytes = LittleEndianUtils.toLittleEndianBytes(slotNumber);
-        byte[] concatenated = ByteArrayUtils.concatenate(randomness, slotBytes);
+        byte[] concat = ByteArrayUtils.concatenate(randomness, slotNumber.toByteArray());
 
         Blake2b.Blake2b256 blake2b256 = new Blake2b.Blake2b256();
-        byte[] hash = blake2b256.digest(concatenated);
+        byte[] hash = blake2b256.digest(concat);
 
-        BigInteger randBig = new BigInteger(1, hash);
-        BigInteger numAuthBig = BigInteger.valueOf(authorities.size());
-        return randBig.mod(numAuthBig);
+        var rand = LittleEndianUtils.fromLittleEndianByteArray(hash);
+        var authoritiesCount = BigInteger.valueOf(authorities.size());
+        var authorityIndex = rand.mod(authoritiesCount);
+
+        if (authorityIndex.compareTo(authoritiesCount) < 0) {
+            return authorities.get(authorityIndex.intValue());
+        }
+
+        return null;
     }
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
