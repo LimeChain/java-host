@@ -14,11 +14,4 @@ import java.util.List;
 public class EpochData {
     private List<Authority> authorities;
     private byte[] randomness;
-    //TODO: this may be relocated to different place
-    private int authorityIndex;
-
-    public EpochData(List<Authority> authorities, byte[] randomness) {
-        this.authorities = authorities;
-        this.randomness = randomness;
-    }
 }

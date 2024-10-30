@@ -30,11 +30,7 @@ public class EpochState {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
         this.epochLength = babeApiConfiguration.getEpochLength();
         this.currentEpochData = new EpochData(babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
-        this.currentEpochDescriptor = EpochDescriptor.build(
-                babeApiConfiguration.getConstant(),
-                babeApiConfiguration.getAllowedSlots(),
-                currentEpochData
-        );
+        this.currentEpochDescriptor = new EpochDescriptor(babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
     }
 
     public void updateNextEpochBlockConfig(byte[] message) {
@@ -57,6 +53,4 @@ public class EpochState {
         //TODO: replace BigInteger.valueOf(1234) with genesis_slot
         return BigIntegerUtils.divideAndRoundUp(BigInteger.valueOf(1234), epochLength);
     }
-
-    //TODO: get auth index
 }

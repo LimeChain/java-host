@@ -4,6 +4,8 @@ import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.babe.state.EpochState;
 import com.limechain.chain.lightsyncstate.BabeEpoch;
+import com.limechain.storage.crypto.KeyStore;
+import com.limechain.storage.crypto.KeyType;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.math.BigRational;
@@ -18,22 +20,30 @@ import org.javatuples.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 //TODO: Add logs for successfully claiming primary/secondary slot
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
-    //TODO: this method is not intended to be part of this class, the placement should be changed later
-    public static BabePreDigest claimSlot(final EpochState epochState) {
+    private static BabePreDigest claimSlot(EpochState epochState, KeyStore keyStore) {
+
+        var randomness = epochState.getCurrentEpochData().getRandomness();
+        var slotNumber = epochState.getCurrentSlotNumber();
+        var epochNumber = epochState.getCurrentEpochNumber();
+        var c = epochState.getCurrentEpochDescriptor().getConstant();
+        var authorities = epochState.getCurrentEpochData().getAuthorities();
+
+        var keys = extractKeyPairsForRegisteredAuthorities(authorities, keyStore);
 
         BabePreDigest primarySlot = claimPrimarySlot(
-                epochState.getCurrentEpochData().getRandomness(),
-                epochState.getCurrentSlotNumber(),
-                epochState.getCurrentSlotNumber(), //TODO: get current epoch number
-                null,  //TODO: get the keys somehow
-                epochState.getCurrentEpochData().getAuthorityIndex(),
-                epochState.getCurrentEpochDescriptor().getThreshold()
+                randomness,
+                slotNumber,
+                epochNumber,
+                authorities,
+                c,
+                keys
         );
 
         if (primarySlot != null) return primarySlot;
@@ -42,12 +52,11 @@ public class Authorship {
                 epochState.getCurrentEpochDescriptor().getAllowedSlots().equals(BabeEpoch.BabeAllowedSlots.PRIMARY_AND_SECONDARY_VRF_SLOTS);
 
         return claimSecondarySlot(
-                epochState.getCurrentEpochData().getRandomness(),
-                epochState.getCurrentSlotNumber(),
-                epochState.getCurrentSlotNumber(), //TODO: get current epoch number
-                epochState.getCurrentEpochData().getAuthorities(),
-                null,  //TODO: get the keys somehow
-                epochState.getCurrentEpochData().getAuthorityIndex(),
+                randomness,
+                slotNumber,
+                epochNumber,
+                authorities,
+                keys,
                 authorSecondaryVrfSlot
         );
     }
@@ -55,30 +64,38 @@ public class Authorship {
     public static BabePreDigest claimPrimarySlot(final byte[] randomness,
                                                  final BigInteger slotNumber,
                                                  final BigInteger epochNumber,
-                                                 final Schnorrkel.KeyPair keyPair,
-                                                 final int authorityIndex,
-                                                 final BigInteger threshold) {
+                                                 final List<Authority> authorities,
+                                                 final Pair<BigInteger, BigInteger> c,
+                                                 final List<Pair<Integer, Schnorrkel.KeyPair>> keys) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochNumber);
 
-        Schnorrkel schnorrkel = Schnorrkel.getInstance();
-        VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
-        byte[] vrfBytes = schnorrkel.makeBytes(keyPair, transcript, vrfOutputAndProof);
+        for (Pair<Integer, Schnorrkel.KeyPair> key : keys) {
 
-        if (vrfBytes.length != 16) {
-            throw new IllegalArgumentException("VRF byte array must be exactly 16 bytes long");
-        }
+            var index = key.getValue0();
+            var keyPair = key.getValue1();
 
-        var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(vrfBytes).compareTo(threshold) < 0;
+            var threshold = calculatePrimaryThreshold(c, authorities, index);
 
-        if (isBelowThreshold) {
-            return new BabePreDigest(
-                    PreDigestType.BABE_PRIMARY,
-                    authorityIndex,
-                    slotNumber,
-                    vrfOutputAndProof.getOutput(),
-                    vrfOutputAndProof.getProof()
-            );
+            Schnorrkel schnorrkel = Schnorrkel.getInstance();
+            VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
+            byte[] vrfBytes = schnorrkel.makeBytes(keyPair, transcript, vrfOutputAndProof);
+
+            if (vrfBytes.length != 16) {
+                throw new IllegalArgumentException("VRF byte array must be exactly 16 bytes long");
+            }
+
+            var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(vrfBytes).compareTo(threshold) < 0;
+
+            if (isBelowThreshold) {
+                return new BabePreDigest(
+                        PreDigestType.BABE_PRIMARY,
+                        index,
+                        slotNumber,
+                        vrfOutputAndProof.getOutput(),
+                        vrfOutputAndProof.getProof()
+                );
+            }
         }
 
         return null;
@@ -88,8 +105,7 @@ public class Authorship {
                                                    final BigInteger slotNumber,
                                                    final BigInteger epochNumber,
                                                    final List<Authority> authorities,
-                                                   final Schnorrkel.KeyPair keyPair,
-                                                   final int authorityIndex,
+                                                   final List<Pair<Integer, Schnorrkel.KeyPair>> keys,
                                                    final boolean authorSecondaryVrfSlot) {
 
         var secondarySlotAuthorIndex = getSecondarySlotAuthor(randomness, slotNumber, authorities);
@@ -97,28 +113,34 @@ public class Authorship {
             return null;
         }
 
-        //Not our turn to propose
-        if (secondarySlotAuthorIndex != authorityIndex) {
-            return null;
+        for (Pair<Integer, Schnorrkel.KeyPair> key : keys) {
+            var index = key.getValue0();
+            var keyPair = key.getValue1();
+
+            if (!secondarySlotAuthorIndex.equals(index)) {
+                return null;
+            }
+
+            if (authorSecondaryVrfSlot) {
+                return buildSecondaryVrfPreDigest(
+                        randomness,
+                        slotNumber,
+                        epochNumber,
+                        keyPair,
+                        index
+                );
+            } else {
+                return new BabePreDigest(
+                        PreDigestType.BABE_SECONDARY_PLAIN,
+                        index,
+                        slotNumber,
+                        null,
+                        null
+                );
+            }
         }
 
-        if (authorSecondaryVrfSlot) {
-            return buildSecondaryVrfPreDigest(
-                    randomness,
-                    slotNumber,
-                    epochNumber,
-                    keyPair,
-                    authorityIndex
-            );
-        } else {
-            return new BabePreDigest(
-                    PreDigestType.BABE_SECONDARY_PLAIN,
-                    authorityIndex,
-                    slotNumber,
-                    null,
-                    null
-            );
-        }
+        return null;
     }
 
     private static BabePreDigest buildSecondaryVrfPreDigest(final byte[] randomness,
@@ -189,6 +211,23 @@ public class Authorship {
         BigInteger scaledNumer = twoToThe128.multiply(pRational.getNumerator());
 
         return scaledNumer.divide(pRational.getDenominator());
+    }
+
+    private static List<Pair<Integer, Schnorrkel.KeyPair>> extractKeyPairsForRegisteredAuthorities(
+            List<Authority> authorities,
+            KeyStore keyStore) {
+
+        List<Pair<Integer, Schnorrkel.KeyPair>> keys = new ArrayList<>();
+        for (Authority authority : authorities) {
+            var privateKey = keyStore.get(KeyType.BABE, authority.getPublicKey());
+            if (privateKey != null) {
+                Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(authority.getPublicKey());
+                Schnorrkel.KeyPair keyPair = new Schnorrkel.KeyPair(publicKey, privateKey);
+                keys.add(new Pair<>(authorities.indexOf(authority), keyPair));
+            }
+        }
+
+        return keys;
     }
 
     private static double getBabeConstant(@NotNull Pair<BigInteger, BigInteger> constant,
