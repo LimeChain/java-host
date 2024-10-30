@@ -2,6 +2,8 @@ package com.limechain.babe;
 
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.PreDigestType;
+import com.limechain.babe.state.EpochState;
+import com.limechain.chain.lightsyncstate.BabeEpoch;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.math.BigRational;
@@ -21,6 +23,34 @@ import java.util.List;
 //TODO: Add logs for successfully claiming primary/secondary slot
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
+
+    //TODO: this method is not intended to be part of this class, the placement should be changed later
+    public static BabePreDigest claimSlot(final EpochState epochState) {
+
+        BabePreDigest primarySlot = claimPrimarySlot(
+                epochState.getCurrentEpochData().getRandomness(),
+                epochState.getCurrentSlotNumber(),
+                epochState.getCurrentSlotNumber(), //TODO: get current epoch number
+                null,  //TODO: get the keys somehow
+                epochState.getCurrentEpochData().getAuthorityIndex(),
+                epochState.getCurrentEpochDescriptor().getThreshold()
+        );
+
+        if (primarySlot != null) return primarySlot;
+
+        boolean authorSecondaryVrfSlot =
+                epochState.getCurrentEpochDescriptor().getAllowedSlots().equals(BabeEpoch.BabeAllowedSlots.PRIMARY_AND_SECONDARY_VRF_SLOTS);
+
+        return claimSecondarySlot(
+                epochState.getCurrentEpochData().getRandomness(),
+                epochState.getCurrentSlotNumber(),
+                epochState.getCurrentSlotNumber(), //TODO: get current epoch number
+                epochState.getCurrentEpochData().getAuthorities(),
+                null,  //TODO: get the keys somehow
+                epochState.getCurrentEpochData().getAuthorityIndex(),
+                authorSecondaryVrfSlot
+        );
+    }
 
     public static BabePreDigest claimPrimarySlot(final byte[] randomness,
                                                  final BigInteger slotNumber,

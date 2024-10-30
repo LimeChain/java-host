@@ -3,6 +3,7 @@ package com.limechain.babe.state;
 import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.consesus.scale.BabeConsensusMessageReader;
 import com.limechain.babe.consesus.BabeConsensusMessage;
+import com.limechain.utils.BigIntegerUtils;
 import com.limechain.utils.scale.ScaleUtils;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
@@ -25,12 +26,15 @@ public class EpochState {
     private long disabledAuthority;
     private EpochDescriptor nextEpochDescriptor;
 
-
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
         this.epochLength = babeApiConfiguration.getEpochLength();
         this.currentEpochData = new EpochData(babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
-        this.currentEpochDescriptor = new EpochDescriptor(babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
+        this.currentEpochDescriptor = EpochDescriptor.build(
+                babeApiConfiguration.getConstant(),
+                babeApiConfiguration.getAllowedSlots(),
+                currentEpochData
+        );
     }
 
     public void updateNextEpochBlockConfig(byte[] message) {
@@ -45,4 +49,14 @@ public class EpochState {
     public BigInteger getCurrentSlotNumber() {
         return BigInteger.valueOf(Instant.now().toEpochMilli()).divide(slotDuration);
     }
+
+    //pub fn epoch_index(slot: Slot, genesis_slot: Slot, epoch_duration: u64) -> u64 {
+    //	*slot.saturating_sub(genesis_slot) / epoch_duration
+    //}
+    public BigInteger getCurrentEpochNumber() {
+        //TODO: replace BigInteger.valueOf(1234) with genesis_slot
+        return BigIntegerUtils.divideAndRoundUp(BigInteger.valueOf(1234), epochLength);
+    }
+
+    //TODO: get auth index
 }
