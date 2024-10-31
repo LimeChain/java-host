@@ -28,7 +28,7 @@ import java.util.Map;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
-    private static BabePreDigest claimSlot(EpochState epochState, KeyStore keyStore) {
+    public static BabePreDigest claimSlot(EpochState epochState, KeyStore keyStore) {
 
         var randomness = epochState.getCurrentEpochData().getRandomness();
         var slotNumber = epochState.getCurrentSlotNumber();
@@ -62,7 +62,7 @@ public class Authorship {
         );
     }
 
-    public static BabePreDigest claimPrimarySlot(final byte[] randomness,
+    private static BabePreDigest claimPrimarySlot(final byte[] randomness,
                                                  final BigInteger slotNumber,
                                                  final BigInteger epochNumber,
                                                  final List<Authority> authorities,
@@ -102,7 +102,7 @@ public class Authorship {
         return null;
     }
 
-    public static BabePreDigest claimSecondarySlot(final byte[] randomness,
+    private static BabePreDigest claimSecondarySlot(final byte[] randomness,
                                                    final BigInteger slotNumber,
                                                    final BigInteger epochNumber,
                                                    final List<Authority> authorities,
@@ -185,7 +185,7 @@ public class Authorship {
     }
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
-    public static BigInteger calculatePrimaryThreshold(
+    private static BigInteger calculatePrimaryThreshold(
             @NotNull final Pair<BigInteger, BigInteger> constant,
             @NotNull final List<Authority> authorities,
             final int authorityIndex) {
