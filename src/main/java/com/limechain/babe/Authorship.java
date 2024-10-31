@@ -15,13 +15,14 @@ import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.apache.commons.collections4.map.LinkedMap;
 import org.bouncycastle.jcajce.provider.digest.Blake2b;
 import org.javatuples.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 //TODO: Add logs for successfully claiming primary/secondary slot
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -35,7 +36,7 @@ public class Authorship {
         var c = epochState.getCurrentEpochDescriptor().getConstant();
         var authorities = epochState.getCurrentEpochData().getAuthorities();
 
-        var keys = extractKeyPairsForRegisteredAuthorities(authorities, keyStore);
+        var indexKeyPairMap = getOwnedKeyPairsFromAuthoritySet(authorities, keyStore);
 
         BabePreDigest primarySlot = claimPrimarySlot(
                 randomness,
@@ -43,7 +44,7 @@ public class Authorship {
                 epochNumber,
                 authorities,
                 c,
-                keys
+                indexKeyPairMap
         );
 
         if (primarySlot != null) return primarySlot;
@@ -56,7 +57,7 @@ public class Authorship {
                 slotNumber,
                 epochNumber,
                 authorities,
-                keys,
+                indexKeyPairMap,
                 authorSecondaryVrfSlot
         );
     }
@@ -66,16 +67,16 @@ public class Authorship {
                                                  final BigInteger epochNumber,
                                                  final List<Authority> authorities,
                                                  final Pair<BigInteger, BigInteger> c,
-                                                 final List<Pair<Integer, Schnorrkel.KeyPair>> keys) {
+                                                 final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochNumber);
 
-        for (Pair<Integer, Schnorrkel.KeyPair> key : keys) {
+        for (Map.Entry<Integer, Schnorrkel.KeyPair> entry : indexKeyPairMap.entrySet()) {
 
-            var index = key.getValue0();
-            var keyPair = key.getValue1();
+            var authorityIndex = entry.getKey();
+            var keyPair = entry.getValue();
 
-            var threshold = calculatePrimaryThreshold(c, authorities, index);
+            var threshold = calculatePrimaryThreshold(c, authorities, authorityIndex);
 
             Schnorrkel schnorrkel = Schnorrkel.getInstance();
             VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
@@ -90,7 +91,7 @@ public class Authorship {
             if (isBelowThreshold) {
                 return new BabePreDigest(
                         PreDigestType.BABE_PRIMARY,
-                        index,
+                        authorityIndex,
                         slotNumber,
                         vrfOutputAndProof.getOutput(),
                         vrfOutputAndProof.getProof()
@@ -105,7 +106,7 @@ public class Authorship {
                                                    final BigInteger slotNumber,
                                                    final BigInteger epochNumber,
                                                    final List<Authority> authorities,
-                                                   final List<Pair<Integer, Schnorrkel.KeyPair>> keys,
+                                                   final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap,
                                                    final boolean authorSecondaryVrfSlot) {
 
         var secondarySlotAuthorIndex = getSecondarySlotAuthor(randomness, slotNumber, authorities);
@@ -113,11 +114,12 @@ public class Authorship {
             return null;
         }
 
-        for (Pair<Integer, Schnorrkel.KeyPair> key : keys) {
-            var index = key.getValue0();
-            var keyPair = key.getValue1();
+        for (Map.Entry<Integer, Schnorrkel.KeyPair> entry : indexKeyPairMap.entrySet()) {
 
-            if (!secondarySlotAuthorIndex.equals(index)) {
+            var authorityIndex = entry.getKey();
+            var keyPair = entry.getValue();
+
+            if (!secondarySlotAuthorIndex.equals(authorityIndex)) {
                 return null;
             }
 
@@ -127,12 +129,12 @@ public class Authorship {
                         slotNumber,
                         epochNumber,
                         keyPair,
-                        index
+                        authorityIndex
                 );
             } else {
                 return new BabePreDigest(
                         PreDigestType.BABE_SECONDARY_PLAIN,
-                        index,
+                        authorityIndex,
                         slotNumber,
                         null,
                         null
@@ -213,21 +215,22 @@ public class Authorship {
         return scaledNumer.divide(pRational.getDenominator());
     }
 
-    private static List<Pair<Integer, Schnorrkel.KeyPair>> extractKeyPairsForRegisteredAuthorities(
+    private static Map<Integer, Schnorrkel.KeyPair> getOwnedKeyPairsFromAuthoritySet(
             List<Authority> authorities,
             KeyStore keyStore) {
 
-        List<Pair<Integer, Schnorrkel.KeyPair>> keys = new ArrayList<>();
+        Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap = new LinkedMap<>();
+
         for (Authority authority : authorities) {
             var privateKey = keyStore.get(KeyType.BABE, authority.getPublicKey());
             if (privateKey != null) {
                 Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(authority.getPublicKey());
                 Schnorrkel.KeyPair keyPair = new Schnorrkel.KeyPair(publicKey, privateKey);
-                keys.add(new Pair<>(authorities.indexOf(authority), keyPair));
+                indexKeyPairMap.put(authorities.indexOf(authority), keyPair);
             }
         }
 
-        return keys;
+        return indexKeyPairMap;
     }
 
     private static double getBabeConstant(@NotNull Pair<BigInteger, BigInteger> constant,
