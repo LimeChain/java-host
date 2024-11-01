@@ -113,7 +113,7 @@ class AuthorshipTest {
                 "calculatePrimaryThreshold",
                 Pair.class,
                 List.class,
-                int.class
+                Integer.class
         );
         calculatePrimaryThreshold.setAccessible(true);
         return (BigInteger) calculatePrimaryThreshold.invoke(null, constant, authorities, authorityIndex);
