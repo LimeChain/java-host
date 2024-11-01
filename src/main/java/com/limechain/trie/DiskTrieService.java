@@ -41,17 +41,23 @@ import java.util.stream.IntStream;
 public class DiskTrieService {
 
     public static final String UNFINISHED_TRAVERSAL_ERROR =
-        "Traversal result cannot be unfinished at this point in the logic";
+            "Traversal result cannot be unfinished at this point in the logic";
     private final TrieStorage trieStorage;
     private final TrieChanges trieChanges;
 
     private byte[] trieMerkleRoot;
 
-    public DiskTrieService(TrieStorage trieStorage, byte[] trieMerkleRoot) {
+    DiskTrieService(TrieStorage trieStorage, byte[] trieMerkleRoot) {
         this.trieStorage = trieStorage;
         this.trieMerkleRoot = trieMerkleRoot;
 
         this.trieChanges = TrieChanges.empty();
+    }
+
+    DiskTrieService(DiskTrieService original) {
+        trieStorage = original.trieStorage;
+        trieMerkleRoot = original.trieMerkleRoot.clone();
+        trieChanges = TrieChanges.copy(original.trieChanges);
     }
 
     /**
@@ -66,12 +72,12 @@ public class DiskTrieService {
     public Optional<byte[]> findStorageValue(Nibbles key) {
         Optional<PendingTrieNodeChange> change = trieChanges.getFromCache(key);
         return change.<Optional<byte[]>>map(pendingTrieNodeChange ->
-                pendingTrieNodeChange instanceof PendingInsertUpdate update
-                    ? Optional.ofNullable(update.value())
-                    : Optional.empty())
-            .orElseGet(() -> traverseTrie(trieMerkleRoot, key) instanceof TraversalResult.Found found
-                ? Optional.ofNullable(found.getFoundNode().getValue())
-                : Optional.empty());
+                        pendingTrieNodeChange instanceof PendingInsertUpdate update
+                                ? Optional.ofNullable(update.value())
+                                : Optional.empty())
+                .orElseGet(() -> traverseTrie(trieMerkleRoot, key) instanceof TraversalResult.Found found
+                        ? Optional.ofNullable(found.getFoundNode().getValue())
+                        : Optional.empty());
     }
 
     /**
@@ -91,11 +97,11 @@ public class DiskTrieService {
 
         for (TraversedNode traversedNode : traversalResult.getTraversedNodes().reversed()) {
             TrieNodeData node = new TrieNodeData(traversedNode.getValue() != null,
-                traversedNode.getPartialKey(),
-                traversedNode.getChildrenMerkleValues(),
-                traversedNode.getValue(),
-                null,
-                (byte) traversedNode.getStateVersion().asInt());
+                    traversedNode.getPartialKey(),
+                    traversedNode.getChildrenMerkleValues(),
+                    traversedNode.getValue(),
+                    null,
+                    (byte) traversedNode.getStateVersion().asInt());
 
             result = findNextKey(key, traversedNode.getFullKey(), node);
             if (result.isPresent()) {
@@ -118,8 +124,8 @@ public class DiskTrieService {
 
         // Skip all lexicographically lower child nibbles to improve performance.
         Nibble startingNibble = currentKey.compareTo(prefix) >= 0
-            ? Nibble.ZERO
-            : prefix.get(currentKey.size());
+                ? Nibble.ZERO
+                : prefix.get(currentKey.size());
         for (Nibble nibble : Nibbles.ALL.drop(startingNibble.asInt())) {
             byte[] childMerkle = node.getChildrenMerkleValues().get(nibble.asInt());
             if (childMerkle == null) {
@@ -128,8 +134,8 @@ public class DiskTrieService {
 
             TrieNodeData cachedChild = getCachedChildAtIndex(currentKey, nibble);
             TrieNodeData childNode = cachedChild != null
-                ? cachedChild
-                : trieStorage.getTrieNodeFromMerkleValue(childMerkle);
+                    ? cachedChild
+                    : trieStorage.getTrieNodeFromMerkleValue(childMerkle);
 
             Nibbles nextPath = currentKey.add(nibble).addAll(childNode.getPartialKey());
             Optional<Nibbles> result = findNextKey(prefix, nextPath, childNode);
@@ -156,22 +162,22 @@ public class DiskTrieService {
         TraversalResult traversalResult = traverseTrie(trieMerkleRoot, key);
         switch (traversalResult) {
             case TraversalResult.NotFound notFound -> executionUpdates.putAll(
-                executeInsert(
-                    trieMerkleRoot,
-                    new NodeInsertionData(key,
-                        storageValue, stateVersion, notFound.getClosestAncestor().orElse(null))));
+                    executeInsert(
+                            trieMerkleRoot,
+                            new NodeInsertionData(key,
+                                    storageValue, stateVersion, notFound.getClosestAncestor().orElse(null))));
             case TraversalResult.Found found -> {
                 TraversedNode foundNode = found.getFoundNode();
 
                 assert key.equals(foundNode.getFullKey())
-                    : "Found node in traversal result should have the same key path as the sought key";
+                        : "Found node in traversal result should have the same key path as the sought key";
 
                 executionUpdates.put(foundNode.getFullKey(), toPendingInsertUpdate(
-                    storageValue,
-                    foundNode.getPartialKey(),
-                    foundNode.getStateVersion(),
-                    foundNode.getChildrenMerkleValues(),
-                    foundNode.getParent() == null
+                        storageValue,
+                        foundNode.getPartialKey(),
+                        foundNode.getStateVersion(),
+                        foundNode.getChildrenMerkleValues(),
+                        foundNode.getParent() == null
                 ));
             }
             case TraversalResult.Unfinished ignored -> throw new IllegalStateException(UNFINISHED_TRAVERSAL_ERROR);
@@ -179,8 +185,8 @@ public class DiskTrieService {
 
         Map.Entry<Nibbles, PendingTrieNodeChange> closestSuccessor = executionUpdates.firstEntry();
         executionUpdates.putAll(toPendingInsertUpdates(traversalResult.traversedNodes,
-            closestSuccessor.getKey(),
-            closestSuccessor.getValue()));
+                closestSuccessor.getKey(),
+                closestSuccessor.getValue()));
 
         trieChanges.updateCache(executionUpdates);
     }
@@ -194,19 +200,20 @@ public class DiskTrieService {
      * @return A {@link TreeMap} of the newly created node and its updated parent/children if any.
      */
     private TreeMap<Nibbles, PendingInsertUpdate> executeInsert(byte[] merkleRoot, NodeInsertionData insertionData) {
-        TrieNodeData rootNode = trieStorage.getTrieNodeFromMerkleValue(merkleRoot);
+        boolean isRoot = trieChanges.getRoot().isEmpty() &&
+                trieStorage.getTrieNodeFromMerkleValue(merkleRoot) == null;
 
         // If trie is empty insert the newly created node as root.
-        if (rootNode == null) {
+        if (isRoot) {
             TreeMap<Nibbles, PendingInsertUpdate> result = new TreeMap<>();
             List<byte[]> newNodeChildren = new ArrayList<>(Collections.nCopies(16, null));
 
             result.put(insertionData.getKey(), toPendingInsertUpdate(
-                insertionData.getNewNodeValue(),
-                insertionData.getKey(),
-                insertionData.getNewNodeStateVersion(),
-                newNodeChildren,
-                true));
+                    insertionData.getNewNodeValue(),
+                    insertionData.getKey(),
+                    insertionData.getNewNodeStateVersion(),
+                    newNodeChildren,
+                    true));
 
             return result;
         }
@@ -223,7 +230,7 @@ public class DiskTrieService {
             ancestorKeySize = insertionData.getAncestor().getFullKey().size();
             Nibble newNodeChildIndex = insertionData.getKey().get(ancestorKeySize);
             byte[] merkleAtNewNodeIndex = insertionData.getAncestor().getChildrenMerkleValues()
-                .get(newNodeChildIndex.asInt());
+                    .get(newNodeChildIndex.asInt());
 
             if (merkleAtNewNodeIndex == null) {
                 // There is an empty slot in `futureParentNode` for our new node.
@@ -244,11 +251,11 @@ public class DiskTrieService {
                 List<byte[]> newNodeChildren = new ArrayList<>(Collections.nCopies(16, null));
 
                 result.put(insertionData.getKey(), toPendingInsertUpdate(
-                    insertionData.getNewNodeValue(),
-                    insertionData.getKey().drop(ancestorKeySize + 1),
-                    insertionData.getNewNodeStateVersion(),
-                    newNodeChildren,
-                    false));
+                        insertionData.getNewNodeValue(),
+                        insertionData.getKey().drop(ancestorKeySize + 1),
+                        insertionData.getNewNodeStateVersion(),
+                        newNodeChildren,
+                        false));
 
                 return result;
             } else {
@@ -261,8 +268,8 @@ public class DiskTrieService {
 
         // If the node that shares the key path is not in cache we check the disk.
         TrieNodeData existingNode = existingCachedNode != null
-            ? existingCachedNode
-            : trieStorage.getTrieNodeFromMerkleValue(existingNodeMerkle);
+                ? existingCachedNode
+                : trieStorage.getTrieNodeFromMerkleValue(existingNodeMerkle);
 
         Nibbles existingNodePartialKey = existingNode.getPartialKey();
         Nibbles newNodePartialKey = insertionData.getKey().drop(ancestorKeySize + 1);
@@ -321,25 +328,25 @@ public class DiskTrieService {
         List<byte[]> newNodeChildren = new ArrayList<>(Collections.nCopies(16, null));
 
         Nibbles existingNodeFullKey = insertionData.getKey().addAll(
-            existingNodePartialKey.drop(newNodePartialKey.size()));
+                existingNodePartialKey.drop(newNodePartialKey.size()));
 
         PendingInsertUpdate existing = result.computeIfAbsent(existingNodeFullKey,
-            (k) -> toPendingInsertUpdate(
-                existingNode.getValue(),
-                existingNodePartialKey.drop(newNodePartialKey.size() + 1),
-                StateVersion.fromInt(existingNode.getEntriesVersion()),
-                existingNode.getChildrenMerkleValues(),
-                false
-            ));
+                (k) -> toPendingInsertUpdate(
+                        existingNode.getValue(),
+                        existingNodePartialKey.drop(newNodePartialKey.size() + 1),
+                        StateVersion.fromInt(existingNode.getEntriesVersion()),
+                        existingNode.getChildrenMerkleValues(),
+                        false
+                ));
 
         Nibble existingNodeIndexInNewNode = existingNodePartialKey.get(newNodePartialKey.size());
         newNodeChildren.set(existingNodeIndexInNewNode.asInt(), existing.newMerkleValue());
         result.put(insertionData.getKey(), toPendingInsertUpdate(
-            insertionData.getNewNodeValue(),
-            newNodePartialKey,
-            insertionData.getNewNodeStateVersion(),
-            newNodeChildren,
-            insertionData.getAncestor() == null
+                insertionData.getNewNodeValue(),
+                newNodePartialKey,
+                insertionData.getNewNodeStateVersion(),
+                newNodeChildren,
+                insertionData.getAncestor() == null
         ));
 
         return result;
@@ -391,32 +398,32 @@ public class DiskTrieService {
         //
         //
         int branchPartialKeyLen = (int) IntStream
-            .range(0, Math.min(newNodePartialKey.size(), existingNodePartialKey.size()))
-            .takeWhile(i -> newNodePartialKey.get(i).equals(existingNodePartialKey.get(i)))
-            .count();
+                .range(0, Math.min(newNodePartialKey.size(), existingNodePartialKey.size()))
+                .takeWhile(i -> newNodePartialKey.get(i).equals(existingNodePartialKey.get(i)))
+                .count();
 
         TreeMap<Nibbles, PendingInsertUpdate> result = new TreeMap<>();
 
         Nibbles existingNodeFullKey = insertionData.getKey().take(ancestorKeySize + 1)
-            .addAll(existingNodePartialKey);
+                .addAll(existingNodePartialKey);
 
         PendingInsertUpdate existingStorage = result.computeIfAbsent(existingNodeFullKey,
-            (k) -> toPendingInsertUpdate(
-                existingNode.getValue(),
-                existingNodePartialKey.drop(branchPartialKeyLen + 1),
-                StateVersion.fromInt(existingNode.getEntriesVersion()),
-                existingNode.getChildrenMerkleValues(),
-                false
-            ));
+                (k) -> toPendingInsertUpdate(
+                        existingNode.getValue(),
+                        existingNodePartialKey.drop(branchPartialKeyLen + 1),
+                        StateVersion.fromInt(existingNode.getEntriesVersion()),
+                        existingNode.getChildrenMerkleValues(),
+                        false
+                ));
 
         PendingInsertUpdate newStorage = result.computeIfAbsent(insertionData.getKey(),
-            (k) -> toPendingInsertUpdate(
-                insertionData.getNewNodeValue(),
-                newNodePartialKey.drop(branchPartialKeyLen + 1),
-                insertionData.getNewNodeStateVersion(),
-                new ArrayList<>(Collections.nCopies(16, null)),
-                false
-            ));
+                (k) -> toPendingInsertUpdate(
+                        insertionData.getNewNodeValue(),
+                        newNodePartialKey.drop(branchPartialKeyLen + 1),
+                        insertionData.getNewNodeStateVersion(),
+                        new ArrayList<>(Collections.nCopies(16, null)),
+                        false
+                ));
 
         List<byte[]> newBranchChildren = new ArrayList<>(Collections.nCopies(16, null));
         Nibble existingNodeIndexInBranchNode = existingNodePartialKey.get(branchPartialKeyLen);
@@ -427,11 +434,11 @@ public class DiskTrieService {
         Nibbles branchNodeFullKey = insertionData.getKey().take(ancestorKeySize + 1 + branchPartialKeyLen);
 
         result.put(branchNodeFullKey, toPendingInsertUpdate(
-            null,
-            newNodePartialKey.take(branchPartialKeyLen),
-            insertionData.getNewNodeStateVersion(),
-            newBranchChildren,
-            insertionData.getAncestor() == null
+                null,
+                newNodePartialKey.take(branchPartialKeyLen),
+                insertionData.getNewNodeStateVersion(),
+                newBranchChildren,
+                insertionData.getAncestor() == null
         ));
 
         return result;
@@ -451,12 +458,12 @@ public class DiskTrieService {
         if (cached.isPresent()) {
             PendingInsertUpdate update = cached.get();
             return new TrieNodeData(
-                update.value() == null,
-                update.partialKey(),
-                new ArrayList<>(update.childrenMerkleValues()),
-                update.value(),
-                null,
-                (byte) update.stateVersion().asInt()
+                    update.value() == null,
+                    update.partialKey(),
+                    new ArrayList<>(update.childrenMerkleValues()),
+                    update.value(),
+                    null,
+                    (byte) update.stateVersion().asInt()
             );
         }
 
@@ -475,7 +482,7 @@ public class DiskTrieService {
             case TraversalResult.Found found -> {
                 TreeMap<Nibbles, PendingTrieNodeChange> executionUpdates = executeDeletion(found.getFoundNode());
                 trieChanges.updateCache(mergeDeletionUpdatesWithTraversed(
-                    executionUpdates, traversalResult.traversedNodes));
+                        executionUpdates, traversalResult.traversedNodes));
             }
             case TraversalResult.NotFound ignored -> log.fine("DELETE: Node not found at key " + key);
             case TraversalResult.Unfinished ignored -> throw new IllegalStateException(UNFINISHED_TRAVERSAL_ERROR);
@@ -504,15 +511,15 @@ public class DiskTrieService {
                     // If there is a child at given nibble we continue with recursive deletion.
                     if (childMerkle != null) {
                         Optional<PendingTrieNodeChange> recursionResult = executeRecursiveDeletion(
-                            node.getFullKey(), n, childMerkle, limit, deleted);
+                                node.getFullKey(), n, childMerkle, limit, deleted);
                         // If recursion returns a non-empty optional there have been changes during execution.
                         recursionResult.ifPresent(r -> {
                             node.getChildrenMerkleValues().set(n.asInt(),
-                                r instanceof PendingInsertUpdate c
-                                    // If last change is an update set the new child merkle.
-                                    ? c.newMerkleValue()
-                                    // If it's a deletion set to null.
-                                    : null);
+                                    r instanceof PendingInsertUpdate c
+                                            // If last change is an update set the new child merkle.
+                                            ? c.newMerkleValue()
+                                            // If it's a deletion set to null.
+                                            : null);
                         });
                     }
                 });
@@ -527,7 +534,7 @@ public class DiskTrieService {
 
                 TreeMap<Nibbles, PendingTrieNodeChange> executionUpdates = executeDeletion(node);
                 trieChanges.updateCache(mergeDeletionUpdatesWithTraversed(
-                    executionUpdates, traversalResult.traversedNodes));
+                        executionUpdates, traversalResult.traversedNodes));
 
                 return new DeleteByPrefixResult(deleted.get(), true);
             }
@@ -550,8 +557,8 @@ public class DiskTrieService {
 
         TrieNodeData cachedChild = getCachedChildAtIndex(parentFullKey, indexInParent);
         TrieNodeData childNode = cachedChild != null
-            ? cachedChild
-            : trieStorage.getTrieNodeFromMerkleValue(childMerkle);
+                ? cachedChild
+                : trieStorage.getTrieNodeFromMerkleValue(childMerkle);
         Nibbles foundNodeFullKey = parentFullKey.add(indexInParent).addAll(childNode.getPartialKey());
         List<byte[]> foundNodeChildrenCopy = new ArrayList<>(childNode.getChildrenMerkleValues());
 
@@ -564,11 +571,11 @@ public class DiskTrieService {
                 // If recursion returns a non-empty optional there have been changes during execution.
                 recursionResult.ifPresent(r -> {
                     foundNodeChildrenCopy.set(nibble.asInt(),
-                        r instanceof PendingInsertUpdate c
-                            // If last change is an update set the new child merkle.
-                            ? c.newMerkleValue()
-                            // If it's a deletion set to null.
-                            : null);
+                            r instanceof PendingInsertUpdate c
+                                    // If last change is an update set the new child merkle.
+                                    ? c.newMerkleValue()
+                                    // If it's a deletion set to null.
+                                    : null);
                 });
             }
         }
@@ -582,11 +589,11 @@ public class DiskTrieService {
             return Optional.of(remove);
         } else {
             PendingTrieNodeChange update = toPendingInsertUpdate(
-                childNode.getValue(),
-                childNode.getPartialKey(),
-                StateVersion.fromInt(childNode.getEntriesVersion()),
-                foundNodeChildrenCopy,
-                false
+                    childNode.getValue(),
+                    childNode.getPartialKey(),
+                    StateVersion.fromInt(childNode.getEntriesVersion()),
+                    foundNodeChildrenCopy,
+                    false
             );
             trieChanges.updateCache(new TreeMap<>(Map.of(foundNodeFullKey, update)));
             return Optional.of(update);
@@ -604,8 +611,8 @@ public class DiskTrieService {
         }
 
         long foundChildrenCount = found.getChildrenMerkleValues().stream()
-            .filter(Objects::nonNull)
-            .count();
+                .filter(Objects::nonNull)
+                .count();
 
         if (foundChildrenCount == 0) {
             result.putAll(executeDeletionNoChildren(found, parent));
@@ -639,10 +646,10 @@ public class DiskTrieService {
             result.put(found.getFullKey(), new PendingRemove());
         } else {
             result.put(found.getFullKey(), toPendingInsertUpdate(null,
-                found.getPartialKey(),
-                found.getStateVersion(),
-                found.getChildrenMerkleValues(),
-                false));
+                    found.getPartialKey(),
+                    found.getStateVersion(),
+                    found.getChildrenMerkleValues(),
+                    false));
         }
 
         return result;
@@ -654,8 +661,8 @@ public class DiskTrieService {
         result.put(found.getFullKey(), new PendingRemove());
 
         long parentChildrenCount = parent.getChildrenMerkleValues().stream()
-            .filter(Objects::nonNull)
-            .count();
+                .filter(Objects::nonNull)
+                .count();
 
         //A leaf node being single child of its parent is invalid scenario.
         assert !(parentChildrenCount == 1 && parent.getValue() == null) : "Unreachable state.";
@@ -701,13 +708,13 @@ public class DiskTrieService {
             TraversedNode grandParent = parent.getParent();
             Nibble foundIndexInGrandpa = parent.getFullKey().get(grandParent.getFullKey().size());
             grandParent.getChildrenMerkleValues().set(
-                foundIndexInGrandpa.asInt(), mergedUpdate.getValue().newMerkleValue());
+                    foundIndexInGrandpa.asInt(), mergedUpdate.getValue().newMerkleValue());
             result.put(grandParent.getFullKey(), toPendingInsertUpdate(
-                grandParent.getValue(),
-                grandParent.getPartialKey(),
-                grandParent.getStateVersion(),
-                grandParent.getChildrenMerkleValues(),
-                grandParent.getParent() == null
+                    grandParent.getValue(),
+                    grandParent.getPartialKey(),
+                    grandParent.getStateVersion(),
+                    grandParent.getChildrenMerkleValues(),
+                    grandParent.getParent() == null
             ));
         }
 
@@ -728,21 +735,21 @@ public class DiskTrieService {
                 Nibble indexInParent = Nibble.fromInt(i);
                 TrieNodeData cachedChild = getCachedChildAtIndex(node.getFullKey(), indexInParent);
                 TrieNodeData child = cachedChild != null
-                    ? cachedChild
-                    : trieStorage.getTrieNodeFromMerkleValue(childMerkle);
+                        ? cachedChild
+                        : trieStorage.getTrieNodeFromMerkleValue(childMerkle);
                 Nibbles mergedPartialKey = node.getPartialKey()
-                    .add(indexInParent)
-                    .addAll(child.getPartialKey());
+                        .add(indexInParent)
+                        .addAll(child.getPartialKey());
                 Nibbles mergeFullKey = node.getFullKey()
-                    .add(indexInParent)
-                    .addAll(child.getPartialKey());
+                        .add(indexInParent)
+                        .addAll(child.getPartialKey());
 
                 return Map.entry(mergeFullKey, toPendingInsertUpdate(
-                    child.getValue(),
-                    mergedPartialKey,
-                    StateVersion.fromInt(child.getEntriesVersion()),
-                    child.getChildrenMerkleValues(),
-                    node.getParent() == null
+                        child.getValue(),
+                        mergedPartialKey,
+                        StateVersion.fromInt(child.getEntriesVersion()),
+                        child.getChildrenMerkleValues(),
+                        node.getParent() == null
                 ));
             }
         }
@@ -755,8 +762,8 @@ public class DiskTrieService {
      */
     public void persistChanges() {
         Map<Nibbles, PendingInsertUpdate> updates = trieChanges.getChanges().entrySet().stream()
-            .filter(e -> e.getValue() instanceof PendingInsertUpdate)
-            .collect(Collectors.toMap(Map.Entry::getKey, e -> (PendingInsertUpdate) e.getValue()));
+                .filter(e -> e.getValue() instanceof PendingInsertUpdate)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> (PendingInsertUpdate) e.getValue()));
 
         trieStorage.updateTrieStorage(updates);
 
@@ -807,7 +814,7 @@ public class DiskTrieService {
      */
     private TraversalResult traverseCache(Nibbles key) {
         List<Map.Entry<Nibbles, PendingInsertUpdate>> entriesInKeyPath =
-            trieChanges.getEntriesInKeyPath(PendingInsertUpdate.class, key);
+                trieChanges.getEntriesInKeyPath(PendingInsertUpdate.class, key);
 
         // If cache is empty or no cached entries are in sought key path continue to disk traverse.
         if (trieChanges.isCacheEmpty() || entriesInKeyPath.isEmpty()) {
@@ -901,13 +908,13 @@ public class DiskTrieService {
             currentKey = currentKey.addAll(currentNode.getPartialKey());
 
             TraversedNode currentTraversed = new TraversedNode(currentKey,
-                currentNode.getPartialKey(),
-                new ArrayList<>(currentNode.getChildrenMerkleValues()),
-                StateVersion.fromInt(currentNode.getEntriesVersion()),
-                currentNode.getValue(),
-                traversed.isEmpty()
-                    ? null
-                    : traversed.getLast());
+                    currentNode.getPartialKey(),
+                    new ArrayList<>(currentNode.getChildrenMerkleValues()),
+                    StateVersion.fromInt(currentNode.getEntriesVersion()),
+                    currentNode.getValue(),
+                    traversed.isEmpty()
+                            ? null
+                            : traversed.getLast());
 
             // If no next nibble is present in the key, return successfully...
             if (!keyIter.hasNext()) {
@@ -939,20 +946,20 @@ public class DiskTrieService {
 
         Nibbles successorFullKey = successorKey.copy();
         byte[] successorMerkleValue = successor instanceof PendingInsertUpdate s
-            ? s.newMerkleValue()
-            : null;
+                ? s.newMerkleValue()
+                : null;
 
         for (TraversedNode traversedNode : toUpdate.reversed()) {
             Nibble successorChildIndex = successorFullKey.get(traversedNode.getFullKey().size());
             traversedNode.getChildrenMerkleValues().set(successorChildIndex.asInt(), successorMerkleValue);
 
             PendingInsertUpdate change = pendingUpdates.compute(traversedNode.getFullKey(), (k, v) ->
-                toPendingInsertUpdate(traversedNode.getValue(),
-                    traversedNode.getPartialKey(),
-                    traversedNode.getStateVersion(),
-                    traversedNode.getChildrenMerkleValues(),
-                    traversedNode.getParent() == null
-                ));
+                    toPendingInsertUpdate(traversedNode.getValue(),
+                            traversedNode.getPartialKey(),
+                            traversedNode.getStateVersion(),
+                            traversedNode.getChildrenMerkleValues(),
+                            traversedNode.getParent() == null
+                    ));
 
             successorFullKey = traversedNode.getFullKey();
             successorMerkleValue = change.newMerkleValue();
@@ -967,16 +974,16 @@ public class DiskTrieService {
                                                              List<byte[]> childrenMerkleValues,
                                                              boolean isRoot) {
         List<List<Byte>> childrenMerkles = childrenMerkleValues.stream()
-            .map(Optional::ofNullable)
-            .map(o -> o
-                .map(Bytes::asList)
-                .orElse(null))
-            .toList();
+                .map(Optional::ofNullable)
+                .map(o -> o
+                        .map(Bytes::asList)
+                        .orElse(null))
+                .toList();
 
         DecodedNode<List<Byte>> decoded = new DecodedNode<>(
-            childrenMerkles,
-            partialKey,
-            constructStorageValue(value, stateVersion));
+                childrenMerkles,
+                partialKey,
+                constructStorageValue(value, stateVersion));
 
         byte[] merkleValue = decoded.calculateMerkleValue(HashUtils::hashWithBlake2b, isRoot);
 
@@ -995,11 +1002,11 @@ public class DiskTrieService {
             PendingInsertUpdate currentPendingChange = e.getValue();
 
             TraversedNode newTraversalNode = new TraversedNode(e.getKey(),
-                currentPendingChange.partialKey(),
-                new ArrayList<>(currentPendingChange.childrenMerkleValues()),
-                currentPendingChange.stateVersion(),
-                currentPendingChange.value(),
-                parent);
+                    currentPendingChange.partialKey(),
+                    new ArrayList<>(currentPendingChange.childrenMerkleValues()),
+                    currentPendingChange.stateVersion(),
+                    currentPendingChange.value(),
+                    parent);
 
             parent = newTraversalNode;
             result.add(newTraversalNode);
@@ -1030,18 +1037,18 @@ public class DiskTrieService {
      * @return A {@link TreeMap} of cache updates with newly calculated merkles.
      */
     private static TreeMap<Nibbles, PendingTrieNodeChange> mergeDeletionUpdatesWithTraversed(
-        TreeMap<Nibbles, PendingTrieNodeChange> pendingUpdates,
-        List<TraversedNode> traversedNodes) {
+            TreeMap<Nibbles, PendingTrieNodeChange> pendingUpdates,
+            List<TraversedNode> traversedNodes) {
         TreeMap<Nibbles, PendingTrieNodeChange> result = new TreeMap<>(pendingUpdates);
 
         // In some deletion edge cases we have pending updates to neighboring nodes as well.
         // Those are the ones we'd like to point to in the traversed nodes.
         Map.Entry<Nibbles, PendingTrieNodeChange> closestSuccessor = result.size() != 1
-            ? result.entrySet().stream()
-            .filter(e -> e.getValue() instanceof PendingInsertUpdate)
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("There should be at least one pending update."))
-            : result.firstEntry();
+                ? result.entrySet().stream()
+                .filter(e -> e.getValue() instanceof PendingInsertUpdate)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("There should be at least one pending update."))
+                : result.firstEntry();
 
         // In the edge case of merging a branch into it's only left child after deletion we've already calculated
         // the merkle change in the grandparent and removed the parent as it is merged in the child.
@@ -1051,8 +1058,8 @@ public class DiskTrieService {
         }
 
         result.putAll(toPendingInsertUpdates(toUpdate,
-            closestSuccessor.getKey(),
-            closestSuccessor.getValue()));
+                closestSuccessor.getKey(),
+                closestSuccessor.getValue()));
 
         return result;
     }
@@ -1134,8 +1141,8 @@ public class DiskTrieService {
                     switch (finishedTraversal) {
                         case Found found -> {
                             TraversedNode child = found.getTraversedNodes().isEmpty()
-                                ? found.getFoundNode()
-                                : found.getTraversedNodes().getFirst();
+                                    ? found.getFoundNode()
+                                    : found.getTraversedNodes().getFirst();
                             child.setParent(parent);
                         }
                         case NotFound notFound -> {
@@ -1145,15 +1152,15 @@ public class DiskTrieService {
                             }
                         }
                         case Unfinished ignored ->
-                            throw new IllegalStateException("Cannot finish a traversal with another unfinished one.");
+                                throw new IllegalStateException("Cannot finish a traversal with another unfinished one.");
                     }
                 }
 
                 getTraversedNodes().addAll(finishedTraversal.getTraversedNodes());
 
                 return finishedTraversal instanceof Found f
-                    ? new Found(getTraversedNodes(), f.getFoundNode())
-                    : new NotFound(getTraversedNodes());
+                        ? new Found(getTraversedNodes(), f.getFoundNode())
+                        : new NotFound(getTraversedNodes());
             }
         }
     }

@@ -1,20 +1,19 @@
 package com.limechain.storage.block.map;
 
+import com.limechain.runtime.Runtime;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.NoArgsConstructor;
 import lombok.extern.java.Log;
-import com.limechain.runtime.Runtime;
 
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @NoArgsConstructor
 @Log
 public class HashToRuntime {
-    private final Map<Hash256, Runtime> mapping = new HashMap<>();
+    private final LinkedHashMap<Hash256, Runtime> mapping = new LinkedHashMap<>();
 
     /**
      * Gets the runtime instance for a given block hash
@@ -77,17 +76,16 @@ public class HashToRuntime {
 
         if (inMemoryRuntime == null) return;
 
-        // Stop all the running instances created by forks, keeping only the closest instance to the finalized
-        // block hash.
-        Set<Runtime> stoppedRuntimes = new HashSet<>();
-        for (Runtime runtimeToPrune : mapping.values()) {
-            if (!inMemoryRuntime.equals(runtimeToPrune) && !stoppedRuntimes.contains(runtimeToPrune)) {
-                runtimeToPrune.close();
-                stoppedRuntimes.add(runtimeToPrune);
+        //Since we keep order of insertion everything before the finalized runtime is pruned.
+        Iterator<Map.Entry<Hash256, Runtime>> iterator = mapping.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Hash256, Runtime> current = iterator.next();
+            if (finalizedHash.equals(current.getKey())) {
+                break;
             }
-        }
 
-        mapping.clear();
-        mapping.put(finalizedHash, inMemoryRuntime);
+            current.getValue().close();
+            iterator.remove();
+        }
     }
 }

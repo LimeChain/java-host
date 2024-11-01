@@ -4,6 +4,7 @@ import com.limechain.exception.misc.RuntimeApiVersionException;
 import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
+import com.limechain.runtime.version.ApiVersionName;
 import com.limechain.storage.block.BlockState;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.TransactionSource;
@@ -45,7 +46,8 @@ public class TransactionValidator {
         }
 
         TransactionValidationResponse response = runtime.validateTransaction(createScaleValidationRequest(
-                runtime.getCachedVersion().getTransactionVersion(),
+                runtime.getCachedVersion().getApis()
+                        .getApiVersion(ApiVersionName.TRANSACTION_QUEUE_API.getHashedName()),
                 TransactionSource.EXTERNAL,
                 header.getHash(),
                 extrinsic

@@ -7,35 +7,44 @@ import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.storage.HeaderNotFoundException;
 import com.limechain.exception.storage.LowerThanRootException;
 import com.limechain.exception.storage.RoundAndSetIdNotFoundException;
+import com.limechain.network.Network;
+import com.limechain.network.protocol.sync.BlockRequestDto;
+import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockBody;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.scale.reader.BlockBodyReader;
+import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.writer.BlockBodyWriter;
+import com.limechain.rpc.server.AppBean;
 import com.limechain.rpc.subscriptions.chainsub.ChainSub;
 import com.limechain.runtime.Runtime;
+import com.limechain.runtime.builder.RuntimeBuilder;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.tree.BlockNode;
 import com.limechain.storage.block.tree.BlockTree;
+import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.utils.scale.ScaleUtils;
+import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.extern.java.Log;
 import org.javatuples.Pair;
 import org.springframework.util.SerializationUtils;
 
 import java.math.BigInteger;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Contains the historical block data of the blockchain, including block headers and bodies.
@@ -56,10 +65,8 @@ public class BlockState {
     private Hash256 lastFinalized;
     @Getter
     private boolean initialized;
-    @Setter
-    private boolean fullSyncFinished;
     @Getter
-    private final ArrayDeque<Pair<Instant, Block>> pendingBlocksQueue = new ArrayDeque<>();
+    private final BlockingQueue<Pair<Instant, BlockHeader>> pendingBlocksQueue = new LinkedBlockingQueue<>();
 
     /**
      * Initializes the BlockState instance from genesis
@@ -86,7 +93,7 @@ public class BlockState {
         setBlockBody(headerHash, new BlockBody(new ArrayList<>()));
 
         //set the latest finalized head to the genesis header
-        setFinalizedHash(genesisHash, BigInteger.ZERO, BigInteger.ZERO);
+        setFinalizedHash(header, BigInteger.ZERO, BigInteger.ZERO);
     }
 
     /**
@@ -774,16 +781,19 @@ public class BlockState {
     /**
      * Sets the hash of the latest finalized block
      *
-     * @param hash  the hash of the block
+     * @param header  the header of the block
      * @param round The round number of the finalized block.
      * @param setId The set ID of the finalized block.
      * @throws BlockNodeNotFoundException if the block corresponding to the provided hash is not found.
      */
-    public void setFinalizedHash(final Hash256 hash, final BigInteger round, final BigInteger setId) {
-        if (!fullSyncFinished) return;
-
+    public void setFinalizedHash(final BlockHeader header, final BigInteger round, final BigInteger setId) {
+        Hash256 hash = header.getHash();
         if (!hasHeader(hash)) {
             throw new BlockNodeNotFoundException("Cannot finalise unknown block " + hash);
+        }
+
+        if (!hash.equals(genesisHash) && getHighestFinalizedNumber().compareTo(header.getBlockNumber()) >= 0) {
+            throw new LowerThanRootException("Finalized block with number " + header.getBlockNumber() + " is lower than root");
         }
 
         handleFinalizedBlock(hash);
@@ -938,50 +948,92 @@ public class BlockState {
         }
     }
 
-    public synchronized void addBlockToBlockTree(BlockHeader blockHeader) {
-        if (!fullSyncFinished) {
-            addBlockToQueue(blockHeader);
+    private List<Block> requestBlocks(Hash256 fromHash) {
+        try {
+            final int HEADER = 0b0000_0001;
+            final int BODY = 0b0000_0010;
+            final int JUSTIFICATION = 0b0001_0000;
+            SyncMessage.BlockResponse response = AppBean.getBean(Network.class).makeBlockRequest(new BlockRequestDto(
+                    HEADER | BODY | JUSTIFICATION,
+                    fromHash, // no hash, number instead
+                    null,
+                    SyncMessage.Direction.Ascending,
+                    1
+            ));
+
+            List<SyncMessage.BlockData> blockDatas = response.getBlocksList();
+
+            if (blockDatas.isEmpty()) {
+                throw new IllegalStateException();
+            }
+
+            return blockDatas.stream()
+                    .map(BlockState::protobufDecodeBlock)
+                    .toList();
+        } catch (Exception ex) {
+            log.fine("Error while fetching blocks, trying to fetch again");
+            if (!AppBean.getBean(Network.class).updateCurrentSelectedPeerWithNextBootnode()) {
+                AppBean.getBean(Network.class).updateCurrentSelectedPeer();
+            }
+            return requestBlocks(fromHash);
+        }
+    }
+
+    // TODO: This method doesn't belong in this class. Move when appropriate.
+    private static Block protobufDecodeBlock(SyncMessage.BlockData blockData) {
+        // Decode the block header
+        var encodedHeader = blockData.getHeader().toByteArray();
+        BlockHeader blockHeader = ScaleUtils.Decode.decode(encodedHeader, new BlockHeaderReader());
+
+        // Protobuf decode the block body
+        List<Extrinsic> extrinsicsList = blockData.getBodyList().stream()
+                .map(bs -> ScaleUtils.Decode.decode(bs.toByteArray(), ScaleCodecReader::readByteArray))
+                .map(Extrinsic::new)
+                .toList();
+
+        BlockBody blockBody = new BlockBody(extrinsicsList);
+
+        return new Block(blockHeader, blockBody);
+    }
+
+    public void addBlockToQueue(BlockHeader blockHeader) {
+        Optional<Pair<Instant, BlockHeader>> optional = pendingBlocksQueue.stream()
+                .filter(e -> e.getValue1().getHash().equals(blockHeader.getHash()))
+                .findFirst();
+        if (optional.isPresent()) {
             return;
         }
 
-        processPendingBlocksFromQueue();
-
-        if (getPendingBlocksQueue().isEmpty()) {
-            try {
-                addBlock(new Block(blockHeader, new BlockBody(new ArrayList<>())));
-            } catch (BlockStorageGenericException ex) {
-                log.fine(String.format("[%s] %s", blockHeader.getHash().toString(), ex.getMessage()));
-            }
-        }
+        pendingBlocksQueue.add(new Pair<>(Instant.now(), blockHeader));
     }
 
-    private void addBlockToQueue(BlockHeader blockHeader) {
-        var currentBlock = new Block(
-                blockHeader,
-                new BlockBody(new ArrayList<>())
-        );
-
-        pendingBlocksQueue.add(
-                new Pair<>(Instant.now(), currentBlock)
-        );
-    }
-
-    private void processPendingBlocksFromQueue() {
-        var rootBlockNumber = BigInteger.valueOf(blockTree.getRoot().getNumber());
-
-        while (!pendingBlocksQueue.isEmpty()) {
-            var currentPair = pendingBlocksQueue.poll();
-            var block = currentPair.getValue1();
-            var arrivalTime = currentPair.getValue0();
-
-            if (block.getHeader().getBlockNumber().compareTo(rootBlockNumber) <= 0) {
-                continue;
-            }
-
+    public void processPendingBlocksFromQueue() {
+        while (!Thread.currentThread().isInterrupted()) {
             try {
-                addBlockWithArrivalTime(block, arrivalTime);
-            } catch (BlockStorageGenericException ex) {
-                log.fine(String.format("[%s] %s", block.getHeader().getHash().toString(), ex.getMessage()));
+                Pair<Instant, BlockHeader> currentPair = pendingBlocksQueue.take();
+                BlockHeader header = currentPair.getValue1();
+                Instant arrivalTime = currentPair.getValue0();
+
+                log.fine("Processing block with number and hash: " + header.getBlockNumber() + " " + header.getHash());
+                if (blockTree.getRoot().getNumber() >= header.getBlockNumber().intValue() ||
+                        unfinalizedBlocks.containsKey(header.getHash())) {
+                    log.fine("Block older than root. Skipping.");
+                    continue;
+                }
+
+                CompletableFuture<Block> blockWithBodyFuture = CompletableFuture.supplyAsync(() -> requestBlocks(header.getHash()).get(0));
+                Runtime runtime = getRuntime(header.getParentHash());
+                Runtime newRuntime = AppBean.getBean(RuntimeBuilder.class).copyRuntime(runtime);
+                Block blockWithBody = blockWithBodyFuture.join();
+                newRuntime.executeBlock(blockWithBody);
+                try {
+                    addBlockWithArrivalTime(blockWithBody, arrivalTime);
+                    storeRuntime(blockWithBody.getHeader().getHash(), newRuntime);
+                } catch (BlockStorageGenericException ex) {
+                    log.fine(String.format("[%s] %s", blockWithBody.getHeader().getHash().toString(), ex.getMessage()));
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
     }

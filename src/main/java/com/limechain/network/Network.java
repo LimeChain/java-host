@@ -358,12 +358,10 @@ public class Network {
     }
 
     public void handshakePeers() {
-        connectionManager.getPeerIds().forEach(peerId -> new Thread(() -> {
-                    blockAnnounceService.sendHandshake(this.host, peerId);
-                    grandpaService.sendHandshake(this.host, peerId);
-                    transactionsService.sendHandshake(this.host, peerId);
-                }).start()
-        );
+        connectionManager.getPeerIds().forEach(p -> {
+            new Thread(() -> grandpaService.sendHandshake(this.host, p)).start();
+            new Thread(() -> transactionsService.sendHandshake(this.host, p)).start();
+        });
     }
 
     @Scheduled(fixedRate = 5, initialDelay = 5, timeUnit = TimeUnit.MINUTES)

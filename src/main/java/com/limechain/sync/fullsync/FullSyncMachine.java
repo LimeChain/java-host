@@ -43,6 +43,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * FullSyncMachine is responsible for executing full synchronization of blocks.
@@ -79,8 +81,6 @@ public class FullSyncMachine {
             loadStateAtBlockFromPeer(lastFinalizedBlockHash);
         }
 
-        networkService.blockAnnounceHandshakeBootNodes();
-
         runtime = buildRuntimeFromState(trieAccessor);
         StateVersion runtimeStateVersion = runtime.getCachedVersion().getStateVersion();
         BabeApiConfiguration babeApiConfiguration = runtime.getBabeApiConfiguration();
@@ -110,7 +110,9 @@ public class FullSyncMachine {
             receivedBlocks = requestBlocks(startNumber, blocksToFetch);
         }
 
-        blockState.setFullSyncFinished(true);
+        networkService.blockAnnounceHandshakeBootNodes();
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> blockState.processPendingBlocksFromQueue());
         networkService.handshakePeers();
     }
 
@@ -246,12 +248,6 @@ public class FullSyncMachine {
             trieAccessor.persistChanges();
 
             BlockHeader blockHeader = block.getHeader();
-            try {
-                blockState.setFinalizedHash(blockHeader.getHash(), BigInteger.ZERO, BigInteger.ZERO);
-            } catch (BlockNodeNotFoundException ignored) {
-                log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
-            }
-
             boolean blockUpdatedRuntime = Arrays.stream(blockHeader.getDigest())
                     .map(HeaderDigest::getType)
                     .anyMatch(type -> type.equals(DigestType.RUN_ENV_UPDATED));
@@ -260,7 +256,15 @@ public class FullSyncMachine {
                 log.info("Runtime updated, updating the runtime code");
                 runtime = buildRuntimeFromState(trieAccessor);
                 trieAccessor.setCurrentStateVersion(runtime.getCachedVersion().getStateVersion());
-                blockState.storeRuntime(blockHeader.getHash(), runtime);
+            }
+
+            blockState.storeRuntime(blockHeader.getHash(), runtime);
+
+            try {
+                blockState.setFinalizedHash(blockHeader, BigInteger.ZERO, BigInteger.ZERO);
+                syncState.finalizeHeader(blockHeader);
+            } catch (BlockNodeNotFoundException ignored) {
+                log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
             }
         }
     }

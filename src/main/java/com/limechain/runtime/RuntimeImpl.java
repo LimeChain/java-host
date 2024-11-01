@@ -14,6 +14,7 @@ import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
+import com.limechain.trie.TrieAccessor;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;
 import com.limechain.utils.scale.readers.TransactionValidationReader;
@@ -69,6 +70,11 @@ public class RuntimeImpl implements Runtime {
         byte[] encodedResponse = call(RuntimeEndpoint.TRANSACTION_QUEUE_VALIDATE_TRANSACTION, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new TransactionValidationReader());
+    }
+
+    @Override
+    public TrieAccessor getTrieAccessor() {
+        return context.getTrieAccessor();
     }
 
     @Override

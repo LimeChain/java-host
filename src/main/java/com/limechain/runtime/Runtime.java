@@ -7,6 +7,7 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
+import com.limechain.trie.TrieAccessor;
 
 import java.util.List;
 
@@ -21,6 +22,8 @@ public interface Runtime {
     RuntimeVersion getVersion();
 
     TransactionValidationResponse validateTransaction(TransactionValidationRequest request);
+
+    TrieAccessor getTrieAccessor();
 
     byte[] checkInherents(Block block, InherentData inherentData);
 

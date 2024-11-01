@@ -71,6 +71,7 @@ public class WarpSyncState {
     private byte[] runtimeCode;
 
     protected final RuntimeBuilder runtimeBuilder;
+    //TODO Yordan: maybe we won't need this anymore.
     private final Set<BigInteger> scheduledRuntimeUpdateBlocks;
     private final PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges;
 
@@ -126,10 +127,10 @@ public class WarpSyncState {
         }
 
         log.log(Level.INFO, "Received commit message from peer " + peerId
-                            + " for block #" + commitMessage.getVote().getBlockNumber()
-                            + " with hash " + commitMessage.getVote().getBlockHash()
-                            + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
-                            + " with " + commitMessage.getPrecommits().length + " voters");
+                + " for block #" + commitMessage.getVote().getBlockNumber()
+                + " with hash " + commitMessage.getVote().getBlockHash()
+                + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
+                + " with " + commitMessage.getPrecommits().length + " voters");
 
         boolean verified = JustificationVerifier.verify(commitMessage.getPrecommits(), commitMessage.getRoundNumber());
         if (!verified) {
@@ -149,7 +150,6 @@ public class WarpSyncState {
         }
         syncState.finalizedCommitMessage(commitMessage);
 
-        log.log(Level.INFO, "Reached block #" + syncState.getLastFinalizedBlockNumber());
         if (warpSyncFinished && scheduledRuntimeUpdateBlocks.contains(lastFinalizedBlockNumber)) {
             new Thread(this::updateRuntime).start();
         }
@@ -274,7 +274,7 @@ public class WarpSyncState {
         Justification justification = new JustificationReader().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
         boolean verified = justification != null
-                           && JustificationVerifier.verify(justification.getPrecommits(), justification.getRound());
+                && JustificationVerifier.verify(justification.getPrecommits(), justification.getRound());
 
         if (verified) {
             BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));

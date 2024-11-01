@@ -1,6 +1,7 @@
 package com.limechain.trie.cache;
 
 import com.limechain.trie.cache.node.PendingInsertUpdate;
+import com.limechain.trie.cache.node.PendingRemove;
 import com.limechain.trie.cache.node.PendingTrieNodeChange;
 import com.limechain.trie.structure.nibble.Nibble;
 import com.limechain.trie.structure.nibble.Nibbles;
@@ -20,17 +21,29 @@ import java.util.stream.Stream;
  * edits the storage via host api calls, block execution, etc. The aim of this is to lower the number of expensive
  * operations towards an on disk merkle trie.
  */
+@Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class TrieChanges {
 
     /**
      * Holds data for node changes identified by their path.
      */
-    @Getter
     private final TreeMap<Nibbles, PendingTrieNodeChange> changes;
 
     public static TrieChanges empty() {
         return new TrieChanges(new TreeMap<>());
+    }
+
+    public static TrieChanges copy(TrieChanges original) {
+        TreeMap<Nibbles, PendingTrieNodeChange> copyChanges = new TreeMap<>();
+        original.changes.forEach((key, value) -> {
+            PendingTrieNodeChange trieNodeChange = value instanceof PendingInsertUpdate u
+                    ? new PendingInsertUpdate(u)
+                    : new PendingRemove();
+            copyChanges.put(key.copy(), trieNodeChange);
+        });
+
+        return new TrieChanges(copyChanges);
     }
 
     public void clear() {
@@ -60,32 +73,32 @@ public class TrieChanges {
     public Optional<PendingInsertUpdate> getRoot() {
         Map.Entry<Nibbles, PendingTrieNodeChange> rootChange = changes.firstEntry();
         return rootChange != null
-            ? Optional.of((PendingInsertUpdate) rootChange.getValue())
-            : Optional.empty();
+                ? Optional.of((PendingInsertUpdate) rootChange.getValue())
+                : Optional.empty();
     }
 
     public <P extends PendingTrieNodeChange> List<Map.Entry<Nibbles, P>> getEntriesInKeyPath(
-        @Nullable Class<P> clazz, Nibbles key) {
+            @Nullable Class<P> clazz, Nibbles key) {
         Stream<Map.Entry<Nibbles, PendingTrieNodeChange>> stream = changes.subMap(
-            Nibbles.EMPTY, true, key, true).entrySet().stream();
+                Nibbles.EMPTY, true, key, true).entrySet().stream();
 
         if (clazz != null) {
             stream = stream
-                .filter(e -> clazz.isInstance(e.getValue()));
+                    .filter(e -> clazz.isInstance(e.getValue()));
         }
 
         return stream
-            .filter(e -> key.startsWith(e.getKey()))
-            .map(e -> Map.entry(e.getKey(), (P) e.getValue()))
-            .toList();
+                .filter(e -> key.startsWith(e.getKey()))
+                .map(e -> Map.entry(e.getKey(), (P) e.getValue()))
+                .toList();
     }
 
     // TODO optimize so that it doesn't traverse until end of map if missing
     public Optional<PendingInsertUpdate> getChildByIndex(Nibbles parentKey, Nibble childIndex) {
         Nibbles parentKeyWithChildIndex = parentKey.add(childIndex);
         return changes.tailMap(parentKey, false).entrySet().stream()
-            .filter(e -> e.getKey().startsWith(parentKeyWithChildIndex) && e.getValue() instanceof PendingInsertUpdate)
-            .map(e -> (PendingInsertUpdate) e.getValue())
-            .findFirst();
+                .filter(e -> e.getKey().startsWith(parentKeyWithChildIndex) && e.getValue() instanceof PendingInsertUpdate)
+                .map(e -> (PendingInsertUpdate) e.getValue())
+                .findFirst();
     }
 }
