@@ -74,13 +74,7 @@ public class SyncState {
         try {
             Block blockByHash = BlockState.getInstance().getBlockByHash(commitMessage.getVote().getBlockHash());
             if (blockByHash != null) {
-                try {
-                    BlockState.getInstance().setFinalizedHash(
-                            blockByHash.getHeader(), commitMessage.getRoundNumber(), commitMessage.getSetId());
-                } catch (Exception e) {
-                    log.info(e.getMessage());
-                    return;
-                }
+                if (!updateBlockState(commitMessage, blockByHash)) return;
 
                 this.stateRoot = blockByHash.getHeader().getStateRoot();
                 this.lastFinalizedBlockHash = commitMessage.getVote().getBlockHash();
@@ -91,6 +85,17 @@ public class SyncState {
         } catch (HeaderNotFoundException ignored) {
             log.fine("Received commit message for a block that is not in the block store");
         }
+    }
+
+    private static boolean updateBlockState(CommitMessage commitMessage, Block blockByHash) {
+        try {
+            BlockState.getInstance().setFinalizedHash(
+                    blockByHash.getHeader(), commitMessage.getRoundNumber(), commitMessage.getSetId());
+        } catch (Exception e) {
+            log.fine(e.getMessage());
+            return false;
+        }
+        return true;
     }
 
     public BigInteger incrementSetId() {
