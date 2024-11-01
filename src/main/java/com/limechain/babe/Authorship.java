@@ -15,6 +15,7 @@ import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.java.Log;
 import org.apache.commons.collections4.map.LinkedMap;
 import org.bouncycastle.jcajce.provider.digest.Blake2b;
 import org.javatuples.Pair;
@@ -23,8 +24,9 @@ import org.jetbrains.annotations.NotNull;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
-//TODO: Add logs for successfully claiming primary/secondary slot
+@Log
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
@@ -89,6 +91,8 @@ public class Authorship {
             var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(vrfBytes).compareTo(threshold) < 0;
 
             if (isBelowThreshold) {
+                log.log(Level.FINE, "Primary slot successfully claimed for slot number: {}", slotNumber);
+
                 return new BabePreDigest(
                         PreDigestType.BABE_PRIMARY,
                         authorityIndex.longValue(),
@@ -124,6 +128,8 @@ public class Authorship {
             }
 
             if (authorSecondaryVrfSlot) {
+                log.log(Level.FINE, "Secondary VRF slot successfully claimed for slot number: {}", slotNumber);
+
                 return buildSecondaryVrfPreDigest(
                         randomness,
                         slotNumber,
@@ -132,6 +138,8 @@ public class Authorship {
                         authorityIndex
                 );
             } else {
+                log.log(Level.FINE, "Secondary Plain slot successfully claimed for slot number: {}", slotNumber);
+
                 return new BabePreDigest(
                         PreDigestType.BABE_SECONDARY_PLAIN,
                         authorityIndex.longValue(),
