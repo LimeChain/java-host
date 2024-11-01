@@ -3,6 +3,8 @@ package com.limechain.babe.state;
 import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.consesus.scale.BabeConsensusMessageReader;
 import com.limechain.babe.consesus.BabeConsensusMessage;
+import com.limechain.runtime.RuntimeEndpoint;
+import com.limechain.storage.block.BlockState;
 import com.limechain.utils.BigIntegerUtils;
 import com.limechain.utils.scale.ScaleUtils;
 import lombok.Getter;
@@ -43,6 +45,8 @@ public class EpochState {
             case DISABLED_AUTHORITY -> this.disabledAuthority = babeConsensusMessage.getDisabledAuthority();
             case NEXT_EPOCH_DESCRIPTOR -> this.nextEpochDescriptor = babeConsensusMessage.getNextEpochDescriptor();
         }
+
+        setEpochIndex();
     }
 
     public BigInteger getCurrentSlotNumber() {
@@ -50,8 +54,16 @@ public class EpochState {
     }
 
     //TODO: We need to get first block PreDigest in order to get the genesis_slot
-    public void setEpochIndex() {
+    private void setEpochIndex() {
         this.epochIndex = BigIntegerUtils.divideAndRoundUp(BigInteger.valueOf(1234), epochLength);
+        this.setEpochStartAndEndSlotNumber();
+    }
+
+    private void setEpochStartAndEndSlotNumber() {
+        byte[] bytes = BlockState.getInstance().callRuntime(RuntimeEndpoint.BABE_API_CURRENT_EPOCH_START, null);
+
+        this.epochStartSlotNumber = BigInteger.ONE;
+        this.epochEndSlotNumber = epochStartSlotNumber.add(epochLength);
     }
 
     //TODO: Implement
