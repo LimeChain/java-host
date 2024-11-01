@@ -13,4 +13,13 @@ public enum PreDigestType {
     PreDigestType(int value) {
         this.value = (byte) value;
     }
+
+    public static PreDigestType getByValue(byte value) {
+        for (PreDigestType type : PreDigestType.values()) {
+            if (type.value == value) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown PreDigestType value: " + value);
+    }
 }

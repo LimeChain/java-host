@@ -23,7 +23,7 @@ public class Authorship {
                                                  final BigInteger slotNumber,
                                                  final BigInteger epochNumber,
                                                  final Schnorrkel.KeyPair keyPair,
-                                                 final int authorityIndex,
+                                                 final long authorityIndex,
                                                  final BigInteger threshold) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochNumber);
@@ -84,7 +84,7 @@ public class Authorship {
 
     private static double getBabeConstant(@NotNull Pair<BigInteger, BigInteger> constant,
                                           @NotNull List<Authority> authorities,
-                                          int authorityIndex) {
+                                          long authorityIndex) {
 
         if (BigInteger.ZERO.equals(constant.getValue1())) {
             throw new IllegalArgumentException("Invalid authority index provided");
