@@ -2,6 +2,7 @@ package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.global.MissingObjectException;
 import com.limechain.network.protocol.warp.dto.WarpSyncResponse;
+import com.limechain.network.request.ProtocolRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
@@ -17,12 +18,14 @@ public class RequestFragmentsAction implements WarpSyncAction {
 
     private final WarpSyncState warpSyncState;
     private final Hash256 blockHash;
+    private final ProtocolRequester requester;
     private WarpSyncResponse result;
     private Exception error;
 
     public RequestFragmentsAction(Hash256 blockHash) {
         this.blockHash = blockHash;
         this.warpSyncState = AppBean.getBean(WarpSyncState.class);
+        this.requester = AppBean.getBean(ProtocolRequester.class);
     }
 
     @Override
@@ -37,7 +40,7 @@ public class RequestFragmentsAction implements WarpSyncAction {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.log(Level.SEVERE, "Retry warp sync request fragment exception: "
-                                      + e.getMessage(), e.getStackTrace());
+                        + e.getMessage(), e.getStackTrace());
             }
         }
         if (this.result != null) {
@@ -52,7 +55,7 @@ public class RequestFragmentsAction implements WarpSyncAction {
         WarpSyncResponse resp = null;
         for (int i = 0; i < sync.getNetworkService().getKademliaService().getBootNodePeerIds().size(); i++) {
             try {
-                resp = sync.getNetworkService().makeWarpSyncRequest(blockHash.toString());
+                resp = requester.makeWarpSyncRequest(blockHash.toString()).join();
                 break;
             } catch (Exception e) {
                 if (!sync.getNetworkService().updateCurrentSelectedPeerWithBootnode(i)) {
@@ -67,7 +70,7 @@ public class RequestFragmentsAction implements WarpSyncAction {
             }
 
             log.log(Level.INFO, "Successfully received fragments from peer "
-                                + sync.getNetworkService().getCurrentSelectedPeer());
+                    + sync.getNetworkService().getCurrentSelectedPeer());
             if (resp.getFragments().length == 0) {
                 log.log(Level.WARNING, "No fragments received.");
                 return;

@@ -25,7 +25,7 @@ public class TransactionsService extends NetworkService<TransactionMessages> {
      * @param peerId message receiver
      */
     public void sendTransactionsMessage(Host us, PeerId peerId) {
-        //TODO Network improvements Keep track of peers that we've notified about each transaction
+        //TODO Network improvements: Keep track of peers that we've notified about each transaction
         //TODO Yordan: we should take care of handshakes separately.
         Optional.ofNullable(connectionManager.getPeerInfo(peerId))
                 .map(p -> p.getTransactionsStreams().getInitiator())
