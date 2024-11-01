@@ -1,6 +1,4 @@
 package com.limechain.rpc.methods.author;
-
-import com.limechain.exception.misc.WasmRuntimeException;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
 import com.limechain.rpc.methods.author.dto.DecodedKeysReader;
 import com.limechain.runtime.RuntimeEndpoint;
@@ -33,7 +31,7 @@ public class AuthorRPCImpl {
 
     public String authorRotateKeys() {
         // The runtime injects the generated keys into the keystore.
-        byte[] response = callRuntime(
+        byte[] response = blockState.callRuntime(
                 RuntimeEndpoint.SESSION_KEYS_GENERATE_SESSION_KEYS,
                 ScaleUtils.Encode.encodeOptional(ScaleCodecWriter::writeByteArray, null)
         );
@@ -60,7 +58,7 @@ public class AuthorRPCImpl {
     }
 
     public Boolean authorHasSessionKeys(String sessionKeys) {
-        byte[] response = callRuntime(
+        byte[] response = blockState.callRuntime(
                 RuntimeEndpoint.SESSION_KEYS_DECODE_SESSION_KEYS,
                 ScaleUtils.Encode.encode(ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys))
         );
@@ -142,24 +140,6 @@ public class AuthorRPCImpl {
         if (!Arrays.equals(generatedPublicKey, publicKey)) {
             throw new IllegalArgumentException("Provided public key or seed is invalid");
         }
-    }
-
-    private byte[] callRuntime(RuntimeEndpoint endpoint, byte[] parameter) {
-        var bestBlockHash = blockState.bestBlockHash();
-        var runtime = blockState.getRuntime(bestBlockHash);
-
-        if (runtime == null) {
-            throw new IllegalStateException("Runtime is null");
-        }
-
-        byte[] response;
-        try {
-            response = runtime.call(endpoint, parameter);
-        } catch (Exception e) {
-            throw new WasmRuntimeException(e.getMessage());
-        }
-
-        return response;
     }
 
     private KeyType parseKeyType(String keyType) {

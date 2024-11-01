@@ -32,7 +32,7 @@ public class Authorship {
 
         var randomness = epochState.getCurrentEpochData().getRandomness();
         var slotNumber = epochState.getCurrentSlotNumber();
-        var epochNumber = epochState.getCurrentEpochNumber();
+        var epochIndex = epochState.getEpochIndex();
         var c = epochState.getCurrentEpochDescriptor().getConstant();
         var authorities = epochState.getCurrentEpochData().getAuthorities();
 
@@ -41,7 +41,7 @@ public class Authorship {
         BabePreDigest primarySlot = claimPrimarySlot(
                 randomness,
                 slotNumber,
-                epochNumber,
+                epochIndex,
                 authorities,
                 c,
                 indexKeyPairMap
@@ -55,7 +55,7 @@ public class Authorship {
         return claimSecondarySlot(
                 randomness,
                 slotNumber,
-                epochNumber,
+                epochIndex,
                 authorities,
                 indexKeyPairMap,
                 authorSecondaryVrfSlot
@@ -64,12 +64,12 @@ public class Authorship {
 
     private static BabePreDigest claimPrimarySlot(final byte[] randomness,
                                                  final BigInteger slotNumber,
-                                                 final BigInteger epochNumber,
+                                                 final BigInteger epochIndex,
                                                  final List<Authority> authorities,
                                                  final Pair<BigInteger, BigInteger> c,
                                                  final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap) {
 
-        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
+        var transcript = makeTranscript(randomness, slotNumber, epochIndex);
 
         for (Map.Entry<Integer, Schnorrkel.KeyPair> entry : indexKeyPairMap.entrySet()) {
 
@@ -104,7 +104,7 @@ public class Authorship {
 
     private static BabePreDigest claimSecondarySlot(final byte[] randomness,
                                                    final BigInteger slotNumber,
-                                                   final BigInteger epochNumber,
+                                                   final BigInteger epochIndex,
                                                    final List<Authority> authorities,
                                                    final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap,
                                                    final boolean authorSecondaryVrfSlot) {
@@ -127,7 +127,7 @@ public class Authorship {
                 return buildSecondaryVrfPreDigest(
                         randomness,
                         slotNumber,
-                        epochNumber,
+                        epochIndex,
                         keyPair,
                         authorityIndex
                 );
@@ -147,11 +147,11 @@ public class Authorship {
 
     private static BabePreDigest buildSecondaryVrfPreDigest(final byte[] randomness,
                                                             final BigInteger slotNumber,
-                                                            final BigInteger epochNumber,
+                                                            final BigInteger epochIndex,
                                                             final Schnorrkel.KeyPair keyPair,
                                                             final int authorityIndex) {
 
-        var transcript = makeTranscript(randomness, slotNumber, epochNumber);
+        var transcript = makeTranscript(randomness, slotNumber, epochIndex);
         VrfOutputAndProof vrfOutputAndProof = Schnorrkel.getInstance().vrfSign(keyPair, transcript);
 
         return new BabePreDigest(
@@ -256,10 +256,10 @@ public class Authorship {
         return c;
     }
 
-    private static TranscriptData makeTranscript(byte[] randomness, BigInteger slotNumber, BigInteger epochNumber) {
+    private static TranscriptData makeTranscript(byte[] randomness, BigInteger slotNumber, BigInteger epochIndex) {
         var transcript = new TranscriptData("BABE".getBytes());
         transcript.appendMessage("slot number", LittleEndianUtils.toLittleEndianBytes(slotNumber));
-        transcript.appendMessage("current epoch", LittleEndianUtils.toLittleEndianBytes(epochNumber));
+        transcript.appendMessage("current epoch", LittleEndianUtils.toLittleEndianBytes(epochIndex));
         transcript.appendMessage("chain randomness", randomness);
         return transcript;
     }

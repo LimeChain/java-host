@@ -25,6 +25,9 @@ public class EpochState {
     private EpochData nextEpochData;
     private long disabledAuthority;
     private EpochDescriptor nextEpochDescriptor;
+    private BigInteger epochIndex;
+    private BigInteger epochStartSlotNumber;
+    private BigInteger epochEndSlotNumber;
 
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
@@ -46,11 +49,25 @@ public class EpochState {
         return BigInteger.valueOf(Instant.now().toEpochMilli()).divide(slotDuration);
     }
 
-    //pub fn epoch_index(slot: Slot, genesis_slot: Slot, epoch_duration: u64) -> u64 {
-    //	*slot.saturating_sub(genesis_slot) / epoch_duration
-    //}
-    public BigInteger getCurrentEpochNumber() {
-        //TODO: replace BigInteger.valueOf(1234) with genesis_slot
-        return BigIntegerUtils.divideAndRoundUp(BigInteger.valueOf(1234), epochLength);
+    //TODO: We need to get first block PreDigest in order to get the genesis_slot
+    public void setEpochIndex() {
+        this.epochIndex = BigIntegerUtils.divideAndRoundUp(BigInteger.valueOf(1234), epochLength);
+    }
+
+    //TODO: Implement
+//
+//        pub fn epoch_start_slot(epoch_index: u64, genesis_slot: Slot, epoch_duration: u64) -> Slot {
+//        // (epoch_index * epoch_duration) + genesis_slot
+//
+//	const PROOF: &str = "slot number is u64; it should relate in some way to wall clock time; \
+//						 if u64 is not enough we should crash for safety; qed.";
+//
+//        epoch_index
+//                .checked_mul(epoch_duration)
+//                .and_then(|slot| slot.checked_add(*genesis_slot))
+//		.expect(PROOF)
+//                .into()
+//    }
+    public void setEpochStartSlotNumber() {
     }
 }
