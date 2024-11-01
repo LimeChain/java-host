@@ -63,11 +63,11 @@ public class Authorship {
     }
 
     private static BabePreDigest claimPrimarySlot(final byte[] randomness,
-                                                 final BigInteger slotNumber,
-                                                 final BigInteger epochIndex,
-                                                 final List<Authority> authorities,
-                                                 final Pair<BigInteger, BigInteger> c,
-                                                 final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap) {
+                                                  final BigInteger slotNumber,
+                                                  final BigInteger epochIndex,
+                                                  final List<Authority> authorities,
+                                                  final Pair<BigInteger, BigInteger> c,
+                                                  final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochIndex);
 
@@ -91,7 +91,7 @@ public class Authorship {
             if (isBelowThreshold) {
                 return new BabePreDigest(
                         PreDigestType.BABE_PRIMARY,
-                        authorityIndex,
+                        authorityIndex.longValue(),
                         slotNumber,
                         vrfOutputAndProof.getOutput(),
                         vrfOutputAndProof.getProof()
@@ -103,11 +103,11 @@ public class Authorship {
     }
 
     private static BabePreDigest claimSecondarySlot(final byte[] randomness,
-                                                   final BigInteger slotNumber,
-                                                   final BigInteger epochIndex,
-                                                   final List<Authority> authorities,
-                                                   final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap,
-                                                   final boolean authorSecondaryVrfSlot) {
+                                                    final BigInteger slotNumber,
+                                                    final BigInteger epochIndex,
+                                                    final List<Authority> authorities,
+                                                    final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap,
+                                                    final boolean authorSecondaryVrfSlot) {
 
         var secondarySlotAuthorIndex = getSecondarySlotAuthor(randomness, slotNumber, authorities);
         if (secondarySlotAuthorIndex == null) {
@@ -134,7 +134,7 @@ public class Authorship {
             } else {
                 return new BabePreDigest(
                         PreDigestType.BABE_SECONDARY_PLAIN,
-                        authorityIndex,
+                        authorityIndex.longValue(),
                         slotNumber,
                         null,
                         null
@@ -149,14 +149,14 @@ public class Authorship {
                                                             final BigInteger slotNumber,
                                                             final BigInteger epochIndex,
                                                             final Schnorrkel.KeyPair keyPair,
-                                                            final int authorityIndex) {
+                                                            final Integer authorityIndex) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochIndex);
         VrfOutputAndProof vrfOutputAndProof = Schnorrkel.getInstance().vrfSign(keyPair, transcript);
 
         return new BabePreDigest(
                 PreDigestType.BABE_SECONDARY_VRF,
-                authorityIndex,
+                authorityIndex.longValue(),
                 slotNumber,
                 vrfOutputAndProof.getOutput(),
                 vrfOutputAndProof.getProof()
@@ -188,9 +188,13 @@ public class Authorship {
     private static BigInteger calculatePrimaryThreshold(
             @NotNull final Pair<BigInteger, BigInteger> constant,
             @NotNull final List<Authority> authorities,
-            final int authorityIndex) {
+            final Integer authorityIndex) {
 
-        double c = getBabeConstant(constant, authorities, authorityIndex);
+        if (authorityIndex >= authorities.size() || authorityIndex < 0) {
+            throw new IllegalArgumentException("Invalid denominator provided");
+        }
+
+        double c = getBabeConstant(constant);
 
         double totalWeight = authorities.stream()
                 .map(Authority::getWeight)
@@ -215,9 +219,8 @@ public class Authorship {
         return scaledNumer.divide(pRational.getDenominator());
     }
 
-    private static Map<Integer, Schnorrkel.KeyPair> getOwnedKeyPairsFromAuthoritySet(
-            List<Authority> authorities,
-            KeyStore keyStore) {
+    private static Map<Integer, Schnorrkel.KeyPair> getOwnedKeyPairsFromAuthoritySet(final List<Authority> authorities,
+                                                                                     final KeyStore keyStore) {
 
         Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap = new LinkedMap<>();
 
@@ -233,16 +236,10 @@ public class Authorship {
         return indexKeyPairMap;
     }
 
-    private static double getBabeConstant(@NotNull Pair<BigInteger, BigInteger> constant,
-                                          @NotNull List<Authority> authorities,
-                                          int authorityIndex) {
+    private static double getBabeConstant(@NotNull final Pair<BigInteger, BigInteger> constant) {
 
         if (BigInteger.ZERO.equals(constant.getValue1())) {
             throw new IllegalArgumentException("Invalid authority index provided");
-        }
-
-        if (authorityIndex >= authorities.size() || authorityIndex < 0) {
-            throw new IllegalArgumentException("Invalid denominator provided");
         }
 
         double numerator = constant.getValue0().doubleValue();

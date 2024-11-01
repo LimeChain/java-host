@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.warp;
 
+import com.limechain.babe.api.scale.CurrentEpochReader;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.scale.PreDigestReader;
 import com.limechain.babe.state.EpochState;
@@ -7,6 +8,8 @@ import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.rpc.server.AppBean;
+import com.limechain.runtime.RuntimeEndpoint;
+import com.limechain.storage.block.BlockState;
 import com.limechain.utils.scale.ScaleUtils;
 
 import java.util.Arrays;
@@ -37,6 +40,14 @@ public class DigestHelper {
                 .findFirst()
                 .map(HeaderDigest::getMessage)
                 .ifPresent(message -> epochState.updateNextEpochBlockConfig(message));
+
+        if (BlockState.getInstance().isFullSyncFinished()) {
+            var currentEpoch = ScaleUtils.Decode.decode(
+                    BlockState.getInstance().callRuntime(RuntimeEndpoint.BABE_API_CURRENT_EPOCH, null),
+                    new CurrentEpochReader()
+            );
+            epochState.updateCurrentEpochDetails(currentEpoch);
+        }
     }
 
     private Optional<BabePreDigest> handleBabePreRuntimeDigest(HeaderDigest[] headerDigests) {

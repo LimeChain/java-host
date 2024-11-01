@@ -58,6 +58,7 @@ public class BlockState {
     private Hash256 lastFinalized;
     @Getter
     private boolean initialized;
+    @Getter
     @Setter
     private boolean fullSyncFinished;
     @Getter
