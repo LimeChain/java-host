@@ -27,7 +27,7 @@ public record PendingInsertUpdate(byte[] newMerkleValue,
 
     private static List<byte[]> deepCopyChildrenMerkleValues(List<byte[]> original) {
         if (original == null) {
-            return null;
+            return List.of();
         }
 
         List<byte[]> copy = new ArrayList<>(original.size());

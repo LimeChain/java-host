@@ -74,13 +74,12 @@ public class SyncState {
         try {
             Block blockByHash = BlockState.getInstance().getBlockByHash(commitMessage.getVote().getBlockHash());
             if (blockByHash != null) {
-                if (BlockState.getInstance().isInitialized()) {
-                    try {
-                        BlockState.getInstance().setFinalizedHash(blockByHash.getHeader(), commitMessage.getRoundNumber(), commitMessage.getSetId());
-                    } catch (Exception e) {
-                        log.info(e.getMessage());
-                        return;
-                    }
+                try {
+                    BlockState.getInstance().setFinalizedHash(
+                            blockByHash.getHeader(), commitMessage.getRoundNumber(), commitMessage.getSetId());
+                } catch (Exception e) {
+                    log.info(e.getMessage());
+                    return;
                 }
 
                 this.stateRoot = blockByHash.getHeader().getStateRoot();

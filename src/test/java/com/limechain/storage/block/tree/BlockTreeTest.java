@@ -261,7 +261,9 @@ class BlockTreeTest {
 
         // Asserting the runtime mapping
         assertEquals(runtimeToStay, blockTree.getBlockRuntime(getHash("02")));
-        assertThrows(BlockNodeNotFoundException.class, () -> blockTree.getBlockRuntime(getHash("01")));
+
+        Hash256 hash = getHash("01");
+        assertThrows(BlockNodeNotFoundException.class, () -> blockTree.getBlockRuntime(hash));
     }
 
     /*Helper methods*/

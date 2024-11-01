@@ -27,6 +27,8 @@ import java.util.concurrent.CompletableFuture;
 @Component
 public class ProtocolRequester {
 
+    private static final String BLOCK_REQUEST_ERROR = "There was an issue in the block request: ";
+
     private final AsyncExecutor asyncExecutor;
     private final Network network;
 
@@ -43,7 +45,7 @@ public class ProtocolRequester {
                                                                            int amount) {
         return asyncExecutor.executeAsync(() -> requestBlocks(field, startNumber, null, amount))
                 .exceptionally(e -> {
-                    log.fine("There was an issue in the block request: " + e.getMessage());
+                    log.fine(BLOCK_REQUEST_ERROR + e.getMessage());
                     throw new ExecutionFailedException(e);
                 });
     }
@@ -53,7 +55,7 @@ public class ProtocolRequester {
                                                                            int amount) {
         return asyncExecutor.executeAsync(() -> requestBlocks(field, null, startHash, amount))
                 .exceptionally(e -> {
-                    log.fine("There was an issue in the block request: " + e.getMessage());
+                    log.fine(BLOCK_REQUEST_ERROR + e.getMessage());
                     throw new ExecutionFailedException(e);
                 });
     }
@@ -63,7 +65,7 @@ public class ProtocolRequester {
                         .map(ProtocolRequester::protobufDecodeBlock)
                         .toList())
                 .exceptionally(e -> {
-                    log.fine("There was an issue in the block request: " + e.getMessage());
+                    log.fine(BLOCK_REQUEST_ERROR + e.getMessage());
                     throw new ExecutionFailedException(e);
                 });
     }
@@ -73,7 +75,7 @@ public class ProtocolRequester {
                         .map(ProtocolRequester::protobufDecodeBlock)
                         .toList())
                 .exceptionally(e -> {
-                    log.fine("There was an issue in the block request: " + e.getMessage());
+                    log.fine(BLOCK_REQUEST_ERROR + e.getMessage());
                     throw new ExecutionFailedException(e);
                 });
     }

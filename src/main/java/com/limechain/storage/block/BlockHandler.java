@@ -60,19 +60,23 @@ public class BlockHandler {
 
                 Block blockWithBody = blocks.getFirst();
 
-                newRuntime.executeBlock(blockWithBody);
-                try {
-                    blockState.addBlockWithArrivalTime(blockWithBody, arrivalTime);
-                    blockState.storeRuntime(blockWithBody.getHeader().getHash(), newRuntime);
-                } catch (BlockStorageGenericException ex) {
-                    log.fine(String.format("[%s] %s", blockWithBody.getHeader().getHash().toString(), ex.getMessage()));
-                }
-
-                log.info("Imported announced block: " + header.getBlockNumber() + header.getHash());
+                importBlock(newRuntime, blockWithBody, arrivalTime, header);
             } catch (Exception e) {
                 log.warning("Block announce processing malfunctioned: " + e.getMessage());
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    private void importBlock(Runtime newRuntime, Block blockWithBody, Instant arrivalTime, BlockHeader header) {
+        newRuntime.executeBlock(blockWithBody);
+        try {
+            blockState.addBlockWithArrivalTime(blockWithBody, arrivalTime);
+            blockState.storeRuntime(blockWithBody.getHeader().getHash(), newRuntime);
+        } catch (BlockStorageGenericException ex) {
+            log.fine(String.format("[%s] %s", blockWithBody.getHeader().getHash().toString(), ex.getMessage()));
+        }
+
+        log.info("Imported announced block: " + header.getBlockNumber() + " " + header.getHash());
     }
 }
