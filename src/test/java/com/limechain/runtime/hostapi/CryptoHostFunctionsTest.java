@@ -310,19 +310,19 @@ class CryptoHostFunctionsTest {
         ArrayList<byte[]> pubKeys = new ArrayList<>();
         pubKeys.add(ecdsaKeyPair.getSecond().raw());
 
-        when(sharedMemory.readData(keyPointer)).thenReturn(KeyType.CONTROLLING_ACCOUNTS.getBytes());
-        when(keyStore.getPublicKeysByKeyType(KeyType.CONTROLLING_ACCOUNTS)).thenReturn(pubKeys);
+        when(sharedMemory.readData(keyPointer)).thenReturn(KeyType.BEEFY.getBytes());
+        when(keyStore.getPublicKeysByKeyType(KeyType.BEEFY)).thenReturn(pubKeys);
         when(sharedMemory.writeData(toScaleEncoded(pubKeys))).thenReturn(returnPointer);
 
         RuntimePointerSize result = cryptoHostFunctions.ecdsaPublicKeysV1(keyPosition);
 
-        verify(keyStore).getPublicKeysByKeyType(KeyType.CONTROLLING_ACCOUNTS);
+        verify(keyStore).getPublicKeysByKeyType(KeyType.BEEFY);
         assertEquals(returnPointer, result);
     }
 
     @Test
     void ecdsaGenerateV1_no_seed() {
-        when(sharedMemory.readData(keyPointer)).thenReturn(KeyType.CONTROLLING_ACCOUNTS.getBytes());
+        when(sharedMemory.readData(keyPointer)).thenReturn(KeyType.BEEFY.getBytes());
         when(sharedMemory.readData(seedPointer)).thenReturn(missingSeed);
         when(sharedMemory.writeData(ecdsaKeyPair.getSecond().raw())).thenReturn(returnPointer);
 
@@ -338,7 +338,7 @@ class CryptoHostFunctionsTest {
 
     @Test
     void ecdsaGenerateV1_use_seed() {
-        when(sharedMemory.readData(keyPointer)).thenReturn(KeyType.CONTROLLING_ACCOUNTS.getBytes());
+        when(sharedMemory.readData(keyPointer)).thenReturn(KeyType.BEEFY.getBytes());
         when(sharedMemory.readData(seedPointer)).thenReturn(existingSeed);
         when(sharedMemory.writeData(ecdsaKeyPair.getSecond().raw())).thenReturn(returnPointer);
 

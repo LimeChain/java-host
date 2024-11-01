@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.blockannounce;
 
+import com.limechain.babe.state.EpochState;
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshake;
@@ -8,6 +9,9 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshakeScaleReader;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshakeScaleWriter;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleReader;
+import com.limechain.network.protocol.warp.dto.ConsensusEngine;
+import com.limechain.network.protocol.warp.dto.DigestType;
+import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.BlockState;
 import com.limechain.sync.warpsync.WarpSyncState;
@@ -21,6 +25,7 @@ import lombok.extern.java.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.logging.Level;
 
 @Log
@@ -32,11 +37,13 @@ public class BlockAnnounceEngine {
     protected ConnectionManager connectionManager;
     protected WarpSyncState warpSyncState;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
+    protected EpochState epochState;
 
     public BlockAnnounceEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
+        epochState = AppBean.getBean(EpochState.class);
     }
 
     public void receiveRequest(byte[] msg, Stream stream) {
@@ -90,6 +97,20 @@ public class BlockAnnounceEngine {
 
         if (BlockState.getInstance().isInitialized()) {
             BlockState.getInstance().addBlockToBlockTree(announce.getHeader());
+        }
+        updateEpochStateIfBabeConsensusMessageExists(announce);
+    }
+
+    //TODO: We would need DigestHelper class that would encapsulate logic needed for all types message handling HeaderDigest[]
+    public void updateEpochStateIfBabeConsensusMessageExists(BlockAnnounceMessage announce) {
+        HeaderDigest[] headerDigests = announce.getHeader().getDigest();
+        if (headerDigests != null && headerDigests.length > 0) {
+            Arrays.stream(headerDigests)
+                    .filter(headerDigest -> DigestType.CONSENSUS_MESSAGE.equals(headerDigest.getType()) &&
+                            ConsensusEngine.BABE.equals(headerDigest.getId()))
+                    .findFirst()
+                    .map(HeaderDigest::getMessage)
+                    .ifPresent(message -> epochState.updateNextEpochBlockConfig(message));
         }
     }
 

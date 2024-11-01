@@ -1,7 +1,7 @@
 plugins {
     id("java")
     id("io.freefair.lombok") version "8.10.2"
-    id("org.springframework.boot") version "3.2.10"
+    id("org.springframework.boot") version "3.2.11"
     id("io.spring.dependency-management") version "1.1.6"
     id("application")
 }
@@ -22,13 +22,13 @@ repositories {
 
 dependencies {
     implementation("net.openhft:zero-allocation-hashing:0.26ea0")
-    implementation("org.rocksdb:rocksdbjni:9.6.1")
+    implementation("org.rocksdb:rocksdbjni:9.7.3")
     compileOnly("org.projectlombok:lombok:1.18.34")
     implementation("org.projectlombok:lombok:1.18.34")
     implementation("org.web3j:crypto:4.12.2")
     implementation("com.dylibso.chicory:wasm:0.0.12")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
     testImplementation("org.mockito:mockito-core:5.14.2")
 
@@ -47,7 +47,7 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
     implementation("org.javatuples:javatuples:1.2")
 
-    implementation("com.github.luben:zstd-jni:1.5.6-6")
+    implementation("com.github.luben:zstd-jni:1.5.6-7")
 
     // Prometheus
     implementation("io.prometheus:prometheus-metrics-core:1.3.2")

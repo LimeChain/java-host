@@ -81,5 +81,4 @@ public class Sr25519Utils {
             return false;
         }
     }
-
 }
