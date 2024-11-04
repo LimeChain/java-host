@@ -1,7 +1,7 @@
-package com.limechain.babe.consesus.scale;
+package com.limechain.babe.consensus.scale;
 
-import com.limechain.babe.consesus.BabeConsensusMessage;
-import com.limechain.babe.consesus.BabeConsensusMessageFormat;
+import com.limechain.babe.consensus.BabeConsensusMessage;
+import com.limechain.babe.consensus.BabeConsensusMessageFormat;
 import com.limechain.babe.state.EpochData;
 import com.limechain.babe.state.EpochDescriptor;
 import com.limechain.chain.lightsyncstate.Authority;

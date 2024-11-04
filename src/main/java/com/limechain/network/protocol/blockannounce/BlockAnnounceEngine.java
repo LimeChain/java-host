@@ -94,7 +94,8 @@ public class BlockAnnounceEngine {
         if (BlockState.getInstance().isInitialized()) {
             BlockState.getInstance().addBlockToBlockTree(announce.getHeader());
         }
-        digestHelper.handleHeaderDigests(announce.getHeader().getDigest());
+        //TODO: refactor
+//        digestHelper.handleHeaderDigests(announce.getHeader().getDigest());
     }
 
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {

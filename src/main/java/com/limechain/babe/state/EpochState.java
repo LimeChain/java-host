@@ -1,8 +1,8 @@
 package com.limechain.babe.state;
 
 import com.limechain.babe.api.BabeApiConfiguration;
-import com.limechain.babe.consesus.scale.BabeConsensusMessageReader;
-import com.limechain.babe.consesus.BabeConsensusMessage;
+import com.limechain.babe.consensus.scale.BabeConsensusMessageReader;
+import com.limechain.babe.consensus.BabeConsensusMessage;
 import com.limechain.utils.scale.ScaleUtils;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
