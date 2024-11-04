@@ -39,7 +39,7 @@ public class BlockAnnounceEngine {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
-        digestHelper = new DigestHelper();
+        digestHelper = AppBean.getBean(DigestHelper.class);
     }
 
     public void receiveRequest(byte[] msg, Stream stream) {

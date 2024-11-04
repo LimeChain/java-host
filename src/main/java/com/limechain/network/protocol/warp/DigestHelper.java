@@ -7,10 +7,10 @@ import com.limechain.babe.state.EpochState;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.RuntimeEndpoint;
 import com.limechain.storage.block.BlockState;
 import com.limechain.utils.scale.ScaleUtils;
+import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -18,11 +18,12 @@ import java.util.Optional;
 /**
  * Helper class for processing different types of header digests
  */
+@Component
 public class DigestHelper {
-    private EpochState epochState;
+    private final EpochState epochState;
 
-    public DigestHelper() {
-        this.epochState = AppBean.getBean(EpochState.class);
+    public DigestHelper(EpochState epochState) {
+        this.epochState = epochState;
     }
 
     public void handleHeaderDigests(HeaderDigest[] headerDigests) {
@@ -39,7 +40,7 @@ public class DigestHelper {
                         ConsensusEngine.BABE.equals(headerDigest.getId()))
                 .findFirst()
                 .map(HeaderDigest::getMessage)
-                .ifPresent(message -> epochState.updateNextEpochBlockConfig(message));
+                .ifPresent(epochState::updateNextEpochBlockConfig);
 
         if (BlockState.getInstance().isFullSyncFinished()) {
             var currentEpoch = ScaleUtils.Decode.decode(
