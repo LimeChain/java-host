@@ -37,6 +37,7 @@ public class Authorship {
         var epochIndex = epochState.getEpochIndex();
         var c = epochState.getCurrentEpochDescriptor().getConstant();
         var authorities = epochState.getCurrentEpochData().getAuthorities();
+        var allowedSlots = epochState.getCurrentEpochDescriptor().getAllowedSlots();
 
         var indexKeyPairMap = getOwnedKeyPairsFromAuthoritySet(authorities, keyStore);
 
@@ -51,8 +52,7 @@ public class Authorship {
 
         if (primarySlot != null) return primarySlot;
 
-        boolean authorSecondaryVrfSlot =
-                epochState.getCurrentEpochDescriptor().getAllowedSlots().equals(BabeEpoch.BabeAllowedSlots.PRIMARY_AND_SECONDARY_VRF_SLOTS);
+        boolean authorSecondaryVrfSlot = allowedSlots.equals(BabeEpoch.BabeAllowedSlots.PRIMARY_AND_SECONDARY_VRF_SLOTS);
 
         return claimSecondarySlot(
                 randomness,
@@ -157,14 +157,14 @@ public class Authorship {
                                                             final BigInteger slotNumber,
                                                             final BigInteger epochIndex,
                                                             final Schnorrkel.KeyPair keyPair,
-                                                            final Integer authorityIndex) {
+                                                            final int authorityIndex) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochIndex);
         VrfOutputAndProof vrfOutputAndProof = Schnorrkel.getInstance().vrfSign(keyPair, transcript);
 
         return new BabePreDigest(
                 PreDigestType.BABE_SECONDARY_VRF,
-                authorityIndex.longValue(),
+                authorityIndex,
                 slotNumber,
                 vrfOutputAndProof.getOutput(),
                 vrfOutputAndProof.getProof()
@@ -196,7 +196,7 @@ public class Authorship {
     private static BigInteger calculatePrimaryThreshold(
             @NotNull final Pair<BigInteger, BigInteger> constant,
             @NotNull final List<Authority> authorities,
-            final Integer authorityIndex) {
+            final int authorityIndex) {
 
         if (authorityIndex >= authorities.size() || authorityIndex < 0) {
             throw new IllegalArgumentException("Invalid denominator provided");
