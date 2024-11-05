@@ -25,8 +25,6 @@ public class EpochState {
     private long disabledAuthority;
     private EpochDescriptor nextEpochDescriptor;
     private BigInteger epochIndex;
-    private BigInteger epochStartSlotNumber;
-    private BigInteger epochEndSlotNumber;
 
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
@@ -35,6 +33,7 @@ public class EpochState {
         this.currentEpochDescriptor = new EpochDescriptor(babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
     }
 
+    //TODO: This will be fixed in https://github.com/LimeChain/Fruzhin/issues/593
     public void updateNextEpochBlockConfig(byte[] message) {
         BabeConsensusMessage babeConsensusMessage = ScaleUtils.Decode.decode(message, new BabeConsensusMessageReader());
         switch (babeConsensusMessage.getFormat()) {
@@ -46,11 +45,5 @@ public class EpochState {
 
     public BigInteger getCurrentSlotNumber() {
         return BigInteger.valueOf(Instant.now().toEpochMilli()).divide(slotDuration);
-    }
-
-    public void updateCurrentEpochDetails(CurrentEpoch currentEpoch) {
-        this.epochIndex = currentEpoch.getEpochIndex();
-        this.epochStartSlotNumber = currentEpoch.getEpochStartingSlot();
-        this.epochEndSlotNumber = this.epochStartSlotNumber.add(this.epochLength);
     }
 }

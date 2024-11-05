@@ -14,7 +14,6 @@ public enum RuntimeEndpoint {
     CORE_EXECUTE_BLOCK("Core_execute_block"),
     CORE_VERSION("Core_version"),
     BABE_API_CONFIGURATION("BabeApi_configuration"),
-    BABE_API_CURRENT_EPOCH("BabeApi_current_epoch"),
     BLOCKBUILDER_CHECK_INHERENTS("BlockBuilder_check_inherents"),
     METADATA_METADATA("Metadata_metadata"),
     SESSION_KEYS_GENERATE_SESSION_KEYS("SessionKeys_generate_session_keys"),

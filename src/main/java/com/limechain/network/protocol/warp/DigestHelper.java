@@ -20,18 +20,6 @@ import java.util.Optional;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DigestHelper {
 
-//    public Map<DigestType, Digest> handleHeaderDigests(HeaderDigest[] headerDigests) {
-//        if (headerDigests == null || headerDigests.length == 0) {
-//            return null;
-//        }
-//
-//        Map<DigestType, Digest> digests = new HashedMap<>();
-//        getBabeConsensusMessage(headerDigests).ifPresent(d -> digests.put(DigestType.CONSENSUS_MESSAGE, d));
-//        getBabePreRuntimeDigest(headerDigests).ifPresent(d -> digests.put(DigestType.PRE_RUNTIME, d));
-//
-//        return digests;
-//    }
-
     public static Optional<BabeConsensusMessage> getBabeConsensusMessage(HeaderDigest[] headerDigests) {
         return Arrays.stream(headerDigests)
                 .filter(headerDigest -> DigestType.CONSENSUS_MESSAGE.equals(headerDigest.getType()) &&
