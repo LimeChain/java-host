@@ -64,12 +64,12 @@ public class Authorship {
         );
     }
 
-    private static BabePreDigest claimPrimarySlot(final byte[] randomness,
-                                                  final BigInteger slotNumber,
-                                                  final BigInteger epochIndex,
-                                                  final List<Authority> authorities,
-                                                  final Pair<BigInteger, BigInteger> c,
-                                                  final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap) {
+    private static BabePreDigest claimPrimarySlot(byte[] randomness,
+                                                  BigInteger slotNumber,
+                                                  BigInteger epochIndex,
+                                                  List<Authority> authorities,
+                                                  Pair<BigInteger, BigInteger> c,
+                                                  Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochIndex);
 
@@ -106,12 +106,12 @@ public class Authorship {
         return null;
     }
 
-    private static BabePreDigest claimSecondarySlot(final byte[] randomness,
-                                                    final BigInteger slotNumber,
-                                                    final BigInteger epochIndex,
-                                                    final List<Authority> authorities,
-                                                    final Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap,
-                                                    final boolean authorSecondaryVrfSlot) {
+    private static BabePreDigest claimSecondarySlot(byte[] randomness,
+                                                    BigInteger slotNumber,
+                                                    BigInteger epochIndex,
+                                                    List<Authority> authorities,
+                                                    Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap,
+                                                    boolean authorSecondaryVrfSlot) {
 
         var secondarySlotAuthorIndex = getSecondarySlotAuthor(randomness, slotNumber, authorities);
         if (secondarySlotAuthorIndex == null) {
@@ -153,11 +153,11 @@ public class Authorship {
         return null;
     }
 
-    private static BabePreDigest buildSecondaryVrfPreDigest(final byte[] randomness,
-                                                            final BigInteger slotNumber,
-                                                            final BigInteger epochIndex,
-                                                            final Schnorrkel.KeyPair keyPair,
-                                                            final int authorityIndex) {
+    private static BabePreDigest buildSecondaryVrfPreDigest(byte[] randomness,
+                                                            BigInteger slotNumber,
+                                                            BigInteger epochIndex,
+                                                            Schnorrkel.KeyPair keyPair,
+                                                            int authorityIndex) {
 
         var transcript = makeTranscript(randomness, slotNumber, epochIndex);
         VrfOutputAndProof vrfOutputAndProof = Schnorrkel.getInstance().vrfSign(keyPair, transcript);
@@ -171,9 +171,9 @@ public class Authorship {
         );
     }
 
-    private static Integer getSecondarySlotAuthor(final byte[] randomness,
-                                                  final BigInteger slotNumber,
-                                                  final List<Authority> authorities) {
+    private static Integer getSecondarySlotAuthor(byte[] randomness,
+                                                  BigInteger slotNumber,
+                                                  List<Authority> authorities) {
         if (authorities.isEmpty()) return null;
 
         byte[] concat = ByteArrayUtils.concatenate(randomness, slotNumber.toByteArray());
@@ -194,9 +194,9 @@ public class Authorship {
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
     private static BigInteger calculatePrimaryThreshold(
-            @NotNull final Pair<BigInteger, BigInteger> constant,
-            @NotNull final List<Authority> authorities,
-            final int authorityIndex) {
+            @NotNull Pair<BigInteger, BigInteger> constant,
+            @NotNull List<Authority> authorities,
+            int authorityIndex) {
 
         if (authorityIndex >= authorities.size() || authorityIndex < 0) {
             throw new IllegalArgumentException("Invalid denominator provided");
@@ -227,8 +227,8 @@ public class Authorship {
         return scaledNumer.divide(pRational.getDenominator());
     }
 
-    private static Map<Integer, Schnorrkel.KeyPair> getOwnedKeyPairsFromAuthoritySet(final List<Authority> authorities,
-                                                                                     final KeyStore keyStore) {
+    private static Map<Integer, Schnorrkel.KeyPair> getOwnedKeyPairsFromAuthoritySet(List<Authority> authorities,
+                                                                                     KeyStore keyStore) {
 
         Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap = new LinkedMap<>();
 
@@ -244,7 +244,7 @@ public class Authorship {
         return indexKeyPairMap;
     }
 
-    private static double getBabeConstant(@NotNull final Pair<BigInteger, BigInteger> constant) {
+    private static double getBabeConstant(@NotNull Pair<BigInteger, BigInteger> constant) {
 
         if (BigInteger.ZERO.equals(constant.getValue1())) {
             throw new IllegalArgumentException("Invalid authority index provided");
