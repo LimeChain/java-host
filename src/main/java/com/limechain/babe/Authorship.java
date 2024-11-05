@@ -194,8 +194,8 @@ public class Authorship {
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
     private static BigInteger calculatePrimaryThreshold(
-            @NotNull Pair<BigInteger, BigInteger> constant,
-            @NotNull List<Authority> authorities,
+            Pair<BigInteger, BigInteger> constant,
+            List<Authority> authorities,
             int authorityIndex) {
 
         if (authorityIndex >= authorities.size() || authorityIndex < 0) {
@@ -244,7 +244,7 @@ public class Authorship {
         return indexKeyPairMap;
     }
 
-    private static double getBabeConstant(@NotNull Pair<BigInteger, BigInteger> constant) {
+    private static double getBabeConstant(Pair<BigInteger, BigInteger> constant) {
 
         if (BigInteger.ZERO.equals(constant.getValue1())) {
             throw new IllegalArgumentException("Invalid authority index provided");
