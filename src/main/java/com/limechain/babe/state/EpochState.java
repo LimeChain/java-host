@@ -11,8 +11,9 @@ import java.math.BigInteger;
 import java.time.Instant;
 
 /**
- * Represents the state information for an epoch in the system.
- * This class encapsulates all the necessary configuration and parameters related to a specific epoch.
+ * Represents the state information for the current/next epoch that is needed
+ * for block production with BABE.
+ * Note: Intended for use only when the host is configured as an Authoring Node.
  */
 @Getter
 @Component
@@ -22,9 +23,9 @@ public class EpochState {
     private EpochData currentEpochData;
     private EpochDescriptor currentEpochDescriptor;
     private EpochData nextEpochData;
-    private long disabledAuthority;
     private EpochDescriptor nextEpochDescriptor;
-    private BigInteger epochIndex;
+    private long disabledAuthority;
+    private BigInteger genesisSlotNumber;
 
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
@@ -45,5 +46,13 @@ public class EpochState {
 
     public BigInteger getCurrentSlotNumber() {
         return BigInteger.valueOf(Instant.now().toEpochMilli()).divide(slotDuration);
+    }
+
+    public BigInteger getCurrentEpochStartSlotNumer() {
+        return getCurrentEpochIndex().multiply(epochLength).add(genesisSlotNumber);
+    }
+
+    public BigInteger getCurrentEpochIndex() {
+        return getCurrentSlotNumber().subtract(genesisSlotNumber).divide(epochLength);
     }
 }
