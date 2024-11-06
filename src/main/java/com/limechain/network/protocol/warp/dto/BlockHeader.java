@@ -35,7 +35,11 @@ public class BlockHeader {
     }
 
     public Hash256 getHash() {
+        return new Hash256(getHashBytes());
+    }
+
+    public byte[] getHashBytes() {
         byte[] scaleEncoded = ScaleUtils.Encode.encode(BlockHeaderScaleWriter.getInstance(), this);
-        return new Hash256(HashUtils.hashWithBlake2b(scaleEncoded));
+        return HashUtils.hashWithBlake2b(scaleEncoded);
     }
 }
