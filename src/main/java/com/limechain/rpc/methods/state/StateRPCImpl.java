@@ -265,7 +265,8 @@ public class StateRPCImpl {
         List<String> readProof = keyHexList
                 .stream()
                 .map(StringUtils::hexToBytes)
-                // TODO change implementation logic as this is not correct
+                //TODO RPC improvements: The implementation is wrong. RPC call should find the state (runtime)
+                // associated to the provided block hash and return the proof of storage entries at keys for that state.
                 .map(key -> trieStorage.getByKeyFromMerkle(blockStateRoot, Nibbles.fromBytes(key))
                         .orElse(null))
                 .filter(Objects::nonNull)
