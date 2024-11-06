@@ -1,10 +1,25 @@
 package com.limechain.network.protocol.warp;
 
 import com.limechain.babe.state.EpochState;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.dto.ConsensusEngine;
+import com.limechain.network.protocol.warp.dto.DigestType;
+import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.utils.StringUtils;
+import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
+import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
+import io.emeraldpay.polkaj.types.Hash256;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigInteger;
+import java.security.SecureRandom;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(MockitoExtension.class)
 public class DigestHelperTest {
@@ -38,4 +53,29 @@ public class DigestHelperTest {
 //
 //        verify(epochState).updateNextEpochBlockConfig(consensusMessage);
 //    }
+
+    @Test
+    void testBuildSealHeaderDigest() throws SchnorrkelException {
+        BlockHeader blockHeader = new BlockHeader();
+        blockHeader.setParentHash(new Hash256(StringUtils.hexToBytes("0xc222afdf6e4c005e0d416ca8359792e8eb23f51dd881ef3efba51fa4611b9a60")));
+        blockHeader.setBlockNumber(BigInteger.valueOf(23280976));
+        blockHeader.setStateRoot(new Hash256(StringUtils.hexToBytes("0xcb29143dc0be744f9fe43c761123e78f28cab6695470e785baf20c8d4a7e1673")));
+        blockHeader.setExtrinsicsRoot(new Hash256(StringUtils.hexToBytes("0x6ba9184bfc480cce07a1100cd84ffa484c11b5909d9e6c689792909b4621aeb3")));
+
+        HeaderDigest preRuntimeDigest = new HeaderDigest();
+        preRuntimeDigest.setType(DigestType.PRE_RUNTIME);
+        preRuntimeDigest.setId(ConsensusEngine.BABE);
+        preRuntimeDigest.setMessage(StringUtils.hexToBytes("0x03930000004fb631110000000092663f387c34042231ee717ecc19f18841cae377fc9a1bef3b8af686dd77b1337aabf770a622251c8bb01c148cf9ad8b0f46dacfc4b01423622090d3178885098052975353f07f3a2c983d46459298559b0186f871ebdf4472916dd89da33903"));
+
+        HeaderDigest[] headerDigests = new HeaderDigest[]{preRuntimeDigest};
+        blockHeader.setDigest(headerDigests);
+
+        Schnorrkel.KeyPair keyPair = Schnorrkel.getInstance().generateKeyPair(new SecureRandom());
+
+        HeaderDigest sealHeaderDigest = digestHelper.buildSealHeaderDigest(blockHeader, keyPair);
+
+        assertNotNull(sealHeaderDigest);
+        assertEquals(DigestType.SEAL, sealHeaderDigest.getType());
+        assertEquals(ConsensusEngine.BABE, sealHeaderDigest.getId());
+    }
 }
