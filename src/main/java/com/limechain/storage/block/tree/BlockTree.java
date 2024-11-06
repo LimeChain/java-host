@@ -1,9 +1,12 @@
 package com.limechain.storage.block.tree;
 
+import com.limechain.babe.predigest.BabePreDigest;
+import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.exception.storage.BlockAlreadyExistsException;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.storage.LowerThanRootException;
+import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.map.HashToRuntime;
@@ -94,7 +97,10 @@ public class BlockTree {
 
         boolean isPrimary = false;
         if (header.getBlockNumber().longValueExact() != 0) {
-            //TODO: Check if primary
+            isPrimary = DigestHelper.getBabePreRuntimeDigest(header.getDigest())
+                    .map(BabePreDigest::getType)
+                    .filter(PreDigestType.BABE_PRIMARY::equals)
+                    .isPresent();
         }
 
         BlockNode newBlockNode = new BlockNode(header.getHash(), parent, new ArrayList<>(),
