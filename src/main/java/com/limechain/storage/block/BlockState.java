@@ -1,6 +1,7 @@
 package com.limechain.storage.block;
 
 import com.limechain.exception.global.MissingObjectException;
+import com.limechain.exception.misc.WasmRuntimeException;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.storage.BlockNotFoundException;
 import com.limechain.exception.storage.BlockStorageGenericException;
@@ -14,6 +15,7 @@ import com.limechain.network.protocol.warp.scale.reader.BlockBodyReader;
 import com.limechain.network.protocol.warp.scale.writer.BlockBodyWriter;
 import com.limechain.rpc.subscriptions.chainsub.ChainSub;
 import com.limechain.runtime.Runtime;
+import com.limechain.runtime.RuntimeEndpoint;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.tree.BlockNode;

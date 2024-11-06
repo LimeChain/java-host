@@ -82,7 +82,7 @@ public class FullSyncMachine {
         DiskTrieAccessor trieAccessor = new DiskTrieAccessor(trieStorage, stateRoot.getBytes());
 
         if (!trieStorage.merkleValueExists(stateRoot)) {
-            //TODO Network improvements: This does not work on polkadot chain.
+            //TODO Sync improvements: This does not work on polkadot chain.
             loadStateAtBlockFromPeer(lastFinalizedBlockHash);
         }
 

@@ -1,8 +1,8 @@
 package com.limechain.babe.state;
 
 import com.limechain.babe.api.BabeApiConfiguration;
-import com.limechain.babe.consesus.scale.BabeConsensusMessageReader;
-import com.limechain.babe.consesus.BabeConsensusMessage;
+import com.limechain.babe.consensus.scale.BabeConsensusMessageReader;
+import com.limechain.babe.consensus.BabeConsensusMessage;
 import com.limechain.utils.scale.ScaleUtils;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
@@ -24,7 +24,7 @@ public class EpochState {
     private EpochData nextEpochData;
     private long disabledAuthority;
     private EpochDescriptor nextEpochDescriptor;
-
+    private BigInteger epochIndex;
 
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
@@ -33,6 +33,7 @@ public class EpochState {
         this.currentEpochDescriptor = new EpochDescriptor(babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
     }
 
+    //TODO: This will be fixed in https://github.com/LimeChain/Fruzhin/issues/593
     public void updateNextEpochBlockConfig(byte[] message) {
         BabeConsensusMessage babeConsensusMessage = ScaleUtils.Decode.decode(message, new BabeConsensusMessageReader());
         switch (babeConsensusMessage.getFormat()) {
