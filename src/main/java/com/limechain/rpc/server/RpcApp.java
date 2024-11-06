@@ -18,12 +18,12 @@ import java.util.Map;
  */
 @SpringBootApplication
 @ComponentScan(basePackages = {
-    "com.limechain.babe",
-    "com.limechain.rpc.config",
-    "com.limechain.rpc.methods",
-    "com.limechain.rpc.server",
-    "com.limechain.storage",
-    "com.limechain.runtime.builder",
+        "com.limechain.babe",
+        "com.limechain.rpc.config",
+        "com.limechain.rpc.methods",
+        "com.limechain.rpc.server",
+        "com.limechain.storage",
+        "com.limechain.runtime.builder"
 })
 public class RpcApp {
 

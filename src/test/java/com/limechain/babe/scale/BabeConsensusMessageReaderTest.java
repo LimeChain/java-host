@@ -1,8 +1,8 @@
 package com.limechain.babe.scale;
 
-import com.limechain.babe.consesus.BabeConsensusMessage;
-import com.limechain.babe.consesus.BabeConsensusMessageFormat;
-import com.limechain.babe.consesus.scale.BabeConsensusMessageReader;
+import com.limechain.babe.consensus.BabeConsensusMessage;
+import com.limechain.babe.consensus.BabeConsensusMessageFormat;
+import com.limechain.babe.consensus.scale.BabeConsensusMessageReader;
 import com.limechain.chain.lightsyncstate.BabeEpoch;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;

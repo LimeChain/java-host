@@ -1,4 +1,4 @@
-package com.limechain.babe.consesus;
+package com.limechain.babe.consensus;
 
 import lombok.Getter;
 

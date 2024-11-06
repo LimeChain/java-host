@@ -8,7 +8,6 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshakeScaleReader;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshakeScaleWriter;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleReader;
-import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.BlockState;
 import com.limechain.sync.warpsync.WarpSyncState;
@@ -33,13 +32,11 @@ public class BlockAnnounceEngine {
     protected ConnectionManager connectionManager;
     protected WarpSyncState warpSyncState;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
-    protected DigestHelper digestHelper;
 
     public BlockAnnounceEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
-        digestHelper = new DigestHelper();
     }
 
     public void receiveRequest(byte[] msg, Stream stream) {
@@ -94,7 +91,8 @@ public class BlockAnnounceEngine {
         if (BlockState.getInstance().isInitialized()) {
             BlockState.getInstance().addBlockToBlockTree(announce.getHeader());
         }
-        digestHelper.handleHeaderDigests(announce.getHeader().getDigest());
+        //TODO: This will be fixed in https://github.com/LimeChain/Fruzhin/issues/593
+//        digestHelper.handleHeaderDigests(announce.getHeader().getDigest());
     }
 
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
