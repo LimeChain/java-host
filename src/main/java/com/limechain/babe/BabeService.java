@@ -21,7 +21,7 @@ public class BabeService {
         this.keyStore = keyStore;
     }
 
-    private void epochAuthorship() {
+    private void executeEpochLottery() {
         var epochStartSlotNumber = epochState.getCurrentEpochStartSlotNumer();
         var epochEndSlotNumber = epochStartSlotNumber.add(epochState.getEpochLength());
 
