@@ -23,6 +23,7 @@ import java.util.Map;
         "com.limechain.rpc.methods",
         "com.limechain.rpc.server",
         "com.limechain.storage",
+        "com.limechain.network.request",
         "com.limechain.runtime.builder",
         "com.limechain.transaction"
 })

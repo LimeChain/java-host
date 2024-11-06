@@ -22,20 +22,20 @@ import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.extern.java.Log;
 import org.javatuples.Pair;
 import org.springframework.util.SerializationUtils;
 
 import java.math.BigInteger;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Contains the historical block data of the blockchain, including block headers and bodies.
@@ -56,10 +56,8 @@ public class BlockState {
     private Hash256 lastFinalized;
     @Getter
     private boolean initialized;
-    @Setter
-    private boolean fullSyncFinished;
     @Getter
-    private final ArrayDeque<Pair<Instant, Block>> pendingBlocksQueue = new ArrayDeque<>();
+    private final BlockingQueue<Pair<Instant, BlockHeader>> pendingBlocksQueue = new LinkedBlockingQueue<>();
 
     /**
      * Initializes the BlockState instance from genesis
@@ -86,7 +84,7 @@ public class BlockState {
         setBlockBody(headerHash, new BlockBody(new ArrayList<>()));
 
         //set the latest finalized head to the genesis header
-        setFinalizedHash(genesisHash, BigInteger.ZERO, BigInteger.ZERO);
+        setFinalizedHash(header, BigInteger.ZERO, BigInteger.ZERO);
     }
 
     /**
@@ -727,6 +725,20 @@ public class BlockState {
     }
 
     /**
+     * Get the runtime for the current best block.
+     *
+     * @return runtime for the best block.
+     * @throws BlockStorageGenericException if the block node is not found in the block tree.
+     */
+    public Runtime getBestBlockRuntime() {
+        try {
+            return blockTree.getBlockRuntime(bestBlockHash());
+        } catch (BlockNodeNotFoundException e) {
+            throw new BlockStorageGenericException("Exception when retrieving best block runtime: ", e);
+        }
+    }
+
+    /**
      * Store the runtime for a given block hash
      *
      * @param blockHash the block hash
@@ -760,16 +772,19 @@ public class BlockState {
     /**
      * Sets the hash of the latest finalized block
      *
-     * @param hash  the hash of the block
-     * @param round The round number of the finalized block.
-     * @param setId The set ID of the finalized block.
+     * @param header the header of the block
+     * @param round  The round number of the finalized block.
+     * @param setId  The set ID of the finalized block.
      * @throws BlockNodeNotFoundException if the block corresponding to the provided hash is not found.
      */
-    public void setFinalizedHash(final Hash256 hash, final BigInteger round, final BigInteger setId) {
-        if (!fullSyncFinished) return;
-
+    public void setFinalizedHash(final BlockHeader header, final BigInteger round, final BigInteger setId) {
+        Hash256 hash = header.getHash();
         if (!hasHeader(hash)) {
             throw new BlockNodeNotFoundException("Cannot finalise unknown block " + hash);
+        }
+
+        if (!hash.equals(genesisHash) && getHighestFinalizedNumber().compareTo(header.getBlockNumber()) >= 0) {
+            throw new LowerThanRootException("Finalized block with number " + header.getBlockNumber() + " is lower than root");
         }
 
         handleFinalizedBlock(hash);
@@ -909,6 +924,8 @@ public class BlockState {
             setHeader(block.getHeader());
             setBlockBody(subchainHash, block.getBody());
 
+            getRuntime(block.getHeader().getHash()).getTrieAccessor().persistChanges();
+
             Instant arrivalTime = blockTree.getArrivalTime(subchainHash);
             setArrivalTime(subchainHash, arrivalTime);
 
@@ -924,51 +941,14 @@ public class BlockState {
         }
     }
 
-    public synchronized void addBlockToBlockTree(BlockHeader blockHeader) {
-        if (!fullSyncFinished) {
-            addBlockToQueue(blockHeader);
+    public void addBlockToQueue(BlockHeader blockHeader) {
+        Optional<Pair<Instant, BlockHeader>> optional = pendingBlocksQueue.stream()
+                .filter(e -> e.getValue1().getHash().equals(blockHeader.getHash()))
+                .findFirst();
+        if (optional.isPresent()) {
             return;
         }
 
-        processPendingBlocksFromQueue();
-
-        if (getPendingBlocksQueue().isEmpty()) {
-            try {
-                addBlock(new Block(blockHeader, new BlockBody(new ArrayList<>())));
-            } catch (BlockStorageGenericException ex) {
-                log.fine(String.format("[%s] %s", blockHeader.getHash().toString(), ex.getMessage()));
-            }
-        }
-    }
-
-    private void addBlockToQueue(BlockHeader blockHeader) {
-        var currentBlock = new Block(
-                blockHeader,
-                new BlockBody(new ArrayList<>())
-        );
-
-        pendingBlocksQueue.add(
-                new Pair<>(Instant.now(), currentBlock)
-        );
-    }
-
-    private void processPendingBlocksFromQueue() {
-        var rootBlockNumber = BigInteger.valueOf(blockTree.getRoot().getNumber());
-
-        while (!pendingBlocksQueue.isEmpty()) {
-            var currentPair = pendingBlocksQueue.poll();
-            var block = currentPair.getValue1();
-            var arrivalTime = currentPair.getValue0();
-
-            if (block.getHeader().getBlockNumber().compareTo(rootBlockNumber) <= 0) {
-                continue;
-            }
-
-            try {
-                addBlockWithArrivalTime(block, arrivalTime);
-            } catch (BlockStorageGenericException ex) {
-                log.fine(String.format("[%s] %s", block.getHeader().getHash().toString(), ex.getMessage()));
-            }
-        }
+        pendingBlocksQueue.add(new Pair<>(Instant.now(), blockHeader));
     }
 }

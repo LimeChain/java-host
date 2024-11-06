@@ -40,7 +40,7 @@ public class TransactionValidationReader implements ScaleReader<TransactionValid
             validity.setLongevity(new UInt64Reader().read(reader));
             validity.setPropagate(reader.readUByte() != 0);
 
-            response.setValidTx(validity);
+            response.setValidity(validity);
         } else {
             int errorType = reader.readUByte();
             int errorInt = reader.readUByte();
@@ -48,7 +48,7 @@ public class TransactionValidationReader implements ScaleReader<TransactionValid
                     ? InvalidTransactionType.getFromInt(errorInt)
                     : UnknownTransactionType.getFromInt(errorInt);
 
-            response.setTransactionValidityError(error);
+            response.setValidityError(error);
         }
 
         return response;

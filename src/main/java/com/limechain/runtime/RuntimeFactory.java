@@ -67,13 +67,13 @@ public class RuntimeFactory {
 
         SharedMemory sharedMemory = new SharedMemory(null, null);
         Context context = new Context(
-            config.trieAccessor,
-            config.keyStore(),
-            config.offchainStorages(),
-            config.offchainNetworkState(),
-            config.isValidator(),
-            sharedMemory,
-            null
+                config.trieAccessor,
+                config.keyStore(),
+                config.offchainStorages(),
+                config.offchainNetworkState(),
+                config.isValidator(),
+                sharedMemory,
+                null
         );
 
         // Construct the host API implementation
@@ -90,7 +90,7 @@ public class RuntimeFactory {
         Instance instance = module.instantiate(Imports.from(imports, module));
 
         // Construct our Runtime instance
-        Runtime runtime = new Runtime(module, context, instance);
+        Runtime runtime = new RuntimeImpl(module, context, instance);
 
         // Inject the wasm memory and the allocator into the shared memory
         // NOTE:
@@ -111,8 +111,8 @@ public class RuntimeFactory {
         byte[] wasmBinaryPrefix = Arrays.copyOfRange(code, 0, 8);
         if (Arrays.equals(wasmBinaryPrefix, ZSTD_PREFIX)) {
             return Zstd.decompress(
-                Arrays.copyOfRange(code, ZSTD_PREFIX.length, code.length),
-                MAX_ZSTD_DECOMPRESSED_SIZE
+                    Arrays.copyOfRange(code, ZSTD_PREFIX.length, code.length),
+                    MAX_ZSTD_DECOMPRESSED_SIZE
             );
         }
 
@@ -139,7 +139,7 @@ public class RuntimeFactory {
         // we must fall back to calling Core_version
         if (runtimeVersion == null) {
             log.log(Level.INFO, "Couldn't fetch runtime version from custom section, calling 'Core_version'.");
-            runtimeVersion = runtime.callCoreVersion();
+            runtimeVersion = runtime.getVersion();
         }
 
         context.setRuntimeVersion(runtimeVersion);
@@ -160,15 +160,15 @@ public class RuntimeFactory {
      * however, still remains a responsibility of the caller.
      */
     public record Config(
-        @Nullable
-        TrieAccessor trieAccessor,
-        @Nullable
-        KeyStore keyStore,
-        @Nullable
-        OffchainStorages offchainStorages,
-        @Nullable
-        OffchainNetworkState offchainNetworkState,
-        boolean isValidator
+            @Nullable
+            TrieAccessor trieAccessor,
+            @Nullable
+            KeyStore keyStore,
+            @Nullable
+            OffchainStorages offchainStorages,
+            @Nullable
+            OffchainNetworkState offchainNetworkState,
+            boolean isValidator
     ) {
         public static final Config EMPTY = new Config(null, null, null, null, false);
     }

@@ -28,6 +28,7 @@ public class GrandpaService extends NetworkService<Grandpa> {
      * @param peerId message receiver
      */
     public void sendNeighbourMessage(Host us, PeerId peerId) {
+        //TODO Yordan: we should take care of handshakes separately.
         Optional.ofNullable(connectionManager.getPeerInfo(peerId))
                 .map(p -> p.getGrandpaStreams().getInitiator())
                 .ifPresentOrElse(

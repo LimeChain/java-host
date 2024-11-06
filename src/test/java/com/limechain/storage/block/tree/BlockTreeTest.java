@@ -1,5 +1,6 @@
 package com.limechain.storage.block.tree;
 
+import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.runtime.Runtime;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -238,6 +240,10 @@ class BlockTreeTest {
         rootBlockNode.addChild(childBlockNode2);
         blockTree.getLeaves().replace(rootBlockNode, childBlockNode2);
 
+        //Set runtime to stay
+        Runtime runtimeToStay = Mockito.mock(Runtime.class);
+        blockTree.storeRuntime(getHash("02"), runtimeToStay);
+
         // Add another child node {1} -> {3}
         BlockNode childBlockNode3 = new BlockNode(getHash("03"), rootBlockNode, 1);
         rootBlockNode.addChild(childBlockNode3);
@@ -254,7 +260,10 @@ class BlockTreeTest {
         assertEquals(getHash("03"), pruned.get(0));
 
         // Asserting the runtime mapping
-        assertEquals(rootRuntime, blockTree.getBlockRuntime(getHash("02")));
+        assertEquals(runtimeToStay, blockTree.getBlockRuntime(getHash("02")));
+
+        Hash256 hash = getHash("01");
+        assertThrows(BlockNodeNotFoundException.class, () -> blockTree.getBlockRuntime(hash));
     }
 
     /*Helper methods*/

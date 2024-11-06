@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString;
 import com.limechain.network.kad.KademliaService;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.utils.RandomGenerationUtils;
+import io.emeraldpay.polkaj.types.Hash256;
 import io.ipfs.multiaddr.MultiAddress;
 import io.ipfs.multihash.Multihash;
 import io.libp2p.core.Host;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.peergos.Hash;
 import org.peergos.HostBuilder;
 
 import java.util.List;
@@ -66,8 +68,11 @@ public class SyncTest {
         assertEquals(expectedConnectedNodes, connectedNodes);
 
         var response = syncService.remoteBlockRequest(senderNode, peerId,
-                new BlockRequestDto(17, "cbd3e72e769652f804568a48889382edff4742074a7201309acfd1069e5de90a", null,
-                        SyncMessage.Direction.Ascending, 1));
+                new BlockRequestDto(17,
+                        Hash256.from("cbd3e72e769652f804568a48889382edff4742074a7201309acfd1069e5de90a"),
+                        null,
+                        SyncMessage.Direction.Ascending,
+                        1));
         ByteString expected = ByteString.copyFrom(
                 new byte[]{-53, -45, -25, 46, 118, -106, 82, -8, 4, 86, -118, 72, -120, -109, -126, -19, -1, 71, 66, 7,
                         74, 114, 1, 48, -102, -49, -47, 6, -98, 93, -23, 10});

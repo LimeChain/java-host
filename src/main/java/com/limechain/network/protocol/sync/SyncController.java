@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString;
 import com.limechain.exception.NotImplementedException;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.utils.LittleEndianUtils;
+import io.emeraldpay.polkaj.types.Hash256;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -11,12 +12,12 @@ import java.util.concurrent.CompletableFuture;
 import static java.util.Objects.isNull;
 
 public interface SyncController {
-    default CompletableFuture<SyncMessage.BlockResponse> send(SyncMessage.BlockRequest req){
+    default CompletableFuture<SyncMessage.BlockResponse> send(SyncMessage.BlockRequest req) {
         throw new NotImplementedException("Method not implemented!");
     }
 
     default CompletableFuture<SyncMessage.BlockResponse> sendBlockRequest(Integer fields,
-                                                                          String fromHash,
+                                                                          Hash256 fromHash,
                                                                           Integer fromNumber,
                                                                           SyncMessage.Direction direction,
                                                                           int maxBlocks) {
@@ -26,9 +27,11 @@ public interface SyncController {
                 .setDirection(direction)
                 .setMaxBlocks(maxBlocks);
         if (!isNull(fromHash))
-            syncMessage = syncMessage.setHash(ByteString.fromHex(fromHash));
+            syncMessage = syncMessage.setHash(
+                    ByteString.copyFrom(LittleEndianUtils.convertBytes(fromHash.getBytes())));
         if (!isNull(fromNumber))
-            syncMessage = syncMessage.setNumber(ByteString.copyFrom(LittleEndianUtils.intTo32LEBytes(fromNumber)));
+            syncMessage = syncMessage.setNumber(
+                    ByteString.copyFrom(LittleEndianUtils.intTo32LEBytes(fromNumber)));
 
         var builtSyncMessage = syncMessage.build();
         return send(builtSyncMessage);

@@ -15,6 +15,7 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.BlockState;
 import com.limechain.sync.warpsync.WarpSyncState;
+import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.libp2p.core.PeerId;
@@ -85,9 +86,9 @@ public class BlockAnnounceEngine {
     }
 
     private void handleBlockAnnounce(byte[] msg, PeerId peerId) {
-        ScaleCodecReader reader = new ScaleCodecReader(msg);
-        BlockAnnounceMessage announce = reader.read(new BlockAnnounceMessageScaleReader());
+        BlockAnnounceMessage announce = ScaleUtils.Decode.decode(msg, new BlockAnnounceMessageScaleReader());
         connectionManager.updatePeer(peerId, announce);
+        //TODO Yordan: Do we actually need this since each block has a runtime?
         warpSyncState.syncBlockAnnounce(announce);
         log.log(Level.FINE, "Received block announce for block #" + announce.getHeader().getBlockNumber() +
                 " from " + peerId +
@@ -96,7 +97,8 @@ public class BlockAnnounceEngine {
                 " stateRoot:" + announce.getHeader().getStateRoot());
 
         if (BlockState.getInstance().isInitialized()) {
-            BlockState.getInstance().addBlockToBlockTree(announce.getHeader());
+            //TODO Network improvements: Block requests should be sent to the peer that announced the block itself.
+            BlockState.getInstance().addBlockToQueue(announce.getHeader());
         }
         updateEpochStateIfBabeConsensusMessageExists(announce);
     }

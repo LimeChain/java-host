@@ -17,6 +17,13 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
         this.diskTrieService = new DiskTrieService(trieStorage, mainTrieRoot);
     }
 
+    public DiskTrieAccessor(TrieAccessor original) {
+        super(original.trieStorage, original.mainTrieRoot.clone());
+
+        this.diskTrieService = new DiskTrieService(((DiskTrieAccessor) original).diskTrieService);
+        this.currentStateVersion = original.currentStateVersion;
+    }
+
     @Override
     public void upsertNode(Nibbles key, byte[] value) {
         diskTrieService.upsertNode(key, value, currentStateVersion);

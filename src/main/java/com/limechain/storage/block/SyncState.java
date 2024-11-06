@@ -15,6 +15,7 @@ import lombok.Setter;
 import lombok.extern.java.Log;
 
 import java.math.BigInteger;
+import java.util.logging.Level;
 
 @Getter
 @Log
@@ -73,18 +74,28 @@ public class SyncState {
         try {
             Block blockByHash = BlockState.getInstance().getBlockByHash(commitMessage.getVote().getBlockHash());
             if (blockByHash != null) {
+                if (!updateBlockState(commitMessage, blockByHash)) return;
+
                 this.stateRoot = blockByHash.getHeader().getStateRoot();
                 this.lastFinalizedBlockHash = commitMessage.getVote().getBlockHash();
                 this.lastFinalizedBlockNumber = commitMessage.getVote().getBlockNumber();
 
-                if (BlockState.getInstance().isInitialized()) {
-                    BlockState.getInstance().setFinalizedHash(commitMessage.getVote().getBlockHash(), commitMessage.getRoundNumber(), commitMessage.getSetId());
-                }
+                log.log(Level.INFO, "Reached block #" + lastFinalizedBlockNumber);
             }
-
         } catch (HeaderNotFoundException ignored) {
             log.fine("Received commit message for a block that is not in the block store");
         }
+    }
+
+    private static boolean updateBlockState(CommitMessage commitMessage, Block blockByHash) {
+        try {
+            BlockState.getInstance().setFinalizedHash(
+                    blockByHash.getHeader(), commitMessage.getRoundNumber(), commitMessage.getSetId());
+        } catch (Exception e) {
+            log.fine(e.getMessage());
+            return false;
+        }
+        return true;
     }
 
     public BigInteger incrementSetId() {
