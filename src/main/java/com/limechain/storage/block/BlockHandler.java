@@ -6,7 +6,7 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.request.ProtocolRequester;
 import com.limechain.runtime.Runtime;
-import com.limechain.runtime.builder.RuntimeBuilder;
+import com.limechain.runtime.RuntimeBuilder;
 import lombok.extern.java.Log;
 import org.javatuples.Pair;
 import org.springframework.stereotype.Component;
@@ -38,16 +38,16 @@ public class BlockHandler {
                 Instant arrivalTime = currentPair.getValue0();
 
                 log.fine("Processing announced block: "
-                        + header.getBlockNumber() + " " + header.getHash());
+                    + header.getBlockNumber() + " " + header.getHash());
 
                 if (blockState.getHighestFinalizedNumber().compareTo(header.getBlockNumber()) >= 0 ||
-                        blockState.hasHeader(header.getHash())) {
+                    blockState.hasHeader(header.getHash())) {
                     log.fine("Skipping announced block: " + header.getBlockNumber() + " " + header.getHash());
                     continue;
                 }
 
                 CompletableFuture<List<Block>> responseFuture = requester.requestBlocks(
-                        BlockRequestField.ALL, header.getHash(), 1);
+                    BlockRequestField.ALL, header.getHash(), 1);
 
                 Runtime runtime = blockState.getRuntime(header.getParentHash());
                 Runtime newRuntime = builder.copyRuntime(runtime);
@@ -55,7 +55,7 @@ public class BlockHandler {
                 List<Block> blocks = responseFuture.join();
                 while (blocks.isEmpty()) {
                     blocks = requester.requestBlocks(
-                            BlockRequestField.ALL, header.getHash(), 1).join();
+                        BlockRequestField.ALL, header.getHash(), 1).join();
                 }
 
                 Block blockWithBody = blocks.getFirst();

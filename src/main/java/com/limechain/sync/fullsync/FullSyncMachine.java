@@ -15,7 +15,7 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.request.ProtocolRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
-import com.limechain.runtime.builder.RuntimeBuilder;
+import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.BlockState;

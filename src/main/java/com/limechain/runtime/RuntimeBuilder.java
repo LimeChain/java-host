@@ -1,10 +1,8 @@
-package com.limechain.runtime.builder;
+package com.limechain.runtime;
 
 import com.limechain.config.HostConfig;
 import com.limechain.network.Network;
 import com.limechain.network.protocol.blockannounce.NodeRole;
-import com.limechain.runtime.Runtime;
-import com.limechain.runtime.RuntimeFactory;
 import com.limechain.runtime.hostapi.dto.OffchainNetworkState;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.crypto.KeyStore;
@@ -52,10 +50,10 @@ public class RuntimeBuilder {
      * @return a copy runtime of the original.
      */
     public Runtime copyRuntime(Runtime original) {
-        TrieAccessor trieAccessor = original.getTrieAccessor();
+        TrieAccessor trieAccessor = ((RuntimeImpl) original).context.getTrieAccessor();
         return trieAccessor.findStorageValue(Nibbles.fromBytes(":code".getBytes()))
-                .map(wasm -> buildRuntime(wasm, new DiskTrieAccessor(trieAccessor)))
-                .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
+            .map(wasm -> buildRuntime(wasm, new DiskTrieAccessor(trieAccessor)))
+            .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
     }
 
     /**
@@ -81,11 +79,11 @@ public class RuntimeBuilder {
         boolean isValidator = nodeRole == NodeRole.AUTHORING;
 
         RuntimeFactory.Config cfg = new RuntimeFactory.Config(
-                trieAccessor,
-                keyStore,
-                offchainStorages,
-                offchainNetworkState,
-                isValidator
+            trieAccessor,
+            keyStore,
+            offchainStorages,
+            offchainNetworkState,
+            isValidator
         );
 
         return RuntimeFactory.buildRuntime(code, cfg);

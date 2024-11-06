@@ -54,6 +54,11 @@ public class DiskTrieService {
         this.trieChanges = TrieChanges.empty();
     }
 
+    /**
+     * A constructor used to create a deep copy of a {@link DiskTrieService}.
+     *
+     * @param original the instance to copy
+     */
     DiskTrieService(DiskTrieService original) {
         trieStorage = original.trieStorage;
         trieMerkleRoot = original.trieMerkleRoot.clone();

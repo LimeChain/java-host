@@ -17,6 +17,11 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
         this.diskTrieService = new DiskTrieService(trieStorage, mainTrieRoot);
     }
 
+    /**
+     * A constructor used to create a deep copy of a {@link TrieAccessor}.
+     *
+     * @param original the instance to copy
+     */
     public DiskTrieAccessor(TrieAccessor original) {
         super(original.trieStorage, original.mainTrieRoot.clone());
 

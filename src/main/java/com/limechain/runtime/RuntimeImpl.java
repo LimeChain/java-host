@@ -48,7 +48,7 @@ public class RuntimeImpl implements Runtime {
     @Override
     public List<DecodedKey> decodeSessionKeys(String sessionKeys) {
         byte[] encodedRequest = ScaleUtils.Encode.encode(
-                ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys));
+            ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys));
         byte[] encodedResponse = call(RuntimeEndpoint.SESSION_KEYS_DECODE_SESSION_KEYS, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new DecodedKeysReader());
@@ -70,11 +70,6 @@ public class RuntimeImpl implements Runtime {
         byte[] encodedResponse = call(RuntimeEndpoint.TRANSACTION_QUEUE_VALIDATE_TRANSACTION, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new TransactionValidationReader());
-    }
-
-    @Override
-    public TrieAccessor getTrieAccessor() {
-        return context.getTrieAccessor();
     }
 
     @Override
@@ -101,6 +96,11 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
+    public void persistsChanges() {
+        context.getTrieAccessor().persistChanges();
+    }
+
+    @Override
     public void close() {
         module.close();
         instance.close();
@@ -108,8 +108,8 @@ public class RuntimeImpl implements Runtime {
 
     private byte[] serializeExecuteBlockParameter(Block block) {
         byte[] encodedUnsealedHeader = ScaleUtils.Encode.encode(
-                BlockHeaderScaleWriter.getInstance()::writeUnsealed,
-                block.getHeader()
+            BlockHeaderScaleWriter.getInstance()::writeUnsealed,
+            block.getHeader()
         );
         byte[] encodedBody = ScaleUtils.Encode.encode(BlockBodyWriter.getInstance(), block.getBody());
 
@@ -150,7 +150,7 @@ public class RuntimeImpl implements Runtime {
         String functionName = function.getName();
         log.log(Level.FINE, "Making a runtime call: " + functionName);
         Object[] response = instance.exports.getFunction(functionName)
-                .apply(parameterPtrSize.pointer(), parameterPtrSize.size());
+            .apply(parameterPtrSize.pointer(), parameterPtrSize.size());
 
         if (response == null) {
             return null;

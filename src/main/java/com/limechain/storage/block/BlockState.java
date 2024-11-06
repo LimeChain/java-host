@@ -110,9 +110,9 @@ public class BlockState {
 
     public void initializeAfterWarpSync(Hash256 lastFinalizedBlockHash, BigInteger lastFinalizedBlockNumber) {
         BlockNode parentBlock = new BlockNode(
-                lastFinalizedBlockHash,
-                null,
-                lastFinalizedBlockNumber.longValue()
+            lastFinalizedBlockHash,
+            null,
+            lastFinalizedBlockNumber.longValue()
         );
 
         this.blockTree = new BlockTree(parentBlock);
@@ -587,7 +587,7 @@ public class BlockState {
         }
 
         BigInteger blocksInRange = endHeader.getBlockNumber()
-                .subtract(startHeader.getBlockNumber()).add(BigInteger.ONE);
+            .subtract(startHeader.getBlockNumber()).add(BigInteger.ONE);
         List<Hash256> hashes = new ArrayList<>(blocksInRange.intValue());
 
         int lastPosition = blocksInRange.intValue() - 1;
@@ -606,7 +606,7 @@ public class BlockState {
         // Verify that we ended up with the start hash
         if (!Objects.equals(inLoopHash, startHash)) {
             throw new BlockStorageGenericException("Start hash mismatch: expected " + startHash +
-                    ", found: " + inLoopHash);
+                ", found: " + inLoopHash);
         }
 
         return hashes;
@@ -872,7 +872,7 @@ public class BlockState {
 
             if (setId.compareTo(highestSetID) < 0) {
                 throw new BlockStorageGenericException(
-                        "SetID " + setId + " should be greater or equal to " + highestSetID);
+                    "SetID " + setId + " should be greater or equal to " + highestSetID);
             }
         } catch (RoundAndSetIdNotFoundException e) {
             // If there is no highest round and setId, then we can safely store the provided values
@@ -920,13 +920,13 @@ public class BlockState {
             Block block = unfinalizedBlocks.get(subchainHash);
             if (block == null) {
                 throw new BlockNotFoundException("Failed to find block in unfinalized block map for hash " +
-                        subchainHash);
+                    subchainHash);
             }
 
             setHeader(block.getHeader());
             setBlockBody(subchainHash, block.getBody());
 
-            getRuntime(block.getHeader().getHash()).getTrieAccessor().persistChanges();
+            getRuntime(block.getHeader().getHash()).persistsChanges();
 
             Instant arrivalTime = blockTree.getArrivalTime(subchainHash);
             setArrivalTime(subchainHash, arrivalTime);
@@ -945,8 +945,8 @@ public class BlockState {
 
     public void addBlockToQueue(BlockHeader blockHeader) {
         Optional<Pair<Instant, BlockHeader>> optional = pendingBlocksQueue.stream()
-                .filter(e -> e.getValue1().getHash().equals(blockHeader.getHash()))
-                .findFirst();
+            .filter(e -> e.getValue1().getHash().equals(blockHeader.getHash()))
+            .findFirst();
         if (optional.isPresent()) {
             return;
         }

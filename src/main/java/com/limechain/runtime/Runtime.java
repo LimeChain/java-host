@@ -7,7 +7,6 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
-import com.limechain.trie.TrieAccessor;
 
 import java.util.List;
 
@@ -23,8 +22,6 @@ public interface Runtime {
 
     TransactionValidationResponse validateTransaction(TransactionValidationRequest request);
 
-    TrieAccessor getTrieAccessor();
-
     byte[] checkInherents(Block block, InherentData inherentData);
 
     byte[] generateSessionKeys(byte[] scaleSeed);
@@ -32,6 +29,11 @@ public interface Runtime {
     byte[] getMetadata();
 
     void executeBlock(Block block);
+
+    /**
+     * Saves the runtime instance's {@link com.limechain.trie.cache.TrieChanges} to the disk storage.
+     */
+    void persistsChanges();
 
     void close();
 }

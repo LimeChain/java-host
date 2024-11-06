@@ -34,12 +34,18 @@ public class TrieChanges {
         return new TrieChanges(new TreeMap<>());
     }
 
+    /**
+     * Creates a deep copy of a {@link TrieChanges}.
+     *
+     * @param original the {@link TrieChanges} to copy
+     * @return a deep copy of the original
+     */
     public static TrieChanges copy(TrieChanges original) {
         TreeMap<Nibbles, PendingTrieNodeChange> copyChanges = new TreeMap<>();
         original.changes.forEach((key, value) -> {
             PendingTrieNodeChange trieNodeChange = value instanceof PendingInsertUpdate u
-                    ? new PendingInsertUpdate(u)
-                    : new PendingRemove();
+                ? new PendingInsertUpdate(u)
+                : new PendingRemove();
             copyChanges.put(key.copy(), trieNodeChange);
         });
 
@@ -73,32 +79,32 @@ public class TrieChanges {
     public Optional<PendingInsertUpdate> getRoot() {
         Map.Entry<Nibbles, PendingTrieNodeChange> rootChange = changes.firstEntry();
         return rootChange != null
-                ? Optional.of((PendingInsertUpdate) rootChange.getValue())
-                : Optional.empty();
+            ? Optional.of((PendingInsertUpdate) rootChange.getValue())
+            : Optional.empty();
     }
 
     public <P extends PendingTrieNodeChange> List<Map.Entry<Nibbles, P>> getEntriesInKeyPath(
-            @Nullable Class<P> clazz, Nibbles key) {
+        @Nullable Class<P> clazz, Nibbles key) {
         Stream<Map.Entry<Nibbles, PendingTrieNodeChange>> stream = changes.subMap(
-                Nibbles.EMPTY, true, key, true).entrySet().stream();
+            Nibbles.EMPTY, true, key, true).entrySet().stream();
 
         if (clazz != null) {
             stream = stream
-                    .filter(e -> clazz.isInstance(e.getValue()));
+                .filter(e -> clazz.isInstance(e.getValue()));
         }
 
         return stream
-                .filter(e -> key.startsWith(e.getKey()))
-                .map(e -> Map.entry(e.getKey(), (P) e.getValue()))
-                .toList();
+            .filter(e -> key.startsWith(e.getKey()))
+            .map(e -> Map.entry(e.getKey(), (P) e.getValue()))
+            .toList();
     }
 
     // TODO optimize so that it doesn't traverse until end of map if missing
     public Optional<PendingInsertUpdate> getChildByIndex(Nibbles parentKey, Nibble childIndex) {
         Nibbles parentKeyWithChildIndex = parentKey.add(childIndex);
         return changes.tailMap(parentKey, false).entrySet().stream()
-                .filter(e -> e.getKey().startsWith(parentKeyWithChildIndex) && e.getValue() instanceof PendingInsertUpdate)
-                .map(e -> (PendingInsertUpdate) e.getValue())
-                .findFirst();
+            .filter(e -> e.getKey().startsWith(parentKeyWithChildIndex) && e.getValue() instanceof PendingInsertUpdate)
+            .map(e -> (PendingInsertUpdate) e.getValue())
+            .findFirst();
     }
 }

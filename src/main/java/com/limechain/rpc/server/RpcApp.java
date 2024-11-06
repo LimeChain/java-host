@@ -24,7 +24,7 @@ import java.util.Map;
         "com.limechain.rpc.server",
         "com.limechain.storage",
         "com.limechain.network.request",
-        "com.limechain.runtime.builder",
+        "com.limechain.runtime",
         "com.limechain.transaction"
 })
 public class RpcApp {

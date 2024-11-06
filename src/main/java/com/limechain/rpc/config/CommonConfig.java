@@ -10,7 +10,7 @@ import com.limechain.constants.GenesisBlockHash;
 import com.limechain.network.Network;
 import com.limechain.network.request.ProtocolRequester;
 import com.limechain.rpc.server.UnsafeInterceptor;
-import com.limechain.runtime.builder.RuntimeBuilder;
+import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBInitializer;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.BlockHandler;
