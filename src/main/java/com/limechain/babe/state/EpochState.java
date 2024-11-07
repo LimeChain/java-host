@@ -53,10 +53,11 @@ public class EpochState {
     public void setGenesisSlotNumber(BigInteger retrievedGenesisSlotNumber) {
         if (retrievedGenesisSlotNumber != null) {
             this.genesisSlotNumber = retrievedGenesisSlotNumber;
+        } else {
+            // If retrieved genesis slot number is null, then there are no executed
+            // blocks on the chain and current slot number should be the genesis
+            this.genesisSlotNumber = getCurrentSlotNumber();
         }
-        // If retrieved genesis slot number is null, then there are no executed
-        // blocks on the chain and current slot number should be the genesis
-        this.genesisSlotNumber = getCurrentSlotNumber();
     }
 
     public BigInteger getCurrentSlotNumber() {
