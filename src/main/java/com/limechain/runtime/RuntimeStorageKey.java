@@ -4,6 +4,7 @@ import com.limechain.trie.structure.nibble.Nibbles;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+// all available keys can be found here: https://www.shawntabrizi.com/substrate-known-keys/
 @Getter
 @AllArgsConstructor
 public enum RuntimeStorageKey {
