@@ -29,11 +29,10 @@ import java.util.logging.Level;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Authorship {
 
-    public static BabePreDigest claimSlot(EpochState epochState, KeyStore keyStore) {
+    public static BabePreDigest claimSlot(EpochState epochState, BigInteger slotNumber, KeyStore keyStore) {
 
         var randomness = epochState.getCurrentEpochData().getRandomness();
-        var slotNumber = epochState.getCurrentSlotNumber();
-        var epochIndex = epochState.getEpochIndex();
+        var epochIndex = epochState.getCurrentEpochIndex();
         var c = epochState.getCurrentEpochDescriptor().getConstant();
         var authorities = epochState.getCurrentEpochData().getAuthorities();
         var allowedSlots = epochState.getCurrentEpochDescriptor().getAllowedSlots();

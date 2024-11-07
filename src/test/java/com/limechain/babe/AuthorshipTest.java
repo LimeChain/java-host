@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AuthorshipTest {
 
-
     @Test
     void testCalculatePrimaryThreshold()
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
