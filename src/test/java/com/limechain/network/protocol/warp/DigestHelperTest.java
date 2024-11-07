@@ -1,6 +1,7 @@
 package com.limechain.network.protocol.warp;
 
-import com.limechain.babe.state.EpochState;
+import com.limechain.babe.consensus.BabeConsensusMessageFormat;
+import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -10,49 +11,108 @@ import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
 import io.emeraldpay.polkaj.types.Hash256;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(MockitoExtension.class)
-public class DigestHelperTest {
+class DigestHelperTest {
 
-    @InjectMocks
-    private DigestHelper digestHelper;
+    @Test
+    void getBabeConsensusMessageTest() {
+        HeaderDigest consensusDigest = new HeaderDigest();
+        consensusDigest.setId(ConsensusEngine.BABE);
+        consensusDigest.setType(DigestType.CONSENSUS_MESSAGE);
 
-    @Mock
-    private EpochState epochState;
+        // Create a consensus message with type DISABLED_AUTHORITY(2) and value equal to 0
+        var message = new byte[33];
+        message[0] = 2;
+        consensusDigest.setMessage(message);
 
-    //TODO: This will be fixed in https://github.com/LimeChain/Fruzhin/issues/593
-//    @Test
-//    void handleHeaderDigests_WithConsensusAndPreRuntimeDigests_ShouldProcessBothCorrectly() {
-//        byte[] consensusMessage = new byte[]{1, 2, 3};
-//        byte[] preRuntimeMessage = StringUtils.hexToBytes("0x03b7010000286f301100000000424dc7bc71c9b0f3a15b6aba389471fff57e154dbf3dc046f47513a38375ce4cfe421df446b2b7a0f5b1b2e69c810a6ba36787c0301e6636df3e45688116e005363dfe9922b3b7cc7b80e2fdab8b0b98dcfb4b96cc470fb35f753debda40aa0e");
-//
-//        HeaderDigest consensusDigest = mock(HeaderDigest.class);
-//        HeaderDigest preRuntimeDigest = mock(HeaderDigest.class);
-//
-//        when(consensusDigest.getType()).thenReturn(DigestType.CONSENSUS_MESSAGE);
-//        when(consensusDigest.getId()).thenReturn(ConsensusEngine.BABE);
-//        when(consensusDigest.getMessage()).thenReturn(consensusMessage);
-//
-//        when(preRuntimeDigest.getType()).thenReturn(DigestType.PRE_RUNTIME);
-//        when(preRuntimeDigest.getId()).thenReturn(ConsensusEngine.BABE);
-//        when(preRuntimeDigest.getMessage()).thenReturn(preRuntimeMessage);
-//
-//        HeaderDigest[] headerDigests = {consensusDigest, preRuntimeDigest};
-//
-//        digestHelper.handleHeaderDigests(headerDigests);
-//
-//        verify(epochState).updateNextEpochBlockConfig(consensusMessage);
-//    }
+        HeaderDigest[] headerDigests = new HeaderDigest[] {consensusDigest};
+        var optResult = DigestHelper.getBabeConsensusMessage(headerDigests);
+
+        assertTrue(optResult.isPresent());
+
+        var result = optResult.get();
+        assertEquals(BabeConsensusMessageFormat.DISABLED_AUTHORITY, result.getFormat());
+        assertEquals(0, result.getDisabledAuthority());
+        assertNull(result.getNextEpochData());
+        assertNull(result.getNextEpochDescriptor());
+    }
+
+    @Test
+    void getBabeConsensusMessageWithoutSuchDigestInHeadersTest() {
+        var optResult = DigestHelper.getBabeConsensusMessage(new HeaderDigest[0]);
+        assertTrue(optResult.isEmpty());
+    }
+
+    @Test
+    void getBabePreRuntimeDigestForPrimarySlotTest() {
+        HeaderDigest consensusDigest = new HeaderDigest();
+        consensusDigest.setId(ConsensusEngine.BABE);
+        consensusDigest.setType(DigestType.PRE_RUNTIME);
+
+        // Create a PreRuntimeDigest with:
+        // Type -> BABE_PRIMARY(1)
+        // Authority index -> 0
+        // Slot number -> 0
+        // VRF_OUTPUT -> byte array with 32 zeros
+        // VRF_PROOF -> byte array with 64 zeros
+        var message = new byte[193];
+        message[0] = 1;
+        consensusDigest.setMessage(message);
+
+        HeaderDigest[] headerDigests = new HeaderDigest[] {consensusDigest};
+        var optResult = DigestHelper.getBabePreRuntimeDigest(headerDigests);
+
+        assertTrue(optResult.isPresent());
+
+        var result = optResult.get();
+        assertEquals(PreDigestType.BABE_PRIMARY, result.getType());
+        assertEquals(0, result.getAuthorityIndex());
+        assertEquals(BigInteger.ZERO, result.getSlotNumber());
+        assertArrayEquals(new byte[32], result.getVrfOutput());
+        assertArrayEquals(new byte[64], result.getVrfProof());
+    }
+
+    @Test
+    void getBabePreRuntimeDigestForSecondaryPlainSlotTest() {
+        HeaderDigest consensusDigest = new HeaderDigest();
+        consensusDigest.setId(ConsensusEngine.BABE);
+        consensusDigest.setType(DigestType.PRE_RUNTIME);
+
+        // Create a PreRuntimeDigest with:
+        // Type -> BABE_SECONDARY_PLAIN(2)
+        // Authority index -> 0
+        // Slot number -> 0
+        var message = new byte[97];
+        message[0] = 2;
+        consensusDigest.setMessage(message);
+
+        HeaderDigest[] headerDigests = new HeaderDigest[] {consensusDigest};
+        var optResult = DigestHelper.getBabePreRuntimeDigest(headerDigests);
+
+        assertTrue(optResult.isPresent());
+
+        var result = optResult.get();
+        assertEquals(PreDigestType.BABE_SECONDARY_PLAIN, result.getType());
+        assertEquals(0, result.getAuthorityIndex());
+        assertEquals(BigInteger.ZERO, result.getSlotNumber());
+        assertNull(result.getVrfOutput());
+        assertNull(result.getVrfProof());
+    }
+
+    @Test
+    void getBabePreRuntimeDigestWithoutSuchDigestInHeadersTest() {
+        var optResult = DigestHelper.getBabePreRuntimeDigest(new HeaderDigest[0]);
+        assertTrue(optResult.isEmpty());
+    }
 
     @Test
     void testBuildSealHeaderDigest() throws SchnorrkelException {
@@ -72,7 +132,7 @@ public class DigestHelperTest {
 
         Schnorrkel.KeyPair keyPair = Schnorrkel.getInstance().generateKeyPair(new SecureRandom());
 
-        HeaderDigest sealHeaderDigest = digestHelper.buildSealHeaderDigest(blockHeader, keyPair);
+        HeaderDigest sealHeaderDigest = DigestHelper.buildSealHeaderDigest(blockHeader, keyPair);
 
         assertNotNull(sealHeaderDigest);
         assertEquals(DigestType.SEAL, sealHeaderDigest.getType());

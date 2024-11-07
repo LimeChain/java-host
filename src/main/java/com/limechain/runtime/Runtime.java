@@ -69,24 +69,20 @@ public class Runtime {
         return context.getSharedMemory().readData(responsePtrSize);
     }
 
+    private Optional<byte[]> findStorageValue(Nibbles key) {
+        return this.context.trieAccessor.findStorageValue(key);
+    }
+
+    public BigInteger getGenesisSlotNumber() {
+        var optGenesisSlotBytes = this.findStorageValue(RuntimeStorageKey.GENESIS_SLOT.getKey());
+        return optGenesisSlotBytes.map(LittleEndianUtils::fromLittleEndianByteArray).orElse(null);
+    }
+
     /**
      * @return the {@link BabeApiConfiguration}.
      */
     public BabeApiConfiguration callBabeApiConfiguration() {
         return ScaleUtils.Decode.decode(this.call(RuntimeEndpoint.BABE_API_CONFIGURATION), new BabeApiConfigurationReader());
-    }
-
-    public Optional<byte[]> findStorageValue(Nibbles key) {
-        return this.context.trieAccessor.findStorageValue(key);
-    }
-
-    public BigInteger retrieveGenesisSlot() {
-        var optGenesisSlotBytes = this.findStorageValue(
-                Nibbles.fromHexString("0x1cb6f36e027abb2091cfb5110ab5087f678711d15ebbceba5cd0cea158e6675a")
-        );
-
-        return optGenesisSlotBytes.map(LittleEndianUtils::fromLittleEndianByteArray).orElse(null);
-
     }
 
     /**

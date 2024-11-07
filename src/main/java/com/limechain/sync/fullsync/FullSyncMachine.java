@@ -119,7 +119,7 @@ public class FullSyncMachine {
 
     private void initializeEpochState() {
         epochState.initialize(runtime.callBabeApiConfiguration());
-        epochState.setGenesisSlotNumber(runtime.retrieveGenesisSlot());
+        epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {
