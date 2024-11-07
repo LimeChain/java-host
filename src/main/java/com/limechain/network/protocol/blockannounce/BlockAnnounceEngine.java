@@ -91,8 +91,6 @@ public class BlockAnnounceEngine {
         if (BlockState.getInstance().isInitialized()) {
             BlockState.getInstance().addBlockToBlockTree(announce.getHeader());
         }
-        //TODO: This will be fixed in https://github.com/LimeChain/Fruzhin/issues/593
-//        digestHelper.handleHeaderDigests(announce.getHeader().getDigest());
     }
 
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
