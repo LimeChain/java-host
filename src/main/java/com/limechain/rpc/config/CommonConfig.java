@@ -95,8 +95,8 @@ public class CommonConfig {
     }
 
     @Bean
-    public FullSyncMachine fullSyncMachine(Network network, SyncState syncState) {
-        return new FullSyncMachine(network, syncState);
+    public FullSyncMachine fullSyncMachine(HostConfig hostConfig, Network network, SyncState syncState) {
+        return new FullSyncMachine(hostConfig, network, syncState);
     }
 
     @Bean
