@@ -74,7 +74,7 @@ public class Runtime {
     }
 
     public BigInteger getGenesisSlotNumber() {
-        var optGenesisSlotBytes = this.findStorageValue(RuntimeStorageKey.GENESIS_SLOT.getKey());
+        var optGenesisSlotBytes = this.findStorageValue(RuntimeStorageKey.GENESIS_SLOT.getNibbles());
         return optGenesisSlotBytes.map(LittleEndianUtils::fromLittleEndianByteArray).orElse(null);
     }
 
