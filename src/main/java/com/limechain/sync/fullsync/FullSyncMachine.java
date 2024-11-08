@@ -1,6 +1,7 @@
 package com.limechain.sync.fullsync;
 
 import com.google.protobuf.ByteString;
+import com.limechain.babe.EpochCoordinator;
 import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
@@ -60,6 +61,7 @@ public class FullSyncMachine {
     private final TrieStorage trieStorage = AppBean.getBean(TrieStorage.class);
     private final RuntimeBuilder runtimeBuilder = AppBean.getBean(RuntimeBuilder.class);
     private final EpochState epochState = AppBean.getBean(EpochState.class);
+    private final EpochCoordinator epochCoordinator = AppBean.getBean(EpochCoordinator.class);
     private Runtime runtime = null;
 
     public FullSyncMachine(HostConfig hostConfig, Network networkService, SyncState syncState) {
@@ -120,6 +122,7 @@ public class FullSyncMachine {
     private void initializeEpochState() {
         epochState.initialize(runtime.callBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
+        epochCoordinator.start();
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {
