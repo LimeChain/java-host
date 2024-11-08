@@ -26,7 +26,7 @@ public class AsyncExecutor {
     }
 
     public void executeAndForget(Runnable task) {
-        executorService.submit(task);
+        executorService.execute(task);
     }
 
     //TODO Yordan: Create a centralized retry function here.

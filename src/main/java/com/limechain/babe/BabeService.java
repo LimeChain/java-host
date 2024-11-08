@@ -21,7 +21,17 @@ public class BabeService {
         this.keyStore = keyStore;
     }
 
-    private void executeEpochLottery() {
+    //TODO: Remove
+    public void onSlotChange() {
+        System.out.println("Slot is changed");
+    }
+
+    //TODO: Remove
+    public void onEpochChange() {
+        System.out.println("Epoch is changed");
+    }
+
+    public void executeEpochLottery() {
         var epochStartSlotNumber = epochState.getCurrentEpochStartSlotNumer();
         var epochEndSlotNumber = epochStartSlotNumber.add(epochState.getEpochLength());
 

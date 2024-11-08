@@ -10,6 +10,8 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.runtime.version.scale.RuntimeVersionReader;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
+import com.limechain.trie.structure.nibble.Nibbles;
+import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.scale.ScaleUtils;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -20,6 +22,8 @@ import org.jetbrains.annotations.Nullable;
 import org.wasmer.Instance;
 import org.wasmer.Module;
 
+import java.math.BigInteger;
+import java.util.Optional;
 import java.util.logging.Level;
 
 @Log
@@ -63,6 +67,15 @@ public class Runtime {
 
         RuntimePointerSize responsePtrSize = new RuntimePointerSize((long) response[0]);
         return context.getSharedMemory().readData(responsePtrSize);
+    }
+
+    private Optional<byte[]> findStorageValue(Nibbles key) {
+        return this.context.trieAccessor.findStorageValue(key);
+    }
+
+    public BigInteger getGenesisSlotNumber() {
+        var optGenesisSlotBytes = this.findStorageValue(RuntimeStorageKey.GENESIS_SLOT.getNibbles());
+        return optGenesisSlotBytes.map(LittleEndianUtils::fromLittleEndianByteArray).orElse(null);
     }
 
     /**
