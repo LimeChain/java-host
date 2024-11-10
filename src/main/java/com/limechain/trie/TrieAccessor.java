@@ -26,11 +26,17 @@ public abstract sealed class TrieAccessor permits MemoryTrieAccessor, DiskTrieAc
     protected byte[] mainTrieRoot;
     @Setter
     protected StateVersion currentStateVersion;
+    // True if
+    @Setter
+    protected boolean shouldBackup;
 
     protected TrieAccessor(TrieStorage trieStorage, byte[] mainTrieRoot) {
         this.trieStorage = trieStorage;
         this.mainTrieRoot = mainTrieRoot;
         this.loadedChildTries = new HashMap<>();
+
+        // Default backup state is true since we need it for all calls but one.
+        shouldBackup = true;
     }
 
     /**
@@ -85,6 +91,17 @@ public abstract sealed class TrieAccessor permits MemoryTrieAccessor, DiskTrieAc
     protected abstract TrieAccessor createChildTrie(Nibbles trieKey, byte[] merkleRoot);
 
     /**
+     * Prepares the trie accessor for a state backup.
+     * Any runtime call that changes state is backed up, except for 'Core_execute_block'.
+     */
+    public abstract void prepareBackup();
+
+    /**
+     * Backs up state storage if needed.
+     */
+    public abstract void backup();
+
+    /**
      * Retrieves the child trie accessor for the given key.
      *
      * @param key The key corresponding to the child trie accessor.
@@ -95,7 +112,7 @@ public abstract sealed class TrieAccessor permits MemoryTrieAccessor, DiskTrieAc
         byte[] merkleRoot = findStorageValue(trieKey).orElse(null);
 
         return loadedChildTries.computeIfAbsent(
-            trieKey, k -> createChildTrie(trieKey, merkleRoot));
+                trieKey, k -> createChildTrie(trieKey, merkleRoot));
     }
 
     /**
