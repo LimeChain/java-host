@@ -28,6 +28,10 @@ import java.util.logging.Level;
 @Log
 public class TransactionEngine {
 
+    //TODO Network improvements: We need a static lock as it seems we create new instances of this engine on
+    // each incoming protocol thread. I am not sure that that is optimal, but I could be wrong.
+    private static final Object LOCK = new Object();
+
     private static final int HANDSHAKE_LENGTH = 1;
 
     private final ConnectionManager connectionManager;
@@ -118,23 +122,25 @@ public class TransactionEngine {
         log.log(Level.INFO, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
                 + peerId);
 
-        for (int i = 0; i < transactions.getExtrinsics().length; i++) {
-            Extrinsic current = transactions.getExtrinsics()[i];
+        synchronized (LOCK) {
+            for (int i = 0; i < transactions.getExtrinsics().length; i++) {
+                Extrinsic current = transactions.getExtrinsics()[i];
 
-            ValidTransaction validTransaction;
-            try {
-                validTransaction = transactionValidator.validateExternalTransaction(current);
-                validTransaction.getIgnore().add(peerId);
-            } catch (TransactionValidationException e) {
-                log.warning("Error when validating transaction " + current.toString()
-                        + " from protocol: " + e.getMessage());
-                continue;
-            }
+                ValidTransaction validTransaction;
+                try {
+                    validTransaction = transactionValidator.validateExternalTransaction(current);
+                    validTransaction.getIgnore().add(peerId);
+                } catch (TransactionValidationException e) {
+                    log.warning("Error when validating transaction " + current.toString()
+                            + " from protocol: " + e.getMessage());
+                    continue;
+                }
 
-            if (transactionState.shouldAddToQueue(validTransaction)) {
-                transactionState.pushTransaction(validTransaction);
-            } else {
-                transactionState.addToPool(validTransaction);
+                if (transactionState.shouldAddToQueue(validTransaction)) {
+                    transactionState.pushTransaction(validTransaction);
+                } else {
+                    transactionState.addToPool(validTransaction);
+                }
             }
         }
     }

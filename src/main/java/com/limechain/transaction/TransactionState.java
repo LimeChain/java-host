@@ -1,6 +1,5 @@
 package com.limechain.transaction;
 
-import com.limechain.exception.global.ThreadInterruptedException;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.ByteArrayUtils;
@@ -24,8 +23,8 @@ import java.util.stream.Collectors;
 public class TransactionState {
 
     private final TransactionPool transactionPool;
-    private final ExecutorService executor;
     private final Queue<ValidTransaction> transactionQueue;
+    private final ExecutorService executor;
 
     public TransactionState() {
         transactionPool = new TransactionPool();

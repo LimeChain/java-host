@@ -28,7 +28,7 @@ public class TransactionValidator {
         this.blockState = BlockState.getInstance();
     }
 
-    public synchronized ValidTransaction validateExternalTransaction(Extrinsic extrinsic)
+    public ValidTransaction validateExternalTransaction(Extrinsic extrinsic)
             throws TransactionValidationException {
         if (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic)) {
             throw new TransactionValidationException("Transaction already validated.");
@@ -41,6 +41,7 @@ public class TransactionValidator {
 
         final Runtime runtime = blockState.getRuntime(header.getHash());
         if (runtime == null) {
+            // This should be an unreachable state, but the blockState method has a return null.
             throw new TransactionValidationException("No runtime found for block header " + header.getHash()
                     + " while validating.");
         }
