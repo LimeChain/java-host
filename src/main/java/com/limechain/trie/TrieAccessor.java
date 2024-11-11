@@ -26,7 +26,7 @@ public abstract sealed class TrieAccessor permits MemoryTrieAccessor, DiskTrieAc
     protected byte[] mainTrieRoot;
     @Setter
     protected StateVersion currentStateVersion;
-    // True if
+    // Runtime instance sets this to false only when executing `Core_execute_block`.
     @Setter
     protected boolean shouldBackup;
 
