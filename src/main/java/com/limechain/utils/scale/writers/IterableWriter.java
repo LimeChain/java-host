@@ -5,7 +5,6 @@ import io.emeraldpay.polkaj.scale.ScaleWriter;
 import org.apache.commons.collections4.IterableUtils;
 
 import java.io.IOException;
-import java.util.Iterator;
 
 public class IterableWriter<T> implements ScaleWriter<Iterable<T>> {
     private final ScaleWriter<T> scaleWriter;

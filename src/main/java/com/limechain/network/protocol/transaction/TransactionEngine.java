@@ -1,10 +1,17 @@
-package com.limechain.network.protocol.transactions;
+package com.limechain.network.protocol.transaction;
 
 import com.limechain.exception.scale.ScaleEncodingException;
+import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.network.ConnectionManager;
-import com.limechain.network.protocol.transactions.scale.TransactionsReader;
-import com.limechain.network.protocol.transactions.scale.TransactionsWriter;
+import com.limechain.network.protocol.transaction.scale.TransactionReader;
+import com.limechain.network.protocol.transaction.scale.TransactionWriter;
+import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncState;
+import com.limechain.transaction.TransactionState;
+import com.limechain.transaction.TransactionValidator;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ExtrinsicArray;
+import com.limechain.transaction.dto.ValidTransaction;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.libp2p.core.PeerId;
@@ -19,10 +26,23 @@ import java.util.logging.Level;
  * Engine for handling transactions on Transactions streams.
  */
 @Log
-public class TransactionsEngine {
+public class TransactionEngine {
+
+    //TODO Network improvements: We need a static lock as it seems we create new instances of this engine on
+    // each incoming protocol thread. I am not sure that that is optimal, but I could be wrong.
+    private static final Object LOCK = new Object();
+
     private static final int HANDSHAKE_LENGTH = 1;
 
-    private final ConnectionManager connectionManager = ConnectionManager.getInstance();
+    private final ConnectionManager connectionManager;
+    private final TransactionState transactionState;
+    private final TransactionValidator transactionValidator;
+
+    public TransactionEngine() {
+        connectionManager = ConnectionManager.getInstance();
+        transactionState = AppBean.getBean(TransactionState.class);
+        transactionValidator = AppBean.getBean(TransactionValidator.class);
+    }
 
     /**
      * Handles an incoming request as follows:
@@ -46,7 +66,7 @@ public class TransactionsEngine {
                     String.format("Transactions message is null from Peer %s", peerId));
             return;
         }
-        log.log(Level.INFO, "Transaction message length:" + message.length);
+        log.log(Level.FINE, "Transaction message length:" + message.length);
 
         if (stream.isInitiator()) {
             handleInitiatorStreamMessage(message, stream);
@@ -64,7 +84,8 @@ public class TransactionsEngine {
         }
         connectionManager.addTransactionsStream(stream);
         log.log(Level.INFO, "Received transactions handshake from " + peerId);
-        //TODO Send valid transactions to the peer we received a handshake from
+        //TODO Replace empty transaction messages once we have validation working.
+        stream.writeAndFlush(new byte[]{});
     }
 
     private void handleResponderStreamMessage(byte[] message, Stream stream) {
@@ -97,10 +118,31 @@ public class TransactionsEngine {
 
     private void handleTransactionMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
-        byte[][] transactions = reader.read(new TransactionsReader());
-        log.log(Level.INFO, "Received " + transactions.length + " transactions from Peer "
+        ExtrinsicArray transactions = reader.read(new TransactionReader());
+        log.log(Level.FINE, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
                 + peerId);
-        //TODO Add transactions to data
+
+        synchronized (LOCK) {
+            for (int i = 0; i < transactions.getExtrinsics().length; i++) {
+                Extrinsic current = transactions.getExtrinsics()[i];
+
+                ValidTransaction validTransaction;
+                try {
+                    validTransaction = transactionValidator.validateExternalTransaction(current);
+                    validTransaction.getIgnore().add(peerId);
+                } catch (TransactionValidationException e) {
+                    log.fine("Error when validating transaction " + current.toString()
+                            + " from protocol: " + e.getMessage());
+                    continue;
+                }
+
+                if (transactionState.shouldAddToQueue(validTransaction)) {
+                    transactionState.pushTransaction(validTransaction);
+                } else {
+                    transactionState.addToPool(validTransaction);
+                }
+            }
+        }
     }
 
     /**
@@ -124,14 +166,17 @@ public class TransactionsEngine {
      */
     public void writeTransactionsMessage(Stream stream, PeerId peerId) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        //TODO Replace empty transaction messages once we have validation working.
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new TransactionsWriter(), new byte[][]{new byte[]{}, new byte[]{}});
+            writer.write(new TransactionWriter(), new ExtrinsicArray(new Extrinsic[]{
+                    new Extrinsic(new byte[]{}), new Extrinsic(new byte[]{})
+            }));
         } catch (IOException e) {
             throw new ScaleEncodingException(e);
         }
 
         log.log(Level.INFO, "Sending transaction message to peer " + peerId);
-        //TODO Send our transaction message
+        //TODO send transaction message containing non repetitive transactions for peer.
     }
 
     private boolean isHandshake(byte[] message) {

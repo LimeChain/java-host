@@ -5,6 +5,7 @@ import lombok.Getter;
 
 /**
  * Used to identify runtime API endpoints by their names as listed in the spec.
+ *
  * @see <a href="https://spec.polkadot.network/chap-runtime-api">the spec</a>
  */
 // NOTE: Add here whatever endpoints necessary during development.
@@ -17,7 +18,9 @@ public enum RuntimeEndpoint {
     BLOCKBUILDER_CHECK_INHERENTS("BlockBuilder_check_inherents"),
     METADATA_METADATA("Metadata_metadata"),
     SESSION_KEYS_GENERATE_SESSION_KEYS("SessionKeys_generate_session_keys"),
-    SESSION_KEYS_DECODE_SESSION_KEYS("SessionKeys_decode_session_keys");
+    SESSION_KEYS_DECODE_SESSION_KEYS("SessionKeys_decode_session_keys"),
+    TRANSACTION_QUEUE_VALIDATE_TRANSACTION("TaggedTransactionQueue_validate_transaction"),
+    ;
 
     private final String name;
 }

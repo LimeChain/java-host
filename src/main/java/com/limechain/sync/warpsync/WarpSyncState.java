@@ -8,8 +8,8 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
+import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage.BlockData;
-import com.limechain.network.protocol.sync.pb.SyncMessage.BlockResponse;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -17,8 +17,9 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
+import com.limechain.network.request.ProtocolRequester;
 import com.limechain.runtime.Runtime;
-import com.limechain.runtime.builder.RuntimeBuilder;
+import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.SyncState;
@@ -43,6 +44,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.logging.Level;
@@ -71,28 +73,39 @@ public class WarpSyncState {
     private byte[] runtimeCode;
 
     protected final RuntimeBuilder runtimeBuilder;
+    private final ProtocolRequester requester;
+    //TODO Yordan: maybe we won't need this anymore.
     private final Set<BigInteger> scheduledRuntimeUpdateBlocks;
     private final PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges;
 
 
-    public WarpSyncState(SyncState syncState, Network network, KVRepository<String, Object> db, RuntimeBuilder runtimeBuilder) {
+    public WarpSyncState(SyncState syncState,
+                         Network network,
+                         KVRepository<String, Object> db,
+                         RuntimeBuilder runtimeBuilder,
+                         ProtocolRequester requester) {
         this(syncState,
                 network,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
-                new PriorityQueue<>(Comparator.comparing(Pair::getValue0)));
+                new PriorityQueue<>(Comparator.comparing(Pair::getValue0)),
+                requester);
     }
 
-    public WarpSyncState(SyncState syncState, Network network, KVRepository<String, Object> db,
+    public WarpSyncState(SyncState syncState,
+                         Network network,
+                         KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
-                         PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges) {
+                         PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges,
+                         ProtocolRequester requester) {
         this.syncState = syncState;
         this.network = network;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
         this.scheduledAuthorityChanges = scheduledAuthorityChanges;
+        this.requester = requester;
     }
 
     /**
@@ -125,11 +138,11 @@ public class WarpSyncState {
             return;
         }
 
-        log.log(Level.INFO, "Received commit message from peer " + peerId
-                            + " for block #" + commitMessage.getVote().getBlockNumber()
-                            + " with hash " + commitMessage.getVote().getBlockHash()
-                            + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
-                            + " with " + commitMessage.getPrecommits().length + " voters");
+        log.log(Level.FINE, "Received commit message from peer " + peerId
+                + " for block #" + commitMessage.getVote().getBlockNumber()
+                + " with hash " + commitMessage.getVote().getBlockHash()
+                + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
+                + " with " + commitMessage.getPrecommits().length + " voters");
 
         boolean verified = JustificationVerifier.verify(commitMessage.getPrecommits(), commitMessage.getRoundNumber());
         if (!verified) {
@@ -149,7 +162,6 @@ public class WarpSyncState {
         }
         syncState.finalizedCommitMessage(commitMessage);
 
-        log.log(Level.INFO, "Reached block #" + lastFinalizedBlockNumber);
         if (warpSyncFinished && scheduledRuntimeUpdateBlocks.contains(lastFinalizedBlockNumber)) {
             new Thread(this::updateRuntime).start();
         }
@@ -197,10 +209,10 @@ public class WarpSyncState {
         Hash256 lastFinalizedBlockHash = syncState.getLastFinalizedBlockHash();
         Hash256 stateRoot = syncState.getStateRoot();
 
-        LightClientMessage.Response response = network.makeRemoteReadRequest(
+        LightClientMessage.Response response = requester.makeRemoteReadRequest(
                 lastFinalizedBlockHash.toString(),
                 new String[]{CODE_KEY}
-        );
+        ).join();
 
         byte[] proof = response.getRemoteReadResponse().getProof().toByteArray();
         byte[][] decodedProofs = decodeProof(proof);
@@ -259,13 +271,14 @@ public class WarpSyncState {
     public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
         network.sendNeighbourMessage(peerId);
         if (warpSyncFinished && neighbourMessage.getSetId().compareTo(syncState.getSetId()) > 0) {
-            updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE), peerId);
+            updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
     }
 
-    private void updateSetData(BigInteger setChangeBlock, PeerId peerId) {
-        BlockResponse response = network.syncBlock(peerId, setChangeBlock);
-        BlockData block = response.getBlocksList().get(0);
+    private void updateSetData(BigInteger setChangeBlock) {
+        List<BlockData> response = requester.requestBlockData(
+                BlockRequestField.ALL, setChangeBlock.intValue(), 1).join();
+        BlockData block = response.getFirst();
 
         if (block.getIsEmptyJustification()) {
             log.log(Level.WARNING, "No justification for block " + setChangeBlock);
@@ -275,7 +288,7 @@ public class WarpSyncState {
         Justification justification = new JustificationReader().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
         boolean verified = justification != null
-                           && JustificationVerifier.verify(justification.getPrecommits(), justification.getRound());
+                && JustificationVerifier.verify(justification.getPrecommits(), justification.getRound());
 
         if (verified) {
             BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));
@@ -305,7 +318,7 @@ public class WarpSyncState {
         }
         if (warpSyncFinished && updated) {
             log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
-            new Thread(network::sendNeighbourMessages).start();
+            new Thread(network::sendMessagesToPeers).start();
         }
     }
 

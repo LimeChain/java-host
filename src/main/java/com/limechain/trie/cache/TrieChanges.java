@@ -1,6 +1,7 @@
 package com.limechain.trie.cache;
 
 import com.limechain.trie.cache.node.PendingInsertUpdate;
+import com.limechain.trie.cache.node.PendingRemove;
 import com.limechain.trie.cache.node.PendingTrieNodeChange;
 import com.limechain.trie.structure.nibble.Nibble;
 import com.limechain.trie.structure.nibble.Nibbles;
@@ -20,17 +21,35 @@ import java.util.stream.Stream;
  * edits the storage via host api calls, block execution, etc. The aim of this is to lower the number of expensive
  * operations towards an on disk merkle trie.
  */
+@Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class TrieChanges {
 
     /**
      * Holds data for node changes identified by their path.
      */
-    @Getter
     private final TreeMap<Nibbles, PendingTrieNodeChange> changes;
 
     public static TrieChanges empty() {
         return new TrieChanges(new TreeMap<>());
+    }
+
+    /**
+     * Creates a deep copy of a {@link TrieChanges}.
+     *
+     * @param original the {@link TrieChanges} to copy
+     * @return a deep copy of the original
+     */
+    public static TrieChanges copy(TrieChanges original) {
+        TreeMap<Nibbles, PendingTrieNodeChange> copyChanges = new TreeMap<>();
+        original.changes.forEach((key, value) -> {
+            PendingTrieNodeChange trieNodeChange = value instanceof PendingInsertUpdate u
+                ? new PendingInsertUpdate(u)
+                : new PendingRemove();
+            copyChanges.put(key.copy(), trieNodeChange);
+        });
+
+        return new TrieChanges(copyChanges);
     }
 
     public void clear() {

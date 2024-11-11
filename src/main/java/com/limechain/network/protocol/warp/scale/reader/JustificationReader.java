@@ -1,8 +1,8 @@
 package com.limechain.network.protocol.warp.scale.reader;
 
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.network.protocol.warp.dto.Precommit;
 import com.limechain.network.protocol.warp.dto.Justification;
+import com.limechain.network.protocol.warp.dto.Precommit;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;

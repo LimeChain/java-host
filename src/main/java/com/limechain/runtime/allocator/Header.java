@@ -1,10 +1,10 @@
 package com.limechain.runtime.allocator;
 
+import com.limechain.runtime.memory.Memory;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
-import com.limechain.runtime.memory.Memory;
 
 /**
  * Allocation header preceding a memory block.

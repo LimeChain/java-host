@@ -1,8 +1,8 @@
 package com.limechain.runtime.version.scale;
 
+import com.limechain.runtime.version.ApiVersions;
 import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.runtime.version.StateVersion;
-import com.limechain.runtime.version.ApiVersions;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 

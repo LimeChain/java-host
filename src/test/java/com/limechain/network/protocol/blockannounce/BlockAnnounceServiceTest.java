@@ -43,6 +43,7 @@ class BlockAnnounceServiceTest {
 
     @BeforeEach
     public void setupEach() throws NoSuchFieldException, IllegalAccessException {
+        when(host.getAddressBook()).thenReturn(addressBook);
         setPrivateFieldOfSuperclass(blockAnnounceService, "protocol", protocol);
     }
 
@@ -50,7 +51,7 @@ class BlockAnnounceServiceTest {
     void sendHandshake() {
         when(protocol.dialPeer(host, peerId, addressBook)).thenReturn(blockAnnounceController);
 
-        blockAnnounceService.sendHandshake(host, addressBook, peerId);
+        blockAnnounceService.sendHandshake(host, peerId);
 
         verify(blockAnnounceController).sendHandshake();
     }
@@ -103,7 +104,7 @@ class BlockAnnounceServiceTest {
             if (addr.length == 0)
                 throw new IllegalStateException("No addresses known for peer " + peerId);
 
-            blockAnnounceService.sendHandshake(senderNode, senderNode.getAddressBook(), peerId);
+            blockAnnounceService.sendHandshake(senderNode, peerId);
 
             Thread.sleep(60000);
         } catch (

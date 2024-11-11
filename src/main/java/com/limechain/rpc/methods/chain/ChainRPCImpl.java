@@ -1,12 +1,12 @@
 package com.limechain.rpc.methods.chain;
 
+import com.limechain.exception.storage.BlockNotFoundException;
+import com.limechain.exception.storage.BlockStorageGenericException;
+import com.limechain.exception.storage.HeaderNotFoundException;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.storage.block.BlockState;
-import com.limechain.exception.storage.BlockNotFoundException;
-import com.limechain.exception.storage.BlockStorageGenericException;
-import com.limechain.exception.storage.HeaderNotFoundException;
 import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.AllArgsConstructor;

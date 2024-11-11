@@ -1,17 +1,17 @@
-package com.limechain.runtime.builder;
+package com.limechain.runtime;
 
 import com.limechain.config.HostConfig;
 import com.limechain.network.Network;
 import com.limechain.network.protocol.blockannounce.NodeRole;
-import com.limechain.runtime.Runtime;
-import com.limechain.runtime.RuntimeFactory;
 import com.limechain.runtime.hostapi.dto.OffchainNetworkState;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.offchain.OffchainStorages;
 import com.limechain.storage.offchain.OffchainStore;
 import com.limechain.storage.offchain.StorageKind;
+import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieAccessor;
+import com.limechain.trie.structure.nibble.Nibbles;
 import io.libp2p.core.Host;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.Nullable;
@@ -44,9 +44,22 @@ public class RuntimeBuilder {
     }
 
     /**
+     * Creates a copy from a give runtime instance.
+     *
+     * @param original the instance that we need to copy.
+     * @return a copy runtime of the original.
+     */
+    public Runtime copyRuntime(Runtime original) {
+        TrieAccessor trieAccessor = ((RuntimeImpl) original).context.getTrieAccessor();
+        return trieAccessor.findStorageValue(Nibbles.fromBytes(":code".getBytes()))
+            .map(wasm -> buildRuntime(wasm, new DiskTrieAccessor(trieAccessor)))
+            .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
+    }
+
+    /**
      * Builds a ready-to-execute `Runtime` with dependencies from the global Spring context.
      *
-     * @param code              the runtime wasm bytecode
+     * @param code         the runtime wasm bytecode
      * @param trieAccessor provides access to the trie storage for a given block
      * @return a ready to execute `Runtime` instance
      */

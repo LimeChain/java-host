@@ -50,9 +50,9 @@ dependencies {
     implementation("com.github.luben:zstd-jni:1.5.6-7")
 
     // Prometheus
-    implementation("io.prometheus:prometheus-metrics-core:1.3.2")
-    implementation("io.prometheus:prometheus-metrics-instrumentation-jvm:1.3.2")
-    implementation("io.prometheus:prometheus-metrics-exporter-httpserver:1.3.2")
+    implementation("io.prometheus:prometheus-metrics-core:1.3.3")
+    implementation("io.prometheus:prometheus-metrics-instrumentation-jvm:1.3.3")
+    implementation("io.prometheus:prometheus-metrics-exporter-httpserver:1.3.3")
 
     // NOTE:
     //  We implicitly rely on Nabu's transitive dependency on Netty's public interfaces.

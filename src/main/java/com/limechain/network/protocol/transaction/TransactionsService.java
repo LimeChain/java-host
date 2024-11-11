@@ -1,4 +1,4 @@
-package com.limechain.network.protocol.transactions;
+package com.limechain.network.protocol.transaction;
 
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.NetworkService;
@@ -10,11 +10,11 @@ import lombok.extern.java.Log;
 import java.util.Optional;
 
 @Log
-public class TransactionsService extends NetworkService<Transactions> {
+public class TransactionsService extends NetworkService<TransactionMessages> {
     ConnectionManager connectionManager = ConnectionManager.getInstance();
 
     public TransactionsService(String protocolId) {
-        this.protocol = new Transactions(protocolId, new TransactionsProtocol());
+        this.protocol = new TransactionMessages(protocolId, new TransactionsProtocol());
     }
 
     /**
@@ -25,6 +25,8 @@ public class TransactionsService extends NetworkService<Transactions> {
      * @param peerId message receiver
      */
     public void sendTransactionsMessage(Host us, PeerId peerId) {
+        //TODO Network improvements: Keep track of peers that we've notified about each transaction
+        //TODO Yordan: we should take care of handshakes separately.
         Optional.ofNullable(connectionManager.getPeerInfo(peerId))
                 .map(p -> p.getTransactionsStreams().getInitiator())
                 .ifPresentOrElse(
@@ -37,9 +39,9 @@ public class TransactionsService extends NetworkService<Transactions> {
         //TODO Send transaction messages
     }
 
-    private void sendHandshake(Host us, PeerId peerId) {
+    public void sendHandshake(Host us, PeerId peerId) {
         try {
-            TransactionsController controller = this.protocol.dialPeer(us, peerId, us.getAddressBook());
+            TransactionController controller = this.protocol.dialPeer(us, peerId, us.getAddressBook());
             controller.sendHandshake();
         } catch (IllegalStateException e) {
             log.warning("Failed sending transaction handshake to peer " + peerId);

@@ -50,7 +50,7 @@ public class TrieStructureFactory {
     private static StateVersion getRuntimeStateVersion(Map<ByteString, ByteString> entries) {
         ByteString runtimeCode = entries.get(ByteString.fromHex(StringUtils.toHex(":code")));
         Runtime runtime = RuntimeFactory.buildRuntime(runtimeCode.toByteArray(), RuntimeFactory.Config.EMPTY);
-        return runtime.getVersion().getStateVersion();
+        return runtime.getCachedVersion().getStateVersion();
     }
 
     /**

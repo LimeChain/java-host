@@ -38,24 +38,24 @@ public class MiscellaneousHostFunctions implements PartialHostApi {
     @Override
     public Map<Endpoint, ImportObject.FuncImport> getFunctionImports() {
         return Map.ofEntries(
-            newImportObjectPair(Endpoint.ext_misc_print_num_version_1, argv -> {
-                printNumV1(argv.get(0));
-            }),
-            newImportObjectPair(Endpoint.ext_misc_print_utf8_version_1, argv -> {
-                printUtf8V1(new RuntimePointerSize(argv.get(0)));
-            }),
-            newImportObjectPair(Endpoint.ext_misc_print_hex_version_1, argv -> {
-                printHexV1(new RuntimePointerSize(argv.get(0)));
-            }),
-            newImportObjectPair(Endpoint.ext_misc_runtime_version_version_1, argv -> {
-                return runtimeVersionV1(new RuntimePointerSize(argv.get(0))).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_logging_log_version_1, argv -> {
-                logV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)), new RuntimePointerSize(argv.get(2)));
-            }),
-            newImportObjectPair(Endpoint.ext_logging_max_level_version_1, argv -> {
-                return maxLevelV1();
-            })
+                newImportObjectPair(Endpoint.ext_misc_print_num_version_1, argv -> {
+                    printNumV1(argv.get(0));
+                }),
+                newImportObjectPair(Endpoint.ext_misc_print_utf8_version_1, argv -> {
+                    printUtf8V1(new RuntimePointerSize(argv.get(0)));
+                }),
+                newImportObjectPair(Endpoint.ext_misc_print_hex_version_1, argv -> {
+                    printHexV1(new RuntimePointerSize(argv.get(0)));
+                }),
+                newImportObjectPair(Endpoint.ext_misc_runtime_version_version_1, argv -> {
+                    return runtimeVersionV1(new RuntimePointerSize(argv.get(0))).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_logging_log_version_1, argv -> {
+                    logV1(argv.get(0).intValue(), new RuntimePointerSize(argv.get(1)), new RuntimePointerSize(argv.get(2)));
+                }),
+                newImportObjectPair(Endpoint.ext_logging_max_level_version_1, argv -> {
+                    return maxLevelV1();
+                })
         );
     }
 
@@ -111,7 +111,8 @@ public class MiscellaneousHostFunctions implements PartialHostApi {
 
         try {
             Runtime runtime = RuntimeFactory.buildRuntime(wasmBlob, RuntimeFactory.Config.EMPTY);
-            byte[] runtimeVersionData = ScaleUtils.Encode.encode(new RuntimeVersionWriter(), runtime.getVersion());
+            byte[] runtimeVersionData = ScaleUtils.Encode.encode(
+                    new RuntimeVersionWriter(), runtime.getCachedVersion());
 
             versionOption = scaleEncodedOption(runtimeVersionData);
         } catch (UnsatisfiedLinkError e) {

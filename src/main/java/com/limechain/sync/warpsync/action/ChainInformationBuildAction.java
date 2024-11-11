@@ -1,10 +1,10 @@
 package com.limechain.sync.warpsync.action;
 
 import com.limechain.rpc.server.AppBean;
-import com.limechain.runtime.version.ApiVersion;
+import com.limechain.runtime.version.ApiVersionName;
+import com.limechain.runtime.version.ApiVersions;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
-import com.limechain.utils.HashUtils;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
@@ -31,23 +31,19 @@ public class ChainInformationBuildAction implements WarpSyncAction {
 
     @Override
     public void handle(WarpSyncMachine sync) {
-        byte[][] hashedApiVersions = new byte[][]{
-                HashUtils.hashWithBlake2bToLength("AuraApi".getBytes(), ApiVersion.NAME_HASH_LENGTH),
-                HashUtils.hashWithBlake2bToLength("BabeApi".getBytes(), ApiVersion.NAME_HASH_LENGTH),
-                HashUtils.hashWithBlake2bToLength("GrandpaApi".getBytes(), ApiVersion.NAME_HASH_LENGTH)
-        };
+        ApiVersions versions = warpSyncState.getRuntime().getCachedVersion().getApis();
         sync.getChainInformation().setRuntimeAuraVersion(
-                warpSyncState.getRuntime().getVersion().getApis().getApiVersion(hashedApiVersions[0]));
+                versions.getApiVersion(ApiVersionName.AURA_API.getHashedName()));
         sync.getChainInformation().setRuntimeBabeVersion(
-                warpSyncState.getRuntime().getVersion().getApis().getApiVersion(hashedApiVersions[1]));
+                versions.getApiVersion(ApiVersionName.BABE_API.getHashedName()));
         sync.getChainInformation().setRuntimeGrandpaVersion(
-                warpSyncState.getRuntime().getVersion().getApis().getApiVersion(hashedApiVersions[2]));
+                versions.getApiVersion(ApiVersionName.GRANDPA_API.getHashedName()));
         log.log(Level.INFO, "Aura Api version: " + sync.getChainInformation().getRuntimeAuraVersion()
-                            + " Babe api version: " + sync.getChainInformation().getRuntimeBabeVersion() +
-                            " Grandpa Api Version: " + sync.getChainInformation().getRuntimeGrandpaVersion());
+                + " Babe api version: " + sync.getChainInformation().getRuntimeBabeVersion() +
+                " Grandpa Api Version: " + sync.getChainInformation().getRuntimeGrandpaVersion());
         log.log(Level.INFO, "Runtime supports aura: " + sync.getChainInformation().runtimeHasAura());
         log.log(Level.INFO, "Runtime babe api is v1: " + sync.getChainInformation().runtimeBabeApiIsV1());
         log.log(Level.INFO, "Runtime grandpa supports current setId: "
-                            + sync.getChainInformation().runtimeGrandpaSupportsCurrentSetId());
+                + sync.getChainInformation().runtimeGrandpaSupportsCurrentSetId());
     }
 }

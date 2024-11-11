@@ -11,9 +11,8 @@ import io.netty.handler.codec.bytes.ByteArrayEncoder;
 import lombok.extern.java.Log;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.logging.Level;
-
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 
 @Log
 public class BlockAnnounceProtocol extends ProtocolHandler<BlockAnnounceController> {

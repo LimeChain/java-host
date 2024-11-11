@@ -4,11 +4,11 @@ import com.limechain.exception.trie.InvalidSlabIndexException;
 import org.javatuples.Pair;
 import org.junit.jupiter.api.Test;
 
-import java.util.Set;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

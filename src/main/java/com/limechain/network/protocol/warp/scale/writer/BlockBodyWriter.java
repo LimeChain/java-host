@@ -1,7 +1,7 @@
 package com.limechain.network.protocol.warp.scale.writer;
 
 import com.limechain.network.protocol.warp.dto.BlockBody;
-import com.limechain.network.protocol.warp.dto.Extrinsics;
+import com.limechain.transaction.dto.Extrinsic;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
 import lombok.AccessLevel;
@@ -21,11 +21,11 @@ public class BlockBodyWriter implements ScaleWriter<BlockBody> {
 
     @Override
     public void write(ScaleCodecWriter writer, BlockBody blockBody) throws IOException {
-        List<Extrinsics> extrinsics = blockBody.getExtrinsics();
+        List<Extrinsic> extrinsics = blockBody.getExtrinsics();
 
         writer.writeCompact(extrinsics.size());
-        for (Extrinsics extrinsic : extrinsics) {
-            writer.writeAsList(extrinsic.getExtrinsic());
+        for (Extrinsic extrinsic : extrinsics) {
+            writer.writeAsList(extrinsic.getData());
         }
     }
 }

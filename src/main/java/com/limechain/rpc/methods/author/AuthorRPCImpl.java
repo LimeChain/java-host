@@ -1,13 +1,13 @@
 package com.limechain.rpc.methods.author;
+
+import com.limechain.exception.global.ExecutionFailedException;
+import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
-import com.limechain.rpc.methods.author.dto.DecodedKeysReader;
-import com.limechain.runtime.RuntimeEndpoint;
+import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.utils.StringUtils;
-import com.limechain.utils.scale.ScaleUtils;
-import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
 import io.libp2p.crypto.keys.Ed25519PrivateKey;
@@ -30,12 +30,16 @@ public class AuthorRPCImpl {
     }
 
     public String authorRotateKeys() {
-        // The runtime injects the generated keys into the keystore.
-        byte[] response = blockState.callRuntime(
-                RuntimeEndpoint.SESSION_KEYS_GENERATE_SESSION_KEYS,
-                ScaleUtils.Encode.encodeOptional(ScaleCodecWriter::writeByteArray, null)
-        );
+        Runtime runtime;
 
+        try {
+            runtime = blockState.getBestBlockRuntime();
+        } catch (BlockStorageGenericException e) {
+            throw new ExecutionFailedException("Failed to executed rotate_keys call: " + e.getMessage());
+        }
+
+        // The runtime injects the generated keys into the keystore.
+        byte[] response = runtime.generateSessionKeys(null);
         return StringUtils.toHexWithPrefix(response);
     }
 
@@ -58,12 +62,15 @@ public class AuthorRPCImpl {
     }
 
     public Boolean authorHasSessionKeys(String sessionKeys) {
-        byte[] response = blockState.callRuntime(
-                RuntimeEndpoint.SESSION_KEYS_DECODE_SESSION_KEYS,
-                ScaleUtils.Encode.encode(ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys))
-        );
+        Runtime runtime;
 
-        List<DecodedKey> decodedKeys = ScaleUtils.Decode.decode(response, new DecodedKeysReader());
+        try {
+            runtime = blockState.getBestBlockRuntime();
+        } catch (BlockStorageGenericException e) {
+            throw new ExecutionFailedException("Failed to executed has_session_keys call: " + e.getMessage());
+        }
+
+        List<DecodedKey> decodedKeys = runtime.decodeSessionKeys(sessionKeys);
 
         for (DecodedKey decodedKey : decodedKeys) {
             var key = StringUtils.toHexWithPrefix(decodedKey.getData());

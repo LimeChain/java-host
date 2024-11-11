@@ -1,7 +1,6 @@
 package com.limechain.network.protocol.blockannounce;
 
 import com.limechain.network.protocol.NetworkService;
-import io.libp2p.core.AddressBook;
 import io.libp2p.core.Host;
 import io.libp2p.core.PeerId;
 import lombok.extern.java.Log;
@@ -12,13 +11,12 @@ public class BlockAnnounceService extends NetworkService<BlockAnnounce> {
         this.protocol = new BlockAnnounce(protocolId, new BlockAnnounceProtocol());
     }
 
-    public void sendHandshake(Host us, AddressBook addrs, PeerId peer) {
-        try{
-            BlockAnnounceController controller = this.protocol.dialPeer(us, peer, addrs);
+    public void sendHandshake(Host us, PeerId peer) {
+        try {
+            BlockAnnounceController controller = this.protocol.dialPeer(us, peer, us.getAddressBook());
             controller.sendHandshake();
-        } catch (IllegalStateException e){
+        } catch (IllegalStateException e) {
             log.warning("Error sending handshake request to peer " + peer);
         }
-
     }
 }

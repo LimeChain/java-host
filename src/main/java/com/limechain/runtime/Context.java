@@ -1,9 +1,9 @@
 package com.limechain.runtime;
 
 import com.limechain.runtime.hostapi.dto.OffchainNetworkState;
-import com.limechain.storage.offchain.OffchainStorages;
 import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.storage.crypto.KeyStore;
+import com.limechain.storage.offchain.OffchainStorages;
 import com.limechain.trie.TrieAccessor;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
