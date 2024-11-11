@@ -23,7 +23,7 @@ public class BabeService implements SlotChangeListener {
         this.keyStore = keyStore;
     }
 
-    public void executeEpochLottery() {
+    private void executeEpochLottery() {
         var epochStartSlotNumber = epochState.getCurrentEpochStartSlotNumer();
         var epochEndSlotNumber = epochStartSlotNumber.add(epochState.getEpochLength());
 
