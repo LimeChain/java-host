@@ -5,15 +5,12 @@ import com.limechain.babe.coordinator.SlotChangeListener;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.state.EpochState;
 import com.limechain.storage.crypto.KeyStore;
-import lombok.extern.java.Log;
 import org.apache.commons.collections4.map.HashedMap;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.Map;
-import java.util.logging.Level;
 
-@Log
 @Component
 public class BabeService implements SlotChangeListener {
 
@@ -44,7 +41,5 @@ public class BabeService implements SlotChangeListener {
         // 1 Add implementation for building a block on every slot change and for executing epoch lottery on the last
         // slot of the current epoch (when event.isLastSlotFromCurrentEpoch() == true)
         // 2. If epochIndex is not needed in the future implementation, you can remove epochIndex from the event class
-        log.log(Level.INFO, String.format("Slot number: [%d], epoch index: [%d], is last slot: [%s]",
-                event.getSlotNumber(), event.getEpochIndex(), event.isLastSlotFromCurrentEpoch()));
     }
 }

@@ -1,6 +1,7 @@
 package com.limechain.babe.coordinator;
 
 import com.limechain.babe.state.EpochState;
+import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
@@ -9,7 +10,9 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
+@Log
 @Component
 public class SlotCoordinator {
 
@@ -59,6 +62,9 @@ public class SlotCoordinator {
     }
 
     private void triggerEvent(BigInteger currentSlotNumber, BigInteger currentEpochIndex, boolean isLastSlot) {
+        log.log(Level.INFO, String.format("Slot Number: %d | Epoch Index: %d | Is Last Slot: %s",
+                currentSlotNumber, currentEpochIndex, isLastSlot));
+
         var event = new SlotChangeEvent(
                 this,
                 currentSlotNumber,
