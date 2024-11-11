@@ -3,9 +3,11 @@ package com.limechain.sync.fullsync;
 import com.google.protobuf.ByteString;
 import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.state.EpochState;
+import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.Network;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.network.protocol.warp.dto.Block;
@@ -16,6 +18,7 @@ import com.limechain.network.request.ProtocolRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.babe.state.EpochState;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.BlockState;
@@ -50,6 +53,8 @@ import java.util.Map;
 @Getter
 @Log
 public class FullSyncMachine {
+
+    private final HostConfig hostConfig;
     private final Network networkService;
     private final SyncState syncState;
     private final ProtocolRequester requester;
@@ -63,11 +68,13 @@ public class FullSyncMachine {
     public FullSyncMachine(Network networkService,
                            SyncState syncState,
                            ProtocolRequester requester,
-                           BlockHandler blockHandler) {
+                           BlockHandler blockHandler,
+                           HostConfig hostConfig) {
         this.networkService = networkService;
         this.syncState = syncState;
         this.requester = requester;
         this.blockHandler = blockHandler;
+        this.hostConfig = hostConfig;
     }
 
     public void start() {
@@ -88,8 +95,6 @@ public class FullSyncMachine {
 
         runtime = buildRuntimeFromState(trieAccessor);
         StateVersion runtimeStateVersion = runtime.getCachedVersion().getStateVersion();
-        BabeApiConfiguration babeApiConfiguration = runtime.getBabeApiConfiguration();
-        epochState.initialize(babeApiConfiguration);
         trieAccessor.setCurrentStateVersion(runtimeStateVersion);
 
         byte[] calculatedMerkleRoot = trieAccessor.getMerkleRoot(runtimeStateVersion);
@@ -115,6 +120,10 @@ public class FullSyncMachine {
             receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
         }
 
+        if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
+            initializeEpochState();
+        }
+
         finishFullSync();
     }
 
@@ -124,6 +133,11 @@ public class FullSyncMachine {
         AsyncExecutor.withSingleThread().executeAndForget(() -> blockHandler.processPendingBlocksFromQueue());
 
         networkService.handshakePeers();
+    }
+
+    private void initializeEpochState() {
+        epochState.initialize(runtime.callBabeApiConfiguration());
+        epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {

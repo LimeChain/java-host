@@ -99,11 +99,11 @@ public class CommonConfig {
     }
 
     @Bean
-    public FullSyncMachine fullSyncMachine(Network network,
+    public FullSyncMachine fullSyncMachine(HostConfig hostConfig, Network network,
                                            SyncState syncState,
                                            ProtocolRequester requester,
                                            BlockHandler blockHandler) {
-        return new FullSyncMachine(network, syncState, requester, blockHandler);
+        return new FullSyncMachine(hostConfig, network, syncState, requester, blockHandler);
     }
 
     @Bean

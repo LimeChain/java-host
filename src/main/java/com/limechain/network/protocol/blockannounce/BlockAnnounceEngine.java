@@ -93,8 +93,6 @@ public class BlockAnnounceEngine {
             //TODO Network improvements: Block requests should be sent to the peer that announced the block itself.
             BlockState.getInstance().addBlockToQueue(announce.getHeader());
         }
-        //TODO: This will be fixed in https://github.com/LimeChain/Fruzhin/issues/593
-//        digestHelper.handleHeaderDigests(announce.getHeader().getDigest());
     }
 
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
