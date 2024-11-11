@@ -65,7 +65,6 @@ public class FullSyncMachine {
     private final RuntimeBuilder runtimeBuilder = AppBean.getBean(RuntimeBuilder.class);
     private final EpochState epochState = AppBean.getBean(EpochState.class);
     private final SlotCoordinator slotCoordinator = AppBean.getBean(SlotCoordinator.class);
-    private final BabeService babeService = AppBean.getBean(BabeService.class);
     private Runtime runtime = null;
 
     public FullSyncMachine(Network networkService,
@@ -140,7 +139,11 @@ public class FullSyncMachine {
     private void initializeStates() {
         epochState.initialize(runtime.getBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
-        slotCoordinator.start(List.of(babeService));
+
+
+        slotCoordinator.start(List.of(
+                AppBean.getBean(BabeService.class)
+        ));
 
         transactionState.initialize();
     }

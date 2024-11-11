@@ -49,7 +49,7 @@ public class SlotCoordinator {
         if (hasSlotChanged(currentSlotNumber)) {
             var isLastSlot = isLastSlotFromCurrentEpoch(currentSlotNumber);
             triggerEvent(currentSlotNumber, currentEpochIndex, isLastSlot);
-            updateLocalSlotState(currentSlotNumber);
+            updateSlotCoordinatorFields(currentSlotNumber);
         }
     }
 
@@ -75,7 +75,8 @@ public class SlotCoordinator {
         notifySlotChangeListeners(event);
     }
 
-    private void updateLocalSlotState(BigInteger currentSlotNumber) {
+    // Always updates lastSlotNumber and conditionally updates lastSlotOfCurrentEpoch
+    private void updateSlotCoordinatorFields(BigInteger currentSlotNumber) {
         lastSlotNumber = currentSlotNumber;
 
         // Add epoch length to current epoch last slot number to get the next epoch last slot
