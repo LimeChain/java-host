@@ -1,5 +1,6 @@
 package com.limechain;
 
+import com.limechain.client.AuthoringNode;
 import com.limechain.client.FullNode;
 import com.limechain.client.HostNode;
 import com.limechain.client.LightClient;
@@ -39,6 +40,7 @@ public class Main {
         switch (nodeRole) {
             case FULL -> client = new FullNode();
             case LIGHT -> client = new LightClient();
+            case AUTHORING -> client = new AuthoringNode();
             case NONE -> {
                 // This shouldn't happen.
                 // TODO: don't use this enum for the CLI NodeRole option
