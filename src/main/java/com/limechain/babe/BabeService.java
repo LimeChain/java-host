@@ -1,5 +1,7 @@
 package com.limechain.babe;
 
+import com.limechain.babe.coordinator.SlotChangeEvent;
+import com.limechain.babe.coordinator.SlotChangeListener;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.state.EpochState;
 import com.limechain.storage.crypto.KeyStore;
@@ -10,7 +12,7 @@ import java.math.BigInteger;
 import java.util.Map;
 
 @Component
-public class BabeService {
+public class BabeService implements SlotChangeListener {
 
     private final EpochState epochState;
     private final KeyStore keyStore;
@@ -19,16 +21,6 @@ public class BabeService {
     public BabeService(EpochState epochState, KeyStore keyStore) {
         this.epochState = epochState;
         this.keyStore = keyStore;
-    }
-
-    //TODO: Remove
-    public void onSlotChange() {
-        System.out.println("Slot is changed");
-    }
-
-    //TODO: Remove
-    public void onEpochChange() {
-        System.out.println("Epoch is changed");
     }
 
     public void executeEpochLottery() {
@@ -41,5 +33,15 @@ public class BabeService {
                 slotToPreRuntimeDigest.put(slot, babePreDigest);
             }
         }
+    }
+
+    @Override
+    public void slotChanged(SlotChangeEvent event) {
+        //TODO:
+        // 1 Add implementation for building a block on every slot change and for executing epoch lottery on the last
+        // slot of the current epoch (when event.isLastSlotFromCurrentEpoch() == true)
+        // 2. If epochIndex is not needed in the future implementation, you can remove it from the event
+        // 3. Remove sout statement
+        System.out.printf("slot: %d, epoch: %d, last slot: %s", event.getSlotNumber(), event.getEpochIndex(), event.isLastSlotFromCurrentEpoch());
     }
 }

@@ -78,4 +78,14 @@ public class EpochState {
     public BigInteger getCurrentEpochIndex() {
         return getCurrentSlotNumber().subtract(genesisSlotNumber).divide(epochLength);
     }
+
+    // Don't use this method for places where range between first and last slot of epoch
+    // is needed. It better to use getCurrentEpochStartSlotNumber and manually add epochLength
+    // in order to achieve currentEpochEndSlotNumber, but be careful, as the range should be
+    // inclusive on the lower bound and exclusive on the upper bound: [..). The described flow
+    // is preferable because calling the methods from the epoch state may result in calculations
+    // made in two different epochs.
+    public BigInteger getCurrentEpochEndSlotNumber() {
+        return getCurrentEpochStartSlotNumer().add(epochLength).subtract(BigInteger.ONE);
+    }
 }
