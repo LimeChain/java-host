@@ -14,6 +14,7 @@ import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.trie.BlockTrieAccessor;
+import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;
@@ -46,7 +47,7 @@ class BlockExecutorTest {
         trieStorage.insertTrieStorage(genesisTrie); // populate with the genesis trie
 
         final byte[] genesisStateRoot = genesisTrie.getRootNode().get().getUserData().getMerkleValue();
-        BlockTrieAccessor trieAccessor = new BlockTrieAccessor(trieStorage, genesisStateRoot); // instantiate a block trie accessor with the trieStorage specified for the genesis block
+        DiskTrieAccessor trieAccessor = new DiskTrieAccessor(trieStorage, genesisStateRoot); // instantiate a block trie accessor with the trieStorage specified for the genesis block
         trieAccessor.setCurrentStateVersion(StateVersion.V0);
 
         // Package all dependencies into the expected configuration for the runtime builder

@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract sealed class MemoryTrieAccessor extends TrieAccessor
-    permits BlockTrieAccessor, MemoryChildTrieAccessor {
+         permits BlockTrieAccessor, MemoryChildTrieAccessor {
 
     private final TrieStructure<NodeData> initialTrie;
     private List<TrieNodeIndex> updates;
@@ -59,8 +59,8 @@ public abstract sealed class MemoryTrieAccessor extends TrieAccessor
 
         for (Nibble nibble : Nibbles.ALL) {
             nodeHandle.getChild(nibble)
-                .map(NodeHandle::getNodeIndex)
-                .ifPresent(childIndex -> initialTrie.deleteNodesRecursively(childIndex, limit, deleted));
+                    .map(NodeHandle::getNodeIndex)
+                    .ifPresent(childIndex -> initialTrie.deleteNodesRecursively(childIndex, limit, deleted));
         }
 
         if (limit != null && deleted.get() >= limit) {
@@ -79,8 +79,8 @@ public abstract sealed class MemoryTrieAccessor extends TrieAccessor
     @Override
     public Optional<byte[]> findStorageValue(Nibbles key) {
         return initialTrie.existingNode(key)
-            .map(NodeHandle::getUserData)
-            .map(NodeData::getValue);
+                .map(NodeHandle::getUserData)
+                .map(NodeData::getValue);
     }
 
     @Override
@@ -128,19 +128,30 @@ public abstract sealed class MemoryTrieAccessor extends TrieAccessor
         return new MemoryChildTrieAccessor(trieStorage, this, trieKey, merkleRoot);
     }
 
+    @Override
+    public void prepareBackup() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void backup() {
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Retrieves the Merkle root hash of the trie with the specified state version.
      *
      * @param version The state version.
      * @return The Merkle root hash.
      */
+    @Override
     public byte[] getMerkleRoot(StateVersion version) {
         updates = TrieStructureFactory.recalculateMerkleValues(initialTrie, version, HashUtils::hashWithBlake2b);
 
         mainTrieRoot = initialTrie.getRootNode()
-            .map(NodeHandle::getUserData)
-            .map(NodeData::getMerkleValue)
-            .orElseThrow();
+                .map(NodeHandle::getUserData)
+                .map(NodeData::getMerkleValue)
+                .orElseThrow();
 
         return mainTrieRoot;
     }
