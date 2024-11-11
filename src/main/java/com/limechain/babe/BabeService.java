@@ -23,8 +23,8 @@ public class BabeService implements SlotChangeListener {
         this.keyStore = keyStore;
     }
 
-    private void executeEpochLottery() {
-        var epochStartSlotNumber = epochState.getCurrentEpochStartSlotNumer();
+    private void executeEpochLottery(BigInteger epochIndex) {
+        var epochStartSlotNumber = epochState.getEpochStartSlotNumer(epochIndex);
         var epochEndSlotNumber = epochStartSlotNumber.add(epochState.getEpochLength());
 
         for (BigInteger slot = epochStartSlotNumber; slot.compareTo(epochEndSlotNumber) < 0; slot = slot.add(BigInteger.ONE)) {
@@ -37,9 +37,10 @@ public class BabeService implements SlotChangeListener {
 
     @Override
     public void slotChanged(SlotChangeEvent event) {
-        //TODO:
-        // 1 Add implementation for building a block on every slot change and for executing epoch lottery on the last
-        // slot of the current epoch (when event.isLastSlotFromCurrentEpoch() == true)
-        // 2. If epochIndex is not needed in the future implementation, you can remove epochIndex from the event class
+        // TODO: Add implementation for building a block on every slot change
+        if (event.isLastSlotFromCurrentEpoch()) {
+            var nextEpochIndex = event.getEpochIndex().add(BigInteger.ONE);
+            executeEpochLottery(nextEpochIndex);
+        }
     }
 }
