@@ -94,8 +94,17 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public void executeBlock(Block block) {
+        TrieAccessor accessor = context.trieAccessor;
+        if (accessor != null) {
+            accessor.setShouldBackup(false);
+        }
+
         byte[] param = serializeExecuteBlockParameter(block);
         call(RuntimeEndpoint.CORE_EXECUTE_BLOCK, param);
+
+        if (accessor != null) {
+            accessor.setShouldBackup(true);
+        }
     }
 
     @Override
@@ -156,10 +165,20 @@ public class RuntimeImpl implements Runtime {
 
     @Nullable
     private byte[] callInner(RuntimeEndpoint function, RuntimePointerSize parameterPtrSize) {
+        TrieAccessor accessor = context.trieAccessor;
+
+        if (accessor != null) {
+            accessor.prepareBackup();
+        }
+
         String functionName = function.getName();
         log.log(Level.FINE, "Making a runtime call: " + functionName);
         Object[] response = instance.exports.getFunction(functionName)
                 .apply(parameterPtrSize.pointer(), parameterPtrSize.size());
+
+        if (accessor != null) {
+            accessor.backup();
+        }
 
         if (response == null) {
             return null;

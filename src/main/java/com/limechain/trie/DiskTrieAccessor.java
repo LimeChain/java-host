@@ -9,7 +9,9 @@ import java.util.Optional;
 
 public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieAccessor {
 
-    private final DiskTrieService diskTrieService;
+    private DiskTrieService diskTrieService;
+    // Serves as a temporary backup if a runtime call other than "Core_execute_block" alters state.
+    private DiskTrieService backupTrieService;
 
     public DiskTrieAccessor(TrieStorage trieStorage, byte[] mainTrieRoot) {
         super(trieStorage, mainTrieRoot);
@@ -70,6 +72,22 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
         return new DiskChildTrieAccessor(trieStorage, this, trieKey, merkleRoot);
     }
 
+    @Override
+    public void prepareBackup() {
+        if (shouldBackup) {
+            backupTrieService = new DiskTrieService(diskTrieService);
+        }
+    }
+
+    @Override
+    public void backup() {
+        if (shouldBackup) {
+            diskTrieService = new DiskTrieService(backupTrieService);
+            backupTrieService = null;
+        }
+    }
+
+    @Override
     public byte[] getMerkleRoot(StateVersion version) {
         if (version != null && !currentStateVersion.equals(version)) {
             throw new IllegalStateException("Trie state version must match runtime call one.");
