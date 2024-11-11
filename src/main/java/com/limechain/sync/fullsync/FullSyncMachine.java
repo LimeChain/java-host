@@ -1,7 +1,6 @@
 package com.limechain.sync.fullsync;
 
 import com.google.protobuf.ByteString;
-import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.state.EpochState;
 import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
@@ -18,7 +17,6 @@ import com.limechain.network.request.ProtocolRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
-import com.limechain.babe.state.EpochState;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.BlockState;
@@ -136,7 +134,7 @@ public class FullSyncMachine {
     }
 
     private void initializeEpochState() {
-        epochState.initialize(runtime.callBabeApiConfiguration());
+        epochState.initialize(runtime.getBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
     }
 

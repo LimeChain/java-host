@@ -14,7 +14,8 @@ import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
-import com.limechain.trie.TrieAccessor;
+import com.limechain.trie.structure.nibble.Nibbles;
+import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;
 import com.limechain.utils.scale.readers.TransactionValidationReader;
@@ -29,7 +30,9 @@ import org.jetbrains.annotations.Nullable;
 import org.wasmer.Instance;
 import org.wasmer.Module;
 
+import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 
 @Log
@@ -48,7 +51,7 @@ public class RuntimeImpl implements Runtime {
     @Override
     public List<DecodedKey> decodeSessionKeys(String sessionKeys) {
         byte[] encodedRequest = ScaleUtils.Encode.encode(
-            ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys));
+                ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys));
         byte[] encodedResponse = call(RuntimeEndpoint.SESSION_KEYS_DECODE_SESSION_KEYS, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new DecodedKeysReader());
@@ -96,6 +99,12 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
+    public BigInteger getGenesisSlotNumber() {
+        var optGenesisSlotBytes = this.findStorageValue(RuntimeStorageKey.GENESIS_SLOT.getNibbles());
+        return optGenesisSlotBytes.map(LittleEndianUtils::fromLittleEndianByteArray).orElse(null);
+    }
+
+    @Override
     public void persistsChanges() {
         context.getTrieAccessor().persistChanges();
     }
@@ -108,8 +117,8 @@ public class RuntimeImpl implements Runtime {
 
     private byte[] serializeExecuteBlockParameter(Block block) {
         byte[] encodedUnsealedHeader = ScaleUtils.Encode.encode(
-            BlockHeaderScaleWriter.getInstance()::writeUnsealed,
-            block.getHeader()
+                BlockHeaderScaleWriter.getInstance()::writeUnsealed,
+                block.getHeader()
         );
         byte[] encodedBody = ScaleUtils.Encode.encode(BlockBodyWriter.getInstance(), block.getBody());
 
@@ -150,7 +159,7 @@ public class RuntimeImpl implements Runtime {
         String functionName = function.getName();
         log.log(Level.FINE, "Making a runtime call: " + functionName);
         Object[] response = instance.exports.getFunction(functionName)
-            .apply(parameterPtrSize.pointer(), parameterPtrSize.size());
+                .apply(parameterPtrSize.pointer(), parameterPtrSize.size());
 
         if (response == null) {
             return null;
@@ -158,6 +167,10 @@ public class RuntimeImpl implements Runtime {
 
         RuntimePointerSize responsePtrSize = new RuntimePointerSize((long) response[0]);
         return context.getSharedMemory().readData(responsePtrSize);
+    }
+
+    private Optional<byte[]> findStorageValue(Nibbles key) {
+        return this.context.trieAccessor.findStorageValue(key);
     }
 }
 
