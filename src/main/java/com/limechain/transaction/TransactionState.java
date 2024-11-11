@@ -3,6 +3,7 @@ package com.limechain.transaction;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.ByteArrayUtils;
+import lombok.Getter;
 import lombok.extern.java.Log;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,9 @@ import java.util.stream.Collectors;
 @Component
 public class TransactionState {
 
+    @Getter
+    private boolean isInitialized = false;
+
     private final TransactionPool transactionPool;
     private final Queue<ValidTransaction> transactionQueue;
     private final ExecutorService executor;
@@ -30,6 +34,10 @@ public class TransactionState {
         transactionPool = new TransactionPool();
         executor = Executors.newSingleThreadExecutor();
         transactionQueue = new PriorityQueue<>();
+    }
+
+    public void initialize() {
+        isInitialized = true;
     }
 
     public void pushTransaction(ValidTransaction validTransaction) {

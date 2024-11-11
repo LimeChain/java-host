@@ -9,6 +9,7 @@ import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshake
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshakeScaleWriter;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleReader;
 import com.limechain.rpc.server.AppBean;
+import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.BlockState;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.utils.scale.ScaleUtils;
@@ -22,6 +23,7 @@ import lombok.extern.java.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.logging.Level;
 
 @Log
@@ -32,11 +34,13 @@ public class BlockAnnounceEngine {
 
     protected ConnectionManager connectionManager;
     protected WarpSyncState warpSyncState;
+    private BlockHandler blockHandler;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
 
     public BlockAnnounceEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
+        blockHandler = AppBean.getBean(BlockHandler.class);
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
     }
 
@@ -85,13 +89,13 @@ public class BlockAnnounceEngine {
         warpSyncState.syncBlockAnnounce(announce);
         log.log(Level.FINE, "Received block announce for block #" + announce.getHeader().getBlockNumber() +
                 " from " + peerId +
-                " with hash:0x" + announce.getHeader().getHash() +
+                " with hash:" + announce.getHeader().getHash() +
                 " parentHash:" + announce.getHeader().getParentHash() +
                 " stateRoot:" + announce.getHeader().getStateRoot());
 
         if (BlockState.getInstance().isInitialized()) {
             //TODO Network improvements: Block requests should be sent to the peer that announced the block itself.
-            BlockState.getInstance().addBlockToQueue(announce.getHeader());
+            blockHandler.handleBlock(Instant.now(), announce.getHeader());
         }
     }
 

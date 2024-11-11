@@ -30,6 +30,10 @@ public class TransactionValidator {
 
     public ValidTransaction validateExternalTransaction(Extrinsic extrinsic)
             throws TransactionValidationException {
+        if (!transactionState.isInitialized()) {
+            throw new TransactionValidationException("Transaction state is not initialized.");
+        }
+
         if (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic)) {
             throw new TransactionValidationException("Transaction already validated.");
         }

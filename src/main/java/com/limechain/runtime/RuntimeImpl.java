@@ -14,6 +14,7 @@ import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
+import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.StringUtils;
@@ -164,7 +165,7 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Nullable
-    private byte[] callInner(RuntimeEndpoint function, RuntimePointerSize parameterPtrSize) {
+    private synchronized byte[] callInner(RuntimeEndpoint function, RuntimePointerSize parameterPtrSize) {
         TrieAccessor accessor = context.trieAccessor;
 
         if (accessor != null) {

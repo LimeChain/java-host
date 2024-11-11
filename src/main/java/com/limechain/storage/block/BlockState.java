@@ -34,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Contains the historical block data of the blockchain, including block headers and bodies.
@@ -56,8 +54,6 @@ public class BlockState {
     private Hash256 lastFinalized;
     @Getter
     private boolean initialized;
-    @Getter
-    private final BlockingQueue<Pair<Instant, BlockHeader>> pendingBlocksQueue = new LinkedBlockingQueue<>();
 
     /**
      * Initializes the BlockState instance from genesis
@@ -940,16 +936,5 @@ public class BlockState {
             // but keep the state trie from the current finalized block
             //TODO: If currentFinalizedHash is not equal to subchain hash, delete subchain state trie
         }
-    }
-
-    public void addBlockToQueue(BlockHeader blockHeader) {
-        Optional<Pair<Instant, BlockHeader>> optional = pendingBlocksQueue.stream()
-                .filter(e -> e.getValue1().getHash().equals(blockHeader.getHash()))
-                .findFirst();
-        if (optional.isPresent()) {
-            return;
-        }
-
-        pendingBlocksQueue.add(new Pair<>(Instant.now(), blockHeader));
     }
 }

@@ -23,13 +23,13 @@ import com.limechain.storage.block.BlockState;
 import com.limechain.storage.block.SyncState;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.sync.fullsync.inherents.InherentData;
+import com.limechain.transaction.TransactionState;
 import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
 import com.limechain.trie.structure.TrieStructure;
 import com.limechain.trie.structure.database.NodeData;
 import com.limechain.trie.structure.nibble.Nibbles;
-import com.limechain.utils.async.AsyncExecutor;
 import com.limechain.utils.scale.ScaleUtils;
 import com.limechain.utils.scale.readers.PairReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;
@@ -55,6 +55,7 @@ public class FullSyncMachine {
     private final HostConfig hostConfig;
     private final Network networkService;
     private final SyncState syncState;
+    private final TransactionState transactionState;
     private final ProtocolRequester requester;
     private final BlockHandler blockHandler;
     private final BlockState blockState = BlockState.getInstance();
@@ -65,11 +66,13 @@ public class FullSyncMachine {
 
     public FullSyncMachine(Network networkService,
                            SyncState syncState,
+                           TransactionState transactionState,
                            ProtocolRequester requester,
                            BlockHandler blockHandler,
                            HostConfig hostConfig) {
         this.networkService = networkService;
         this.syncState = syncState;
+        this.transactionState = transactionState;
         this.requester = requester;
         this.blockHandler = blockHandler;
         this.hostConfig = hostConfig;
@@ -119,7 +122,7 @@ public class FullSyncMachine {
         }
 
         if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
-            initializeEpochState();
+            initializeStates();
         }
 
         finishFullSync();
@@ -127,15 +130,14 @@ public class FullSyncMachine {
 
     private void finishFullSync() {
         networkService.blockAnnounceHandshakeBootNodes();
-
-        AsyncExecutor.withSingleThread().executeAndForget(() -> blockHandler.processPendingBlocksFromQueue());
-
         networkService.handshakePeers();
     }
 
-    private void initializeEpochState() {
+    private void initializeStates() {
         epochState.initialize(runtime.getBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
+
+        transactionState.initialize();
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {

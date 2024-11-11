@@ -19,6 +19,7 @@ import com.limechain.storage.trie.TrieStorage;
 import com.limechain.sync.fullsync.FullSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
+import com.limechain.transaction.TransactionState;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -101,9 +102,10 @@ public class CommonConfig {
     @Bean
     public FullSyncMachine fullSyncMachine(HostConfig hostConfig, Network network,
                                            SyncState syncState,
+                                           TransactionState transactionState,
                                            ProtocolRequester requester,
                                            BlockHandler blockHandler) {
-        return new FullSyncMachine(hostConfig, network, syncState, requester, blockHandler);
+        return new FullSyncMachine(network, syncState, transactionState, requester, blockHandler, hostConfig);
     }
 
     @Bean

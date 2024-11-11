@@ -66,7 +66,7 @@ public class TransactionEngine {
                     String.format("Transactions message is null from Peer %s", peerId));
             return;
         }
-        log.log(Level.INFO, "Transaction message length:" + message.length);
+        log.log(Level.FINE, "Transaction message length:" + message.length);
 
         if (stream.isInitiator()) {
             handleInitiatorStreamMessage(message, stream);
@@ -119,7 +119,7 @@ public class TransactionEngine {
     private void handleTransactionMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         ExtrinsicArray transactions = reader.read(new TransactionReader());
-        log.log(Level.INFO, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
+        log.log(Level.FINE, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
                 + peerId);
 
         synchronized (LOCK) {
@@ -131,7 +131,7 @@ public class TransactionEngine {
                     validTransaction = transactionValidator.validateExternalTransaction(current);
                     validTransaction.getIgnore().add(peerId);
                 } catch (TransactionValidationException e) {
-                    log.warning("Error when validating transaction " + current.toString()
+                    log.fine("Error when validating transaction " + current.toString()
                             + " from protocol: " + e.getMessage());
                     continue;
                 }
