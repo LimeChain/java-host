@@ -24,7 +24,7 @@ public class BabeService implements SlotChangeListener {
     }
 
     private void executeEpochLottery(BigInteger epochIndex) {
-        var epochStartSlotNumber = epochState.getEpochStartSlotNumer(epochIndex);
+        var epochStartSlotNumber = epochState.getEpochStartSlotNumber(epochIndex);
         var epochEndSlotNumber = epochStartSlotNumber.add(epochState.getEpochLength());
 
         for (BigInteger slot = epochStartSlotNumber; slot.compareTo(epochEndSlotNumber) < 0; slot = slot.add(BigInteger.ONE)) {

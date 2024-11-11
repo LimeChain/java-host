@@ -79,7 +79,7 @@ public class EpochState {
         return getCurrentEpochIndex().multiply(epochLength).add(genesisSlotNumber);
     }
 
-    public BigInteger getEpochStartSlotNumer(BigInteger epochIndex) {
+    public BigInteger getEpochStartSlotNumber(BigInteger epochIndex) {
         return epochIndex.multiply(epochLength).add(genesisSlotNumber);
     }
 
