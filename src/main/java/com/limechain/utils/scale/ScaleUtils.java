@@ -28,6 +28,17 @@ import java.util.function.Function;
 @UtilityClass
 public class ScaleUtils {
 
+    /**
+     * A utility method that returns true if the scale decoded result is successful. See
+     * <a href="https://docs.substrate.io/reference/scale-codec/">Results</a> section.
+     *
+     * @param reader a reader with preloaded byte data.
+     * @return true if result byte is 0, false otherwise.
+     */
+    public boolean isScaleResultSuccessful(ScaleCodecReader reader) {
+        return reader.readUByte() == 0;
+    }
+
     @UtilityClass
     public class Decode {
 
@@ -51,9 +62,9 @@ public class ScaleUtils {
         /**
          * Decodes a byte array representing a list of items into a List using the provided ScaleReader for the list items.
          *
-         * @param encodedData   The byte array containing the encoded list.
+         * @param encodedData    The byte array containing the encoded list.
          * @param listItemReader The ScaleReader implementation for decoding individual list items.
-         * @param <T>           The type of objects in the list.
+         * @param <T>            The type of objects in the list.
          * @return The decoded List of items.
          * @throws ScaleDecodingException If an error occurs during decoding.
          */
@@ -68,25 +79,25 @@ public class ScaleUtils {
         /**
          * Encodes a list of pairs into SCALE format using the provided serializers for the key and value types.
          *
-         * @param pairs          The list of pairs to encode.
+         * @param pairs         The list of pairs to encode.
          * @param fstSerializer The serializer function for the first element of each pair.
          * @param sndSerializer The serializer function for the second element of each pair.
-         * @param <K>            The type of the first element in the pairs.
-         * @param <V>            The type of the second element in the pairs.
+         * @param <K>           The type of the first element in the pairs.
+         * @param <V>           The type of the second element in the pairs.
          * @return The encoded byte array representing the list of pairs.
          */
         public <K, V> byte[] encodeListOfPairs(
-            List<Pair<K, V>> pairs,
-            Function<K, byte[]> fstSerializer,
-            Function<V, byte[]> sndSerializer
+                List<Pair<K, V>> pairs,
+                Function<K, byte[]> fstSerializer,
+                Function<V, byte[]> sndSerializer
         ) {
             return encodeListOfPairs(
-                pairs.stream()
-                    .map(p ->
-                        new Pair<>(
-                            fstSerializer.apply(p.getValue0()),
-                            sndSerializer.apply(p.getValue1())))
-                    .toList());
+                    pairs.stream()
+                            .map(p ->
+                                    new Pair<>(
+                                            fstSerializer.apply(p.getValue0()),
+                                            sndSerializer.apply(p.getValue1())))
+                            .toList());
         }
 
         /**
@@ -97,11 +108,11 @@ public class ScaleUtils {
          */
         public byte[] encodeListOfPairs(List<Pair<byte[], byte[]>> pairs) {
             return encode(
-                new ListWriter<>(
-                    new PairWriter<>(
-                        ScaleCodecWriter::writeAsList,
-                        ScaleCodecWriter::writeAsList)),
-                pairs);
+                    new ListWriter<>(
+                            new PairWriter<>(
+                                    ScaleCodecWriter::writeAsList,
+                                    ScaleCodecWriter::writeAsList)),
+                    pairs);
         }
 
         /**
@@ -159,16 +170,17 @@ public class ScaleUtils {
          * Scale encodes a nullable value as an optional.
          * If the value is null, it is encoded as an empty optional.
          * If the value is not null, it is encoded as an optional with a present value.
+         *
          * @param writer The ScaleWriter for encoding the value, <strong>if</strong> not null.
-         * @param value The nullable object to encode.
-         * @return The encoded optional value.
+         * @param value  The nullable object to encode.
          * @param <T>
+         * @return The encoded optional value.
          * @throws ScaleEncodingException If an unexpected error occurs during encoding.
          */
         public <T> byte[] encodeOptional(ScaleWriter<T> writer, @Nullable T value) {
             return ScaleUtils.Encode.encode(
-                (scaleCodecWriter, val) -> scaleCodecWriter.writeOptional(writer, val),
-                value
+                    (scaleCodecWriter, val) -> scaleCodecWriter.writeOptional(writer, val),
+                    value
             );
         }
     }

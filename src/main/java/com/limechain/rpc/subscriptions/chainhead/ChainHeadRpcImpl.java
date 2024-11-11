@@ -1,12 +1,12 @@
 package com.limechain.rpc.subscriptions.chainhead;
 
-import com.limechain.exception.rpc.InvalidURIException;
 import com.limechain.exception.global.ThreadInterruptedException;
+import com.limechain.exception.rpc.InvalidURIException;
+import com.limechain.rpc.client.SubscriptionRpcClient;
 import com.limechain.rpc.config.SubscriptionName;
 import com.limechain.rpc.pubsub.Topic;
 import com.limechain.rpc.pubsub.publisher.PublisherImpl;
 import com.limechain.rpc.subscriptions.utils.Utils;
-import com.limechain.rpc.client.SubscriptionRpcClient;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;

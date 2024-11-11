@@ -2,6 +2,9 @@ package com.limechain.utils;
 
 import lombok.experimental.UtilityClass;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 @UtilityClass
 public class ByteArrayUtils {
 
@@ -19,7 +22,7 @@ public class ByteArrayUtils {
      */
     public static int commonPrefixLength(byte[] a, byte[] b) {
         int minLength = Math.min(a.length, b.length);
-        if(minLength == 0) {
+        if (minLength == 0) {
             return 0;
         }
         int length;
@@ -99,5 +102,21 @@ public class ByteArrayUtils {
         System.arraycopy(prefix, 0, result, 0, prefix.length);
         System.arraycopy(suffix, 0, result, prefix.length, suffix.length);
         return result;
+    }
+
+    /**
+     * Checks if all the byte arrays in the target collection are present in the source collection.
+     *
+     * @param source the collection of byte arrays that may contain the target arrays
+     * @param target the collection of byte arrays to check for presence in the source
+     * @return {@code true} if all byte arrays in the target collection are present in the source
+     * collection, {@code false} otherwise
+     */
+    public boolean sourceContainsAll(Collection<byte[]> source, Collection<byte[]> target) {
+        return target.stream()
+                .allMatch(targetArray ->
+                        source.stream()
+                                .anyMatch(sourceArray -> Arrays.equals(sourceArray, targetArray))
+                );
     }
 }

@@ -1,29 +1,29 @@
 package com.limechain.sync.fullsync;
 
 import com.google.protobuf.ByteString;
+import com.limechain.babe.state.EpochState;
 import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.Network;
 import com.limechain.network.protocol.blockannounce.NodeRole;
-import com.limechain.network.protocol.sync.BlockRequestDto;
+import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.network.protocol.warp.dto.Block;
-import com.limechain.network.protocol.warp.dto.BlockBody;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
-import com.limechain.network.protocol.warp.dto.Extrinsics;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
+import com.limechain.network.request.ProtocolRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
-import com.limechain.babe.state.EpochState;
-import com.limechain.runtime.builder.RuntimeBuilder;
+import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.runtime.version.StateVersion;
+import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.BlockState;
 import com.limechain.storage.block.SyncState;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.sync.fullsync.inherents.InherentData;
+import com.limechain.transaction.TransactionState;
 import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
@@ -32,7 +32,6 @@ import com.limechain.trie.structure.database.NodeData;
 import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.scale.ScaleUtils;
 import com.limechain.utils.scale.readers.PairReader;
-import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
@@ -56,16 +55,27 @@ public class FullSyncMachine {
     private final HostConfig hostConfig;
     private final Network networkService;
     private final SyncState syncState;
+    private final TransactionState transactionState;
+    private final ProtocolRequester requester;
+    private final BlockHandler blockHandler;
     private final BlockState blockState = BlockState.getInstance();
     private final TrieStorage trieStorage = AppBean.getBean(TrieStorage.class);
     private final RuntimeBuilder runtimeBuilder = AppBean.getBean(RuntimeBuilder.class);
     private final EpochState epochState = AppBean.getBean(EpochState.class);
     private Runtime runtime = null;
 
-    public FullSyncMachine(HostConfig hostConfig, Network networkService, SyncState syncState) {
-        this.hostConfig = hostConfig;
+    public FullSyncMachine(Network networkService,
+                           SyncState syncState,
+                           TransactionState transactionState,
+                           ProtocolRequester requester,
+                           BlockHandler blockHandler,
+                           HostConfig hostConfig) {
         this.networkService = networkService;
         this.syncState = syncState;
+        this.transactionState = transactionState;
+        this.requester = requester;
+        this.blockHandler = blockHandler;
+        this.hostConfig = hostConfig;
     }
 
     public void start() {
@@ -80,11 +90,12 @@ public class FullSyncMachine {
         DiskTrieAccessor trieAccessor = new DiskTrieAccessor(trieStorage, stateRoot.getBytes());
 
         if (!trieStorage.merkleValueExists(stateRoot)) {
+            //TODO Sync improvements: This does not work on polkadot chain.
             loadStateAtBlockFromPeer(lastFinalizedBlockHash);
         }
 
         runtime = buildRuntimeFromState(trieAccessor);
-        StateVersion runtimeStateVersion = runtime.getVersion().getStateVersion();
+        StateVersion runtimeStateVersion = runtime.getCachedVersion().getStateVersion();
         trieAccessor.setCurrentStateVersion(runtimeStateVersion);
 
         byte[] calculatedMerkleRoot = trieAccessor.getMerkleRoot(runtimeStateVersion);
@@ -100,26 +111,33 @@ public class FullSyncMachine {
                 .intValue();
 
         int blocksToFetch = 100;
-        List<Block> receivedBlocks = requestBlocks(startNumber, blocksToFetch);
+        List<Block> receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
 
         while (!receivedBlocks.isEmpty()) {
             executeBlocks(receivedBlocks, trieAccessor);
             log.info("Executed blocks from " + receivedBlocks.getFirst().getHeader().getBlockNumber()
                     + " to " + receivedBlocks.getLast().getHeader().getBlockNumber());
-            startNumber += blocksToFetch;
-            receivedBlocks = requestBlocks(startNumber, blocksToFetch);
+            startNumber += receivedBlocks.size();
+            receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
         }
 
         if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
-            initializeEpochState();
+            initializeStates();
         }
 
-        blockState.setFullSyncFinished(true);
+        finishFullSync();
     }
 
-    private void initializeEpochState() {
-        epochState.initialize(runtime.callBabeApiConfiguration());
+    private void finishFullSync() {
+        networkService.blockAnnounceHandshakeBootNodes();
+        networkService.handshakePeers();
+    }
+
+    private void initializeStates() {
+        epochState.initialize(runtime.getBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
+
+        transactionState.initialize();
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {
@@ -142,7 +160,7 @@ public class FullSyncMachine {
         while (true) {
             final SyncMessage.StateResponse response;
             try {
-                response = networkService.makeStateRequest(lastFinalizedBlockHash.toString(), start);
+                response = requester.requestState(lastFinalizedBlockHash.toString(), start).join();
             } catch (Exception ex) {
                 if (!this.networkService.updateCurrentSelectedPeerWithNextBootnode()) {
                     this.networkService.updateCurrentSelectedPeer();
@@ -165,57 +183,6 @@ public class FullSyncMachine {
         }
 
         return kvps;
-    }
-
-    /**
-     * Fetches blocks from the network.
-     *
-     * @param start  The block number to start fetching from.
-     * @param amount The number of blocks to fetch.
-     * @return A list of BlockData received from the network.
-     */
-    private List<Block> requestBlocks(int start, int amount) {
-        try {
-            final int HEADER = 0b0000_0001;
-            final int BODY = 0b0000_0010;
-            final int JUSTIFICATION = 0b0001_0000;
-            SyncMessage.BlockResponse response = networkService.makeBlockRequest(new BlockRequestDto(
-                    HEADER | BODY | JUSTIFICATION,
-                    null, // no hash, number instead
-                    start,
-                    SyncMessage.Direction.Ascending,
-                    amount
-            ));
-
-            List<SyncMessage.BlockData> blockDatas = response.getBlocksList();
-
-            return blockDatas.stream()
-                    .map(FullSyncMachine::protobufDecodeBlock)
-                    .toList();
-        } catch (Exception ex) {
-            log.info("Error while fetching blocks, trying to fetch again");
-            if (!this.networkService.updateCurrentSelectedPeerWithNextBootnode()) {
-                this.networkService.updateCurrentSelectedPeer();
-            }
-            return requestBlocks(start, amount);
-        }
-    }
-
-    // TODO: This method doesn't belong in this class. Move when appropriate.
-    private static Block protobufDecodeBlock(SyncMessage.BlockData blockData) {
-        // Decode the block header
-        var encodedHeader = blockData.getHeader().toByteArray();
-        BlockHeader blockHeader = ScaleUtils.Decode.decode(encodedHeader, new BlockHeaderReader());
-
-        // Protobuf decode the block body
-        List<Extrinsics> extrinsicsList = blockData.getBodyList().stream()
-                .map(bs -> ScaleUtils.Decode.decode(bs.toByteArray(), ScaleCodecReader::readByteArray))
-                .map(Extrinsics::new)
-                .toList();
-
-        BlockBody blockBody = new BlockBody(extrinsicsList);
-
-        return new Block(blockHeader, blockBody);
     }
 
     /**
@@ -254,12 +221,6 @@ public class FullSyncMachine {
             trieAccessor.persistChanges();
 
             BlockHeader blockHeader = block.getHeader();
-            try {
-                blockState.setFinalizedHash(blockHeader.getHash(), BigInteger.ZERO, BigInteger.ZERO);
-            } catch (BlockNodeNotFoundException ignored) {
-                log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
-            }
-
             boolean blockUpdatedRuntime = Arrays.stream(blockHeader.getDigest())
                     .map(HeaderDigest::getType)
                     .anyMatch(type -> type.equals(DigestType.RUN_ENV_UPDATED));
@@ -267,8 +228,15 @@ public class FullSyncMachine {
             if (blockUpdatedRuntime) {
                 log.info("Runtime updated, updating the runtime code");
                 runtime = buildRuntimeFromState(trieAccessor);
-                trieAccessor.setCurrentStateVersion(runtime.getVersion().getStateVersion());
+                trieAccessor.setCurrentStateVersion(runtime.getCachedVersion().getStateVersion());
                 blockState.storeRuntime(blockHeader.getHash(), runtime);
+            }
+
+            try {
+                syncState.finalizeHeader(blockHeader);
+                blockState.setFinalizedHash(blockHeader, BigInteger.ZERO, BigInteger.ZERO);
+            } catch (BlockNodeNotFoundException ignored) {
+                log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
             }
         }
     }

@@ -8,8 +8,9 @@ import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.network.request.ProtocolRequester;
 import com.limechain.runtime.Runtime;
-import com.limechain.runtime.builder.RuntimeBuilder;
+import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.SyncState;
@@ -29,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigInteger;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -62,6 +64,8 @@ class WarpSyncActionTest {
     private Hash256 stateRoot;
     @Mock
     private Trie mockTrie;
+    @Mock
+    private ProtocolRequester requester;
 
     @Test
     void updateRuntimeCode() throws RuntimeCodeException {
@@ -78,7 +82,8 @@ class WarpSyncActionTest {
         when(syncState.getLastFinalizedBlockHash()).thenReturn(lastFinalizedBlockHash);
         when(lastFinalizedBlockHash.toString()).thenReturn(blockHashString);
         when(syncState.getStateRoot()).thenReturn(stateRoot);
-        when(network.makeRemoteReadRequest(blockHashString, codeKey)).thenReturn(response);
+        when(requester.makeRemoteReadRequest(blockHashString, codeKey))
+                .thenReturn(CompletableFuture.completedFuture(response));
         when(response.getRemoteReadResponse()).thenReturn(remoteReadResponse);
         when(remoteReadResponse.getProof()).thenReturn(wrappedProof);
         when(wrappedProof.toByteArray()).thenReturn(proof);

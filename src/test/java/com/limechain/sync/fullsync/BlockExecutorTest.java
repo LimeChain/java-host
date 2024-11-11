@@ -5,7 +5,7 @@ import com.limechain.chain.spec.ChainSpec;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockBody;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.network.protocol.warp.dto.Extrinsics;
+import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.scale.reader.HeaderDigestReader;
 import com.limechain.runtime.Runtime;
@@ -14,6 +14,7 @@ import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.trie.BlockTrieAccessor;
+import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;
@@ -46,7 +47,7 @@ class BlockExecutorTest {
         trieStorage.insertTrieStorage(genesisTrie); // populate with the genesis trie
 
         final byte[] genesisStateRoot = genesisTrie.getRootNode().get().getUserData().getMerkleValue();
-        BlockTrieAccessor trieAccessor = new BlockTrieAccessor(trieStorage, genesisStateRoot); // instantiate a block trie accessor with the trieStorage specified for the genesis block
+        DiskTrieAccessor trieAccessor = new DiskTrieAccessor(trieStorage, genesisStateRoot); // instantiate a block trie accessor with the trieStorage specified for the genesis block
         trieAccessor.setCurrentStateVersion(StateVersion.V0);
 
         // Package all dependencies into the expected configuration for the runtime builder
@@ -75,7 +76,7 @@ class BlockExecutorTest {
 
         var exts = ScaleUtils.Decode.decodeList(scaleEncodedBody, ScaleCodecReader::readByteArray);
         assertEquals(2, exts.size());
-        BlockBody body = new BlockBody(exts.stream().map(Extrinsics::new).toList());
+        BlockBody body = new BlockBody(exts.stream().map(Extrinsic::new).toList());
 
         return new Block(header, body);
     }

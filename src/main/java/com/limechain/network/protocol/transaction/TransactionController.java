@@ -1,15 +1,15 @@
-package com.limechain.network.protocol.transactions;
+package com.limechain.network.protocol.transaction;
 
 import io.libp2p.core.Stream;
 
 /**
  * A controller for sending message on a Transactions stream.
  */
-public class TransactionsController {
-    protected final TransactionsEngine engine = new TransactionsEngine();
+public class TransactionController {
+    protected final TransactionEngine engine = new TransactionEngine();
     protected final Stream stream;
 
-    public TransactionsController(Stream stream) {
+    public TransactionController(Stream stream) {
         this.stream = stream;
     }
 

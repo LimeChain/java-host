@@ -100,7 +100,6 @@ public class WarpSyncMachine {
 
     private void finishWarpSync() {
         this.warpState.setWarpSyncFinished(true);
-        this.networkService.handshakeBootNodes();
         this.syncState.persistState();
 
         BlockState.getInstance().initializeAfterWarpSync(

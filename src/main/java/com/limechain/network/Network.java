@@ -1,6 +1,5 @@
 package com.limechain.network;
 
-import com.google.protobuf.ByteString;
 import com.limechain.chain.Chain;
 import com.limechain.chain.ChainService;
 import com.limechain.cli.CliArguments;
@@ -11,20 +10,13 @@ import com.limechain.network.protocol.blockannounce.BlockAnnounceService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.grandpa.GrandpaService;
 import com.limechain.network.protocol.lightclient.LightMessagesService;
-import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.ping.Ping;
 import com.limechain.network.protocol.state.StateService;
-import com.limechain.network.protocol.sync.BlockRequestDto;
 import com.limechain.network.protocol.sync.SyncService;
-import com.limechain.network.protocol.sync.pb.SyncMessage;
-import com.limechain.network.protocol.sync.pb.SyncMessage.BlockResponse;
-import com.limechain.network.protocol.transactions.TransactionsService;
+import com.limechain.network.protocol.transaction.TransactionsService;
 import com.limechain.network.protocol.warp.WarpSyncService;
-import com.limechain.network.protocol.warp.dto.WarpSyncResponse;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
-import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.StringUtils;
 import io.ipfs.multiaddr.MultiAddress;
@@ -41,7 +33,6 @@ import org.peergos.protocol.IdentifyBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -49,7 +40,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import static com.limechain.network.kad.KademliaService.REPLICATION;
-import static com.limechain.network.protocol.sync.pb.SyncMessage.Direction;
 
 /**
  * A Network class that handles all peer connections and Kademlia
@@ -66,8 +56,13 @@ public class Network {
     private final NodeRole nodeRole;
     private final String[] bootNodes;
     private final ConnectionManager connectionManager;
+    @Getter
     private SyncService syncService;
+    @Getter
     private StateService stateService;
+    @Getter
+    private WarpSyncService warpSyncService;
+    @Getter
     private LightMessagesService lightMessagesService;
     @Getter
     private KademliaService kademliaService;
@@ -79,7 +74,6 @@ public class Network {
     private PeerId currentSelectedPeer;
     @Getter
     private Host host;
-    private WarpSyncService warpSyncService;
     private boolean started = false;
     private int bootPeerIndex = 0;
 
@@ -256,7 +250,7 @@ public class Network {
         if (getPeersCount() >= REPLICATION) {
             log.log(Level.INFO,
                     "Connections have reached replication factor(" + REPLICATION + "). " +
-                    "No need to search for new ones yet.");
+                            "No need to search for new ones yet.");
             return;
         }
 
@@ -294,86 +288,24 @@ public class Network {
         }
     }
 
-    public BlockResponse syncBlock(PeerId peerId, BigInteger lastBlockNumber) {
-        this.currentSelectedPeer = peerId;
-        // TODO: fields, hash, direction and maxBlocks values not verified
-        // TODO: when debugging could not get a value returned
-        return this.makeBlockRequest(
-                new BlockRequestDto(19, null, lastBlockNumber.intValue(), Direction.Ascending, 1));
-    }
-
-    public BlockResponse makeBlockRequest(BlockRequestDto blockRequestDto) {
-        return syncService.getProtocol().remoteBlockRequest(
-                this.host,
-                this.currentSelectedPeer,
-                blockRequestDto
-        );
-    }
-
-    public SyncMessage.StateResponse makeStateRequest(String blockHash, ByteString after) {
-        return stateService.getProtocol().remoteStateRequest(
-                this.host,
-                this.currentSelectedPeer,
-                blockHash,
-                after
-        );
-    }
-
-    public WarpSyncResponse makeWarpSyncRequest(String blockHash) {
-        if (isPeerInvalid()) return null;
-
-        return this.warpSyncService.getProtocol().warpSyncRequest(
-                this.host,
-                this.currentSelectedPeer,
-                blockHash);
-    }
-
-    public LightClientMessage.Response makeRemoteReadRequest(String blockHash, String[] keys) {
-        if (isPeerInvalid()) return null;
-
-        return this.lightMessagesService.getProtocol().remoteReadRequest(
-                this.host,
-                this.currentSelectedPeer,
-                blockHash,
-                keys);
-
-    }
-
-    private boolean isPeerInvalid() {
-        if (this.currentSelectedPeer == null) {
-            log.log(Level.WARNING, "No peer selected for warp sync request.");
-            return true;
-        }
-
-        if (this.host.getAddressBook().get(this.currentSelectedPeer).join() == null) {
-            log.log(Level.WARNING, "Peer not found in address book.");
-            return true;
-        }
-        return false;
-    }
-
-    public void handshakeBootNodes() {
+    public void blockAnnounceHandshakeBootNodes() {
         kademliaService.getBootNodePeerIds()
                 .stream()
                 .distinct()
-                .forEach(this::sendGrandpaHandshake);
+                .forEach(p -> new Thread(() -> blockAnnounceService.sendHandshake(this.host, p)).start());
     }
 
-    private void sendGrandpaHandshake(PeerId peerId) {
-        //TODO:
-        // when using threads we connect to more than 10 peers, but have some unhandled exceptions,
-        // without them we connect to only 2 peers
-        new Thread(() ->
-                blockAnnounceService.sendHandshake(this.host, this.host.getAddressBook(), peerId)
-        ).start();
+    public void handshakePeers() {
+        connectionManager.getPeerIds().forEach(p -> {
+            new Thread(() -> grandpaService.sendHandshake(this.host, p)).start();
+            new Thread(() -> transactionsService.sendHandshake(this.host, p)).start();
+        });
     }
 
     @Scheduled(fixedRate = 5, initialDelay = 5, timeUnit = TimeUnit.MINUTES)
-    public void sendNeighbourMessages() {
-        if (!AppBean.getBean(WarpSyncState.class).isWarpSyncFinished()) {
-            return;
-        }
-        connectionManager.getPeerIds().forEach(peerId -> grandpaService.sendNeighbourMessage(this.host, peerId));
+    public void sendMessagesToPeers() {
+        connectionManager.getPeerIds().forEach(peerId ->
+                grandpaService.sendNeighbourMessage(this.host, peerId));
         connectionManager.getPeerIds().forEach(peerId ->
                 transactionsService.sendTransactionsMessage(this.host, peerId));
     }

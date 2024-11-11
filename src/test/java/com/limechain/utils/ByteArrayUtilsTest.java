@@ -2,9 +2,21 @@ package com.limechain.utils;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ByteArrayUtilsTest {
+
+    private static final byte[] ELEMENT_1 = "element1".getBytes();
+    private static final byte[] ELEMENT_2 = "element2".getBytes();
+    private static final byte[] ELEMENT_3 = "element3".getBytes();
+
+
     @Test
     void testTargetFound() {
         // Test with both arrays non-null and target found
@@ -47,5 +59,89 @@ class ByteArrayUtilsTest {
     void testBothNull() {
         // Test with both arrays null
         assertEquals(-1, ByteArrayUtils.indexOf(null, null));
+    }
+
+    @Test
+    void testSourceContainsAll_AllTargetElementsInSource() {
+        Collection<byte[]> source = List.of(
+                ELEMENT_1,
+                ELEMENT_2,
+                ELEMENT_3
+        );
+
+        Collection<byte[]> target = List.of(
+                ELEMENT_1,
+                ELEMENT_2
+        );
+
+        boolean result = ByteArrayUtils.sourceContainsAll(source, target);
+        assertTrue(result);
+    }
+
+    @Test
+    void testSourceContainsAll_SourceHasExtraElements() {
+        Collection<byte[]> source = List.of(
+                ELEMENT_1,
+                ELEMENT_2,
+                ELEMENT_3,
+                "extraElement".getBytes()
+        );
+
+        Collection<byte[]> target = List.of(
+                ELEMENT_1,
+                ELEMENT_2
+        );
+
+        boolean result = ByteArrayUtils.sourceContainsAll(source, target);
+        assertTrue(result);
+    }
+
+    @Test
+    void testSourceContainsAll_MissingElementInSource() {
+        Collection<byte[]> source = List.of(
+                ELEMENT_1,
+                ELEMENT_2
+        );
+
+        Collection<byte[]> target = List.of(
+                ELEMENT_1,
+                ELEMENT_2,
+                "missingElement".getBytes()
+        );
+
+        boolean result = ByteArrayUtils.sourceContainsAll(source, target);
+        assertFalse(result);
+    }
+
+    @Test
+    void testSourceContainsAll_EmptySource() {
+        Collection<byte[]> source = Collections.emptyList();
+
+        Collection<byte[]> target = List.of(
+                ELEMENT_1
+        );
+
+        boolean result = ByteArrayUtils.sourceContainsAll(source, target);
+        assertFalse(result);
+    }
+
+    @Test
+    void testSourceContainsAll_EmptyTarget() {
+        Collection<byte[]> source = List.of(
+                ELEMENT_1,
+                ELEMENT_2
+        );
+        Collection<byte[]> target = Collections.emptyList();
+
+        boolean result = ByteArrayUtils.sourceContainsAll(source, target);
+        assertTrue(result);
+    }
+
+    @Test
+    void testSourceContainsAll_BothEmpty() {
+        Collection<byte[]> source = Collections.emptyList();
+        Collection<byte[]> target = Collections.emptyList();
+        boolean result = ByteArrayUtils.sourceContainsAll(source, target);
+        assertTrue(result);  // Both empty collections should result in true
     }
 }

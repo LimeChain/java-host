@@ -135,7 +135,7 @@ public class GrandpaEngine {
     private void handleNeighbourMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
-        log.log(Level.INFO, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
+        log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
     }
 
@@ -195,7 +195,7 @@ public class GrandpaEngine {
             throw new ScaleEncodingException(e);
         }
 
-        log.log(Level.INFO, "Sending neighbour message to peer " + peerId);
+        log.log(Level.FINE, "Sending neighbour message to peer " + peerId);
         stream.writeAndFlush(buf.toByteArray());
     }
 }

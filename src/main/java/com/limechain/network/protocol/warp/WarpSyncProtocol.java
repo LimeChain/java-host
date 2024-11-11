@@ -1,11 +1,11 @@
 package com.limechain.network.protocol.warp;
 
+import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.encoding.Leb128LengthFrameDecoder;
 import com.limechain.network.encoding.Leb128LengthFrameEncoder;
 import com.limechain.network.protocol.warp.dto.WarpSyncRequest;
 import com.limechain.network.protocol.warp.dto.WarpSyncResponse;
 import com.limechain.network.protocol.warp.encoding.WarpSyncResponseDecoder;
-import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.warp.scale.writer.WarpSyncRequestWriter;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.libp2p.core.Stream;

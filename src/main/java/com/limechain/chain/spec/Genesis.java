@@ -5,12 +5,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.google.protobuf.ByteString;
 import com.limechain.utils.StringUtils;
-import lombok.Getter;
 import org.apache.tomcat.util.buf.HexUtils;
 
 import java.io.Serializable;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;

@@ -1,8 +1,8 @@
 package com.limechain.storage.block;
 
+import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.storage.DBConstants;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;

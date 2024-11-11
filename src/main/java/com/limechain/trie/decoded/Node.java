@@ -1,7 +1,7 @@
 package com.limechain.trie.decoded;
 
-import com.limechain.trie.decoded.encoder.TrieEncoder;
 import com.limechain.exception.trie.TrieEncoderException;
+import com.limechain.trie.decoded.encoder.TrieEncoder;
 import com.limechain.utils.HashUtils;
 import lombok.Getter;
 import lombok.Setter;

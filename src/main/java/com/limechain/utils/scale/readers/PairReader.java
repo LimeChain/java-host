@@ -2,8 +2,8 @@ package com.limechain.utils.scale.readers;
 
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
-import org.javatuples.Pair;
 import lombok.AllArgsConstructor;
+import org.javatuples.Pair;
 
 @AllArgsConstructor
 public class PairReader<K, V> implements ScaleReader<Pair<K, V>> {

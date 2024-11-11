@@ -1,9 +1,12 @@
 package com.limechain.storage.block.tree;
 
+import com.limechain.babe.predigest.BabePreDigest;
+import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.exception.storage.BlockAlreadyExistsException;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.storage.LowerThanRootException;
+import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.map.HashToRuntime;
@@ -94,7 +97,10 @@ public class BlockTree {
 
         boolean isPrimary = false;
         if (header.getBlockNumber().longValueExact() != 0) {
-            //TODO: Check if primary
+            isPrimary = DigestHelper.getBabePreRuntimeDigest(header.getDigest())
+                    .map(BabePreDigest::getType)
+                    .filter(PreDigestType.BABE_PRIMARY::equals)
+                    .isPresent();
         }
 
         BlockNode newBlockNode = new BlockNode(header.getHash(), parent, new ArrayList<>(),
@@ -133,7 +139,7 @@ public class BlockTree {
      * @param startHash hash to start from
      * @param endHash   hash to end at
      * @return List of block hashes between the start and end hash inclusive
-     * @throws BlockNodeNotFoundException if the end hash does not exist in the blocktree
+     * @throws BlockNodeNotFoundException   if the end hash does not exist in the blocktree
      * @throws IllegalArgumentException     if the startHash is greater than the endHash
      * @throws BlockStorageGenericException if there is no node between start and end node during traversal.
      */
@@ -254,6 +260,9 @@ public class BlockTree {
         if (finalizedBlockNode == null) {
             return new ArrayList<>();
         }
+
+        //TODO Yordan: A full node prunes historical states: all finalized blocks' states older than a configurable
+        // number except the genesis block's state. This is 256 blocks from the last finalized one by default.
 
         BlockNode previousFinalizedBlock = root;
         long newCanonicalChainBlocksCount = finalizedBlockNode.getNumber() - previousFinalizedBlock.getNumber();
@@ -431,8 +440,8 @@ public class BlockTree {
      * @return the block hash with the given number that is on the best chain.
      * If the number is lower or higher than the numbers in the blocktree, an error is returned.
      * @throws BlockStorageGenericException if the block number is greater than the highest number in the blocktree.
-     * @throws LowerThanRootException if the block number is lower than the root of the blocktree.
-     * @throws BlockNodeNotFoundException if no node with the given number is found in the blocktree.
+     * @throws LowerThanRootException       if the block number is lower than the root of the blocktree.
+     * @throws BlockNodeNotFoundException   if no node with the given number is found in the blocktree.
      */
     public Hash256 getHashByNumber(final long num) {
         BlockNode best = leaves.bestBlock();
@@ -470,8 +479,8 @@ public class BlockTree {
      * Get the arrival time of a block
      *
      * @param hash Hash of the block to get the arrival time of
-     * @throws BlockNodeNotFoundException if no node is found for the given block hash.
      * @return Arrival time of the block
+     * @throws BlockNodeNotFoundException if no node is found for the given block hash.
      */
     public Instant getArrivalTime(final Hash256 hash) {
         BlockNode n = getNode(hash);
