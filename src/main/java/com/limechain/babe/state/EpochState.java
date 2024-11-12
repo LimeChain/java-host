@@ -64,6 +64,13 @@ public class EpochState {
         return BigInteger.valueOf(Instant.now().toEpochMilli()).divide(slotDuration);
     }
 
+    // (currentSlotNumber - genesisSlotNumber) / epochLength = epochIndex
+    // Dividing BigIntegers results in rounding down when the result is not a whole number,
+    // which is the intended behavior for calculating epochIndex.
+    public BigInteger getCurrentEpochIndex() {
+        return getCurrentSlotNumber().subtract(genesisSlotNumber).divide(epochLength);
+    }
+
     // epochIndex * epochLength + genesisSlot = epochStartSlotNumber
     // The formula is the same as below but different variable is isolated, and we
     // leverage the fact that epochStartSlotNumber is achieved when
@@ -72,10 +79,17 @@ public class EpochState {
         return getCurrentEpochIndex().multiply(epochLength).add(genesisSlotNumber);
     }
 
-    // (currentSlotNumber - genesisSlotNumber) / epochLength = epochIndex
-    // Dividing BigIntegers results in rounding down when the result is not a whole number,
-    // which is the intended behavior for calculating epochIndex.
-    public BigInteger getCurrentEpochIndex() {
-        return getCurrentSlotNumber().subtract(genesisSlotNumber).divide(epochLength);
+    public BigInteger getEpochStartSlotNumber(BigInteger epochIndex) {
+        return epochIndex.multiply(epochLength).add(genesisSlotNumber);
+    }
+
+    // Don't use this method for places where range between first and last slot of epoch
+    // is needed. It better to use getCurrentEpochStartSlotNumber and manually add epochLength
+    // in order to achieve currentEpochEndSlotNumber, but be careful, as the range should be
+    // inclusive on the lower bound and exclusive on the upper bound: [..). The described flow
+    // is preferable because calling the methods from the epoch state may result in calculations
+    // made in two different epochs.
+    public BigInteger getCurrentEpochEndSlotNumber() {
+        return getCurrentEpochStartSlotNumer().add(epochLength).subtract(BigInteger.ONE);
     }
 }

@@ -2,6 +2,8 @@ package com.limechain.sync.fullsync;
 
 import com.google.protobuf.ByteString;
 import com.limechain.babe.state.EpochState;
+import com.limechain.babe.BabeService;
+import com.limechain.babe.coordinator.SlotCoordinator;
 import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
@@ -62,6 +64,7 @@ public class FullSyncMachine {
     private final TrieStorage trieStorage = AppBean.getBean(TrieStorage.class);
     private final RuntimeBuilder runtimeBuilder = AppBean.getBean(RuntimeBuilder.class);
     private final EpochState epochState = AppBean.getBean(EpochState.class);
+    private final SlotCoordinator slotCoordinator = AppBean.getBean(SlotCoordinator.class);
     private Runtime runtime = null;
 
     public FullSyncMachine(Network networkService,
@@ -136,6 +139,11 @@ public class FullSyncMachine {
     private void initializeStates() {
         epochState.initialize(runtime.getBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
+
+
+        slotCoordinator.start(List.of(
+                AppBean.getBean(BabeService.class)
+        ));
 
         transactionState.initialize();
     }
