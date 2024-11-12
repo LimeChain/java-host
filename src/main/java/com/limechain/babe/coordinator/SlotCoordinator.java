@@ -1,10 +1,12 @@
 package com.limechain.babe.coordinator;
 
+import com.limechain.babe.dto.EpochSlot;
 import com.limechain.babe.state.EpochState;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -62,16 +64,15 @@ public class SlotCoordinator {
     }
 
     private void triggerEvent(BigInteger currentSlotNumber, BigInteger currentEpochIndex, boolean isLastSlot) {
-        log.log(Level.INFO, String.format("Slot Number: %d | Epoch Index: %d | Is Last Slot: %s",
+        log.log(Level.FINE, String.format("Slot Number: %d | Epoch Index: %d | Is Last Slot: %s",
                 currentSlotNumber, currentEpochIndex, isLastSlot));
 
-        var event = new SlotChangeEvent(
-                this,
+        EpochSlot slot = new EpochSlot(epochState.getSlotStartTime(currentSlotNumber),
+                Duration.ofMillis(epochState.getSlotDuration().longValue()),
                 currentSlotNumber,
-                currentEpochIndex,
-                isLastSlot
-        );
+                currentEpochIndex);
 
+        SlotChangeEvent event = new SlotChangeEvent(this, slot, isLastSlot);
         notifySlotChangeListeners(event);
     }
 

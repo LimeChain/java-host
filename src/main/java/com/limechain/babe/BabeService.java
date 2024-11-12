@@ -38,8 +38,10 @@ public class BabeService implements SlotChangeListener {
     @Override
     public void slotChanged(SlotChangeEvent event) {
         // TODO: Add implementation for building a block on every slot change
+        EpochSlot slot = event.getEpochSlot();
+
         if (event.isLastSlotFromCurrentEpoch()) {
-            var nextEpochIndex = event.getEpochIndex().add(BigInteger.ONE);
+            BigInteger nextEpochIndex = slot.getEpochIndex().add(BigInteger.ONE);
             executeEpochLottery(nextEpochIndex);
         }
     }
