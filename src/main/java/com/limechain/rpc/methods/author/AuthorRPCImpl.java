@@ -2,15 +2,21 @@ package com.limechain.rpc.methods.author;
 
 import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.exception.storage.BlockStorageGenericException;
+import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
 import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
+import com.limechain.transaction.TransactionState;
+import com.limechain.transaction.TransactionValidator;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
 import io.libp2p.crypto.keys.Ed25519PrivateKey;
+import org.apache.tomcat.util.buf.HexUtils;
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
 import org.javatuples.Pair;
 import org.springframework.stereotype.Service;
@@ -22,9 +28,14 @@ import java.util.List;
 public class AuthorRPCImpl {
 
     private final BlockState blockState;
+    //TODO: Check if these dependencies can be injected with AppBean?
+    private final TransactionState transactionState;
+    private final TransactionValidator transactionValidator;
     private final KeyStore keyStore;
 
-    public AuthorRPCImpl(KeyStore keyStore) {
+    public AuthorRPCImpl(TransactionState transactionState, TransactionValidator transactionValidator, KeyStore keyStore) {
+        this.transactionState = transactionState;
+        this.transactionValidator = transactionValidator;
         this.blockState = BlockState.getInstance();
         this.keyStore = keyStore;
     }
@@ -82,8 +93,20 @@ public class AuthorRPCImpl {
         return true;
     }
 
-    public String authorSubmitExtrinsic(String extrinsics) {
-        return "";
+    public String authorSubmitExtrinsic(String extrinsic) {
+        //TODO: only for authoring node -> validate if transactionState is not null
+        Extrinsic parsedExtrinsic = new Extrinsic(StringUtils.hexToBytes(extrinsic));
+
+        ValidTransaction validTransaction;
+        try {
+            validTransaction = transactionValidator.validateExternalTransaction(parsedExtrinsic);
+        } catch (TransactionValidationException e) {
+            throw new ExecutionFailedException("Failed to executed submit_extrinsic call: " + e.getMessage());
+        }
+
+        return HexUtils.toHexString(
+                transactionState.addToPool(validTransaction)
+        );
     }
 
     public String authorSubmitAndWatchExtrinsic(String extrinsics) {
