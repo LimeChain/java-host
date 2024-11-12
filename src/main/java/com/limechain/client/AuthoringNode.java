@@ -1,9 +1,6 @@
 package com.limechain.client;
 
-import lombok.extern.java.Log;
-
-@Log
-public class FullNode extends AbstractNode {
+public class AuthoringNode extends AbstractNode {
 
     @Override
     public void start() {
