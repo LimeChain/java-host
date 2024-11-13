@@ -13,10 +13,11 @@ import com.limechain.transaction.TransactionValidator;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.StringUtils;
+import com.limechain.utils.scale.ScaleUtils;
+import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
 import io.libp2p.crypto.keys.Ed25519PrivateKey;
-import org.apache.tomcat.util.buf.HexUtils;
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
 import org.javatuples.Pair;
 import org.springframework.stereotype.Service;
@@ -95,18 +96,25 @@ public class AuthorRPCImpl {
 
     public String authorSubmitExtrinsic(String extrinsic) {
         //TODO: only for authoring node -> validate if transactionState is not null
-        Extrinsic parsedExtrinsic = new Extrinsic(StringUtils.hexToBytes(extrinsic));
+        //This check probably also should be added to other rpc methods because they seem related to authoring node and make no sense in other node types context
+        Extrinsic decodedExtrinsic = new Extrinsic(
+                ScaleUtils.Decode.decode(
+                        StringUtils.hexToBytes(extrinsic),
+                        ScaleCodecReader::readByteArray
+                )
+        );
 
         ValidTransaction validTransaction;
         try {
-            validTransaction = transactionValidator.validateExternalTransaction(parsedExtrinsic);
+            validTransaction = transactionValidator.validateExternalTransaction(decodedExtrinsic);
         } catch (TransactionValidationException e) {
             throw new ExecutionFailedException("Failed to executed submit_extrinsic call: " + e.getMessage());
         }
 
-        return HexUtils.toHexString(
+        return StringUtils.toHexWithPrefix(
                 transactionState.addToPool(validTransaction)
         );
+        // TODO: Gossip this transaction to other peers
     }
 
     public String authorSubmitAndWatchExtrinsic(String extrinsics) {
