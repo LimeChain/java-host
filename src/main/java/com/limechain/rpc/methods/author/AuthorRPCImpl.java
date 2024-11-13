@@ -117,7 +117,8 @@ public class AuthorRPCImpl {
         // TODO: Gossip this transaction to other peers
     }
 
-    public String authorSubmitAndWatchExtrinsic(String extrinsics) {
+    //TODO: This method might be removed from here - not sure at the moment of writing
+    public String authorSubmitAndWatchExtrinsic(String extrinsic) {
         return "";
     }
 

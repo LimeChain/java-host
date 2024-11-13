@@ -8,6 +8,7 @@ import com.limechain.rpc.pubsub.PubSubService;
 import com.limechain.rpc.pubsub.Topic;
 import com.limechain.rpc.pubsub.messages.JsonRpcWsErrorMessage;
 import com.limechain.rpc.pubsub.subscriberchannel.Subscriber;
+import com.limechain.rpc.subscriptions.author.AuthorRpc;
 import com.limechain.rpc.subscriptions.chainhead.ChainHeadRpc;
 import com.limechain.rpc.subscriptions.transaction.TransactionRpc;
 import lombok.extern.java.Log;
@@ -35,12 +36,18 @@ public class RpcWsHandler extends TextWebSocketHandler {
     private final ObjectMapper mapper;
     private final ChainHeadRpc chainHeadRpc;
     private final TransactionRpc transactionRpc;
+    private final AuthorRpc authorRpc;
 
-    public RpcWsHandler(RPCMethods rpcMethods, ChainHeadRpc chainHeadRpc, TransactionRpc transactionRpc) {
+    public RpcWsHandler(RPCMethods rpcMethods,
+                        ChainHeadRpc chainHeadRpc,
+                        TransactionRpc transactionRpc,
+                        AuthorRpc authorRpc) {
+
         this.mapper = new ObjectMapper();
         this.server = new JsonRpcBasicServer(mapper, rpcMethods, RPCMethods.class);
         this.chainHeadRpc = chainHeadRpc;
         this.transactionRpc = transactionRpc;
+        this.authorRpc = authorRpc;
     }
 
     @Override
@@ -112,6 +119,11 @@ public class RpcWsHandler extends TextWebSocketHandler {
                 log.log(Level.INFO, "Executing unstable_unwatch");
                 this.transactionRpc.transactionUnstableUnwatch(rpcRequest.getParams()[0]);
                 pubSubService.removeSubscriber(Topic.UNSTABLE_TRANSACTION_WATCH, rpcRequest.getParams()[0]);
+            }
+            case AUTHOR_SUBMIT_AND_WATCH_EXTRINSIC -> {
+                log.log(Level.INFO, "Executing submit and watch extrinsic");
+                this.authorRpc.authorSubmitAndWatchExtrinsic(rpcRequest.getParams()[0]);
+                pubSubService.addSubscriber(Topic.AUTHOR_EXTRINSIC_UPDATE, session);
             }
             default -> log.log(Level.WARNING, "Unknown method: " + rpcRequest.getMethod());
         }

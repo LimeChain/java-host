@@ -13,7 +13,8 @@ public enum Topic {
     CHAIN_NEW_HEAD("chain_newHead"),
     CHAIN_FINALIZED_HEAD("chain_finalizedHead"),
     STATE_RUNTIME_VERSION("state_runtimeVersion"),
-    STATE_STORAGE("state_storage");
+    STATE_STORAGE("state_storage"),
+    AUTHOR_EXTRINSIC_UPDATE("author_extrinsicUpdate");
 
     private final String value;
 
