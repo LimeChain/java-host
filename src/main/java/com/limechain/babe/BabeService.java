@@ -157,6 +157,8 @@ public class BabeService implements SlotChangeListener {
     }
 
     private List<ValidTransaction> produceBlockTransactions(EpochSlot epochSlot, Runtime runtime) {
+        List<ValidTransaction> toAdd = new ArrayList<>();
+
         // Keep 1/3 of the slot duration for validating and importing block.
         Instant slotEnd = epochSlot.getStart()
                 .plus(epochSlot.getDuration()
@@ -165,12 +167,12 @@ public class BabeService implements SlotChangeListener {
 
         Duration timeout = Duration.between(Instant.now(), slotEnd);
 
-        List<ValidTransaction> toAdd = new ArrayList<>();
-        while (true) {
+        // while not End-Of-Slot
+        while (timeout.isPositive()) {
+            timeout = Duration.between(Instant.now(), slotEnd);
             // Next-Ready-Extrinsic
             ValidTransaction transaction = transactionState.pollTransactionWithTimer(timeout.get(ChronoUnit.MILLIS));
 
-            // while not End-Of-Slot
             boolean isTimedOut = transaction == null;
             if (isTimedOut) {
                 break;
