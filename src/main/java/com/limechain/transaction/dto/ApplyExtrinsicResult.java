@@ -4,11 +4,11 @@ import lombok.Data;
 import org.jetbrains.annotations.Nullable;
 
 @Data
-public class TransactionValidationResponse {
+public class ApplyExtrinsicResult {
 
     @Nullable
-    private TransactionValidity validity;
+    DispatchOutcome outcome;
 
     @Nullable
-    private TransactionValidityError validityError;
+    TransactionValidityError validityError;
 }

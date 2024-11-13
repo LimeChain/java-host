@@ -42,7 +42,8 @@ public class DigestHelper {
     }
 
     public static HeaderDigest buildSealHeaderDigest(BlockHeader blockHeader, Schnorrkel.KeyPair keyPair) {
-        byte[] signedMessage = Sr25519Utils.signMessage(keyPair.getPublicKey(), keyPair.getSecretKey(), blockHeader.getHashBytes());
+        byte[] signedMessage = Sr25519Utils.signMessage(
+                keyPair.getPublicKey(), keyPair.getSecretKey(), blockHeader.getHashBytes());
         HeaderDigest sealHeaderDigest = new HeaderDigest();
         sealHeaderDigest.setType(DigestType.SEAL);
         sealHeaderDigest.setId(ConsensusEngine.BABE);
