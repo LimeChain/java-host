@@ -110,4 +110,9 @@ public class BlockAnnounceEngine {
         log.log(Level.INFO, "Sending handshake to " + peerId);
         stream.writeAndFlush(buf.toByteArray());
     }
+
+    public void writeBlockAnnounceMessage(Stream stream, PeerId peerId, byte[] encodedBlockAnnounceMessage) {
+        log.log(Level.FINE, "Sending Block Announce message to peer " + peerId);
+        stream.writeAndFlush(encodedBlockAnnounceMessage);
+    }
 }
