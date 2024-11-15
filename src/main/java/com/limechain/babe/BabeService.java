@@ -28,7 +28,7 @@ public class BabeService implements SlotChangeListener {
     private final EpochState epochState;
     private final KeyStore keyStore;
     private final Map<BigInteger, BabePreDigest> slotToPreRuntimeDigest = new HashedMap<>();
-    final Network network = AppBean.getBean(Network.class);
+    private final Network network = AppBean.getBean(Network.class);
 
     public BabeService(EpochState epochState, KeyStore keyStore) {
         this.epochState = epochState;

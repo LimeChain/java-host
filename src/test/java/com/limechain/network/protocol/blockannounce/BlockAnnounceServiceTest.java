@@ -93,8 +93,8 @@ class BlockAnnounceServiceTest {
             blockAnnounceService.sendBlockAnnounceMessage(host, peerId, message);
 
             assertEquals(1, mock.constructed().size());
-            BlockAnnounceController blockAnnounceController = mock.constructed().get(0);
-            verify(blockAnnounceController).sendBlockAnnounceMessage(message);
+            BlockAnnounceController controller = mock.constructed().getFirst();
+            verify(controller).sendBlockAnnounceMessage(message);
         }
     }
 

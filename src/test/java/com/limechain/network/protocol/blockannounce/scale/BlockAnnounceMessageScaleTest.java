@@ -13,10 +13,10 @@ import java.math.BigInteger;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class BlockAnnounceMessageScaleTest {
+class BlockAnnounceMessageScaleTest {
 
     @Test
-    public void blockAnnounceMessageEncodeAndDecodeTest() {
+    void blockAnnounceMessageEncodeAndDecodeTest() {
         BlockHeader blockHeader = new BlockHeader();
         blockHeader.setBlockNumber(BigInteger.ONE);
         blockHeader.setParentHash(new Hash256(StringUtils.hexToBytes("0x4545454545454545454545454545454545454545454545454545454545454545")));
