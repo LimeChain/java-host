@@ -29,12 +29,14 @@ import java.util.List;
 public class AuthorRPCImpl {
 
     private final BlockState blockState;
-    //TODO: Check if these dependencies can be injected with AppBean?
     private final TransactionState transactionState;
     private final TransactionValidator transactionValidator;
     private final KeyStore keyStore;
 
-    public AuthorRPCImpl(TransactionState transactionState, TransactionValidator transactionValidator, KeyStore keyStore) {
+    public AuthorRPCImpl(TransactionState transactionState,
+                         TransactionValidator transactionValidator,
+                         KeyStore keyStore) {
+
         this.transactionState = transactionState;
         this.transactionValidator = transactionValidator;
         this.blockState = BlockState.getInstance();
@@ -95,8 +97,6 @@ public class AuthorRPCImpl {
     }
 
     public String authorSubmitExtrinsic(String extrinsic) {
-        //TODO: only for authoring node -> validate if transactionState is not null
-        //This check probably also should be added to other rpc methods because they seem related to authoring node and make no sense in other node types context
         Extrinsic decodedExtrinsic = new Extrinsic(
                 ScaleUtils.Decode.decode(
                         StringUtils.hexToBytes(extrinsic),

@@ -42,9 +42,6 @@ public class TrieChanges {
      */
     public static TrieChanges copy(TrieChanges original) {
         TreeMap<Nibbles, PendingTrieNodeChange> copyChanges = new TreeMap<>();
-        // TODO: Dirty fix for ConcurrentModificationException
-        // var temp = (TreeMap<Nibbles, PendingTrieNodeChange>) original.changes.clone();
-        // temp.forEach((key, value) -> {
         original.changes.forEach((key, value) -> {
             PendingTrieNodeChange trieNodeChange = value instanceof PendingInsertUpdate u
                 ? new PendingInsertUpdate(u)
