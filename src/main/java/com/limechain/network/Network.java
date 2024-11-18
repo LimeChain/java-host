@@ -313,4 +313,11 @@ public class Network {
     public void sendNeighbourMessage(PeerId peerId) {
         grandpaService.sendNeighbourMessage(this.host, peerId);
     }
+
+    public void sendBlockAnnounceMessage(byte[] encodedBlockAnnounceMessage) {
+        kademliaService.getBootNodePeerIds()
+                .stream()
+                .distinct()
+                .forEach(p -> new Thread(() -> blockAnnounceService.sendBlockAnnounceMessage(this.host, p, encodedBlockAnnounceMessage)).start());
+    }
 }

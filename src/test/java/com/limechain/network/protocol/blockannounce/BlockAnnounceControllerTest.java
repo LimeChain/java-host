@@ -39,4 +39,11 @@ class BlockAnnounceControllerTest {
         verify(engine).writeHandshakeToStream(stream, peerId);
     }
 
+    @Test
+    void sendBlockAnnounceMessage() {
+        byte[] message = {1, 2, 3, 4};
+        when(stream.remotePeerId()).thenReturn(peerId);
+        blockAnnounceController.sendBlockAnnounceMessage(message);
+        verify(engine).writeBlockAnnounceMessage(stream, peerId, message);
+    }
 }
