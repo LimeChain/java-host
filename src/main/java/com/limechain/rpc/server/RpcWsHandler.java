@@ -121,10 +121,12 @@ public class RpcWsHandler extends TextWebSocketHandler {
                 pubSubService.removeSubscriber(Topic.UNSTABLE_TRANSACTION_WATCH, rpcRequest.getParams()[0]);
             }
             case AUTHOR_SUBMIT_AND_WATCH_EXTRINSIC -> {
-                log.log(Level.INFO, "Executing submit and watch extrinsic");
-                this.authorRpc.authorSubmitAndWatchExtrinsic(rpcRequest.getParams()[0]);
+                log.log(Level.INFO, "Executing author_submitAndWatchExtrinsic");
                 pubSubService.addSubscriber(Topic.AUTHOR_EXTRINSIC_UPDATE, session);
+                this.authorRpc.authorSubmitAndWatchExtrinsic(rpcRequest.getParams()[0]);
             }
+            case AUTHOR_UNWATCH_EXTRINSIC -> handleDefaultUnsubscribe(Topic.AUTHOR_EXTRINSIC_UPDATE, rpcRequest, session);
+
             default -> log.log(Level.WARNING, "Unknown method: " + rpcRequest.getMethod());
         }
     }

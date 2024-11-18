@@ -117,11 +117,6 @@ public class AuthorRPCImpl {
         // TODO: Gossip this transaction to other peers
     }
 
-    //TODO: This method might be removed from here - not sure at the moment of writing
-    public String authorSubmitAndWatchExtrinsic(String extrinsic) {
-        return "";
-    }
-
     private byte[] decodePrivateKey(byte[] suri, KeyType keyType, byte[] publicKey) {
         byte[] privateKey;
         byte[] generatedPublicKey;

@@ -2,6 +2,7 @@ package com.limechain.rpc.server;
 
 import com.limechain.config.HostConfig;
 import com.limechain.rpc.methods.RPCMethods;
+import com.limechain.rpc.methods.author.AuthorRPC;
 import com.limechain.rpc.subscriptions.author.AuthorRpcImpl;
 import com.limechain.rpc.subscriptions.chainhead.ChainHeadRpc;
 import com.limechain.rpc.subscriptions.chainhead.ChainHeadRpcImpl;
@@ -25,10 +26,12 @@ public class RpcWsRoutingConfig implements WebSocketConfigurer {
      */
     private final RPCMethods rpcMethods;
     private final HostConfig hostConfig;
+    private final AuthorRPC authorRPC;
 
-    public RpcWsRoutingConfig(RPCMethods rpcMethods, HostConfig hostConfig) {
+    public RpcWsRoutingConfig(RPCMethods rpcMethods, HostConfig hostConfig, AuthorRPC authorRPC) {
         this.rpcMethods = rpcMethods;
         this.hostConfig = hostConfig;
+        this.authorRPC = authorRPC;
     }
 
     /**
@@ -61,7 +64,7 @@ public class RpcWsRoutingConfig implements WebSocketConfigurer {
 
     @Bean
     public AuthorRpcImpl authorRpc() {
-        return new AuthorRpcImpl(hostConfig.getRpcNodeAddress());
+        return new AuthorRpcImpl(hostConfig.getRpcNodeAddress(), authorRPC);
     }
 
 }

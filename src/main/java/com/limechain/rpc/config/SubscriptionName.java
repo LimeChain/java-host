@@ -25,7 +25,8 @@ public enum SubscriptionName {
     STATE_UNSUBSCRIBE_RUNTIME_VERSION("state_unsubscribeRuntimeVersion"),
     STATE_SUBSCRIBE_STORAGE("state_subscribeStorage"),
     STATE_UNSUBSCRIBE_STORAGE("state_unsubscribeStorage"),
-    AUTHOR_SUBMIT_AND_WATCH_EXTRINSIC("author_submitAndWatchExtrinsic");
+    AUTHOR_SUBMIT_AND_WATCH_EXTRINSIC("author_submitAndWatchExtrinsic"),
+    AUTHOR_UNWATCH_EXTRINSIC("author_unwatchExtrinsic");
 
     /**
      * Holds the name of the rpc method
