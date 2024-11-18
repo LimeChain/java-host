@@ -37,9 +37,9 @@ public class AuthorRPCImpl {
                          TransactionValidator transactionValidator,
                          KeyStore keyStore) {
 
+        this.blockState = BlockState.getInstance();
         this.transactionState = transactionState;
         this.transactionValidator = transactionValidator;
-        this.blockState = BlockState.getInstance();
         this.keyStore = keyStore;
     }
 
