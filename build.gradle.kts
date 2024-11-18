@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("io.freefair.lombok") version "8.10.2"
+    id("io.freefair.lombok") version "8.11"
     id("org.springframework.boot") version "3.2.11"
     id("io.spring.dependency-management") version "1.1.6"
     id("application")
