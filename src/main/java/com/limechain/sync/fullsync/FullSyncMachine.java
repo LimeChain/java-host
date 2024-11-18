@@ -124,9 +124,9 @@ public class FullSyncMachine {
             receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
         }
 
-//        if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
+        if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
             initializeStates();
-//        }
+        }
 
         finishFullSync();
     }
