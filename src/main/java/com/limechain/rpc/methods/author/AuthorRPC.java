@@ -28,8 +28,5 @@ public interface AuthorRPC {
 
     @UnsafeRpcMethod
     @JsonRpcMethod("author_submitExtrinsic")
-    String authorSubmitExtrinsic(String extrinsics);
-
-    @JsonRpcMethod("author_submitAndWatchExtrinsic")
-    String authorSubmitAndWatchExtrinsic(String extrinsics);
+    String authorSubmitExtrinsic(String extrinsic);
 }

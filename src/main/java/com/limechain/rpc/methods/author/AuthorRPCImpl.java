@@ -2,12 +2,19 @@ package com.limechain.rpc.methods.author;
 
 import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.exception.storage.BlockStorageGenericException;
+import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
 import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
+import com.limechain.transaction.TransactionState;
+import com.limechain.transaction.TransactionValidator;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.StringUtils;
+import com.limechain.utils.scale.ScaleUtils;
+import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
 import io.libp2p.crypto.keys.Ed25519PrivateKey;
@@ -22,10 +29,17 @@ import java.util.List;
 public class AuthorRPCImpl {
 
     private final BlockState blockState;
+    private final TransactionState transactionState;
+    private final TransactionValidator transactionValidator;
     private final KeyStore keyStore;
 
-    public AuthorRPCImpl(KeyStore keyStore) {
+    public AuthorRPCImpl(TransactionState transactionState,
+                         TransactionValidator transactionValidator,
+                         KeyStore keyStore) {
+
         this.blockState = BlockState.getInstance();
+        this.transactionState = transactionState;
+        this.transactionValidator = transactionValidator;
         this.keyStore = keyStore;
     }
 
@@ -82,12 +96,25 @@ public class AuthorRPCImpl {
         return true;
     }
 
-    public String authorSubmitExtrinsic(String extrinsics) {
-        return "";
-    }
+    public String authorSubmitExtrinsic(String extrinsic) {
+        Extrinsic decodedExtrinsic = new Extrinsic(
+                ScaleUtils.Decode.decode(
+                        StringUtils.hexToBytes(extrinsic),
+                        ScaleCodecReader::readByteArray
+                )
+        );
 
-    public String authorSubmitAndWatchExtrinsic(String extrinsics) {
-        return "";
+        ValidTransaction validTransaction;
+        try {
+            validTransaction = transactionValidator.validateExternalTransaction(decodedExtrinsic);
+        } catch (TransactionValidationException e) {
+            throw new ExecutionFailedException("Failed to executed submit_extrinsic call: " + e.getMessage());
+        }
+
+        return StringUtils.toHexWithPrefix(
+                transactionState.addToPool(validTransaction)
+        );
+        // TODO: Gossip this transaction to other peers
     }
 
     private byte[] decodePrivateKey(byte[] suri, KeyType keyType, byte[] publicKey) {

@@ -336,13 +336,8 @@ public class RPCMethodsImpl implements RPCMethods {
     }
 
     @Override
-    public String authorSubmitExtrinsic(String extrinsics) {
-        return "";
-    }
-
-    @Override
-    public String authorSubmitAndWatchExtrinsic(String extrinsics) {
-        return "";
+    public String authorSubmitExtrinsic(String extrinsic) {
+        return authorRPC.authorSubmitExtrinsic(extrinsic);
     }
     //endregion
 }
