@@ -12,23 +12,85 @@ import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
 import com.limechain.transaction.dto.ValidTransaction;
 import io.emeraldpay.polkaj.types.Hash256;
+import io.libp2p.core.PeerId;
+import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+@Log
 @Component
-public class TransactionValidator {
+public class TransactionProcessor {
 
     private final TransactionState transactionState;
     private final BlockState blockState;
 
-    public TransactionValidator(TransactionState transactionState) {
+    public TransactionProcessor(TransactionState transactionState) {
         this.transactionState = transactionState;
         this.blockState = BlockState.getInstance();
     }
 
-    public ValidTransaction validateExternalTransaction(Extrinsic extrinsic)
+    public void handleExternalTransactions(Extrinsic[] extrinsics, PeerId peerId) {
+        for (Extrinsic current : extrinsics) {
+
+            try {
+                processTransaction(current, peerId);
+            } catch (TransactionValidationException e) {
+                log.fine("Error when validating transaction " + current.toString()
+                        + " from protocol: " + e.getMessage());
+                continue;
+            }
+
+            maintainTransactionPool();
+        }
+    }
+
+    public byte[] handlePoolOnlyExternalTransaction(Extrinsic extrinsic) throws TransactionValidationException {
+        ValidTransaction validTransaction = validateExternalTransaction(extrinsic);
+        byte[] result = transactionState.addToPool(validTransaction);
+        return result;
+    }
+
+    private void processTransaction(Extrinsic extrinsic, PeerId peerId) throws TransactionValidationException {
+        ValidTransaction validTransaction = validateExternalTransaction(extrinsic);
+        validTransaction.getIgnore().add(peerId);
+
+        if (transactionState.shouldAddToQueue(validTransaction)) {
+            transactionState.pushTransaction(validTransaction);
+        } else {
+            transactionState.addToPool(validTransaction);
+        }
+    }
+
+    private void maintainTransactionPool() {
+        Set<Extrinsic> extrinsicSet = Arrays.stream(transactionState.pendingInPool())
+                .map(ValidTransaction::getExtrinsic)
+                .collect(Collectors.toSet());
+
+        for (Extrinsic extrinsic : extrinsicSet) {
+
+            ValidTransaction validTransaction;
+            try {
+                validTransaction = validateExternalTransaction(extrinsic);
+            } catch (TransactionValidationException e) {
+                log.fine("Dropping invalid transaction from the pool " + extrinsic.toString()
+                        + " from protocol: " + e.getMessage());
+                transactionState.removeExtrinsicFromPool(extrinsic);
+                continue;
+            }
+
+            if (transactionState.shouldAddToQueue(validTransaction)) {
+                transactionState.pushTransaction(validTransaction);
+                transactionState.removeExtrinsicFromPool(extrinsic);
+            }
+        }
+    }
+
+    private ValidTransaction validateExternalTransaction(Extrinsic extrinsic)
             throws TransactionValidationException {
         if (!transactionState.isInitialized()) {
             throw new TransactionValidationException("Transaction state is not initialized.");

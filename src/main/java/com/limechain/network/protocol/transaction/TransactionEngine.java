@@ -1,17 +1,15 @@
 package com.limechain.network.protocol.transaction;
 
 import com.limechain.exception.scale.ScaleEncodingException;
-import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.transaction.TransactionState;
-import com.limechain.transaction.TransactionValidator;
+import com.limechain.transaction.TransactionProcessor;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
-import com.limechain.transaction.dto.ValidTransaction;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.libp2p.core.PeerId;
@@ -35,13 +33,11 @@ public class TransactionEngine {
     private static final int HANDSHAKE_LENGTH = 1;
 
     private final ConnectionManager connectionManager;
-    private final TransactionState transactionState;
-    private final TransactionValidator transactionValidator;
+    private final TransactionProcessor transactionProcessor;
 
     public TransactionEngine() {
         connectionManager = ConnectionManager.getInstance();
-        transactionState = AppBean.getBean(TransactionState.class);
-        transactionValidator = AppBean.getBean(TransactionValidator.class);
+        transactionProcessor = AppBean.getBean(TransactionProcessor.class);
     }
 
     /**
@@ -123,25 +119,7 @@ public class TransactionEngine {
                 + peerId);
 
         synchronized (LOCK) {
-            for (int i = 0; i < transactions.getExtrinsics().length; i++) {
-                Extrinsic current = transactions.getExtrinsics()[i];
-
-                ValidTransaction validTransaction;
-                try {
-                    validTransaction = transactionValidator.validateExternalTransaction(current);
-                    validTransaction.getIgnore().add(peerId);
-                } catch (TransactionValidationException e) {
-                    log.fine("Error when validating transaction " + current.toString()
-                            + " from protocol: " + e.getMessage());
-                    continue;
-                }
-
-                if (transactionState.shouldAddToQueue(validTransaction)) {
-                    transactionState.pushTransaction(validTransaction);
-                } else {
-                    transactionState.addToPool(validTransaction);
-                }
-            }
+            transactionProcessor.handleExternalTransactions(transactions.getExtrinsics(), peerId);
         }
     }
 
