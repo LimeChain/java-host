@@ -6,7 +6,6 @@ import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncState;
-import com.limechain.transaction.TransactionState;
 import com.limechain.transaction.TransactionProcessor;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
