@@ -191,7 +191,7 @@ public class Authorship {
     }
 
     // threshold = 2^128 * (1 - (1 - c) ^ (authority_weight / sum(authorities_weights)))
-    private static BigInteger calculatePrimaryThreshold(
+    public static BigInteger calculatePrimaryThreshold(
             Pair<BigInteger, BigInteger> constant,
             List<Authority> authorities,
             int authorityIndex) {
@@ -259,7 +259,7 @@ public class Authorship {
         return c;
     }
 
-    private static TranscriptData makeTranscript(byte[] randomness, BigInteger slotNumber, BigInteger epochIndex) {
+    public static TranscriptData makeTranscript(byte[] randomness, BigInteger slotNumber, BigInteger epochIndex) {
         var transcript = new TranscriptData("BABE".getBytes());
         transcript.appendMessage("slot number", LittleEndianUtils.toLittleEndianBytes(slotNumber));
         transcript.appendMessage("current epoch", LittleEndianUtils.toLittleEndianBytes(epochIndex));
