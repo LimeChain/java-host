@@ -8,9 +8,15 @@ import com.limechain.babe.dto.InherentType;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.scale.PreDigestWriter;
 import com.limechain.babe.state.EpochState;
+import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.misc.BabeGenericException;
+import com.limechain.exception.misc.KeyStoreException;
+import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.transaction.ApplyExtrinsicException;
+import com.limechain.network.Network;
+import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
+import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockBody;
@@ -21,14 +27,8 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.BlockState;
-import com.limechain.exception.scale.ScaleEncodingException;
-import com.limechain.network.Network;
-import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
-import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
-import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.rpc.server.AppBean;
-import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
+import com.limechain.storage.crypto.KeyType;
 import com.limechain.transaction.TransactionState;
 import com.limechain.transaction.dto.ApplyExtrinsicResult;
 import com.limechain.transaction.dto.Extrinsic;
@@ -38,9 +38,10 @@ import com.limechain.transaction.dto.TransactionValidityError;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.async.AsyncExecutor;
 import com.limechain.utils.scale.ScaleUtils;
-import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
-import lombok.extern.java.Log;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
+import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
+import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
+import lombok.extern.java.Log;
 import org.apache.commons.collections4.map.HashedMap;
 import org.springframework.stereotype.Component;
 
@@ -55,7 +56,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-//TODO sanitize logging in class, cleanup comments.
 @Log
 @Component
 public class BabeService implements SlotChangeListener {
@@ -93,7 +93,7 @@ public class BabeService implements SlotChangeListener {
     }
 
     private void handleSlot(EpochSlot epochSlot, BabePreDigest preDigest) {
-        log.info(String.format("Producing block for slot %s in epoch %s.",
+        log.fine(String.format("Producing block for slot %s in epoch %s.",
                 epochSlot.getNumber(), epochSlot.getEpochIndex()));
 
         Block block;
@@ -106,7 +106,6 @@ public class BabeService implements SlotChangeListener {
         }
 
         //TODO Network improvements: emmit a produced block event.
-        return;
     }
 
     private Block produceBlock(BlockHeader parentHeader, EpochSlot epochSlot, BabePreDigest preDigest) {
@@ -117,13 +116,13 @@ public class BabeService implements SlotChangeListener {
         Runtime runtime = blockState.getRuntime(parentHeader.getHash());
         runtime.initializeBlock(newBlockHeader);
 
-        log.info("Initialized block via runtime call.");
+        log.fine("Initialized block via runtime call.");
 
         ExtrinsicArray inherents = produceBlockInherents(epochSlot, runtime);
-        log.info("Finished with inherents for block.");
+        log.fine("Finished with inherents for block.");
 
         List<ValidTransaction> transactions = produceBlockTransactions(epochSlot, runtime);
-        log.info("Finished with extrinsics for block.");
+        log.fine("Finished with extrinsics for block.");
 
         BlockHeader finalizedHeader;
         try {
@@ -132,10 +131,10 @@ public class BabeService implements SlotChangeListener {
             transactions.forEach(transactionState::pushTransaction);
             throw new BabeGenericException("Block finalization failed. Pushed transaction back to queue.");
         }
-        log.info("Finished with finalizing block.");
+        log.fine("Finished with finalizing block.");
 
         finalizedHeader.setDigest(produceDigests(finalizedHeader, preDigest));
-        log.info("Finished with digests for block.");
+        log.fine("Finished with digests for block.");
 
         List<Extrinsic> bodyExtrinsics = new ArrayList<>(Arrays.asList(inherents.getExtrinsics()));
         bodyExtrinsics.addAll(transactions.stream()
@@ -148,9 +147,11 @@ public class BabeService implements SlotChangeListener {
     }
 
     private HeaderDigest[] produceDigests(BlockHeader header, BabePreDigest digest) {
+        // Make a copy of the digests from the header.
         int length = header.getDigest().length;
         HeaderDigest[] newDigests = Arrays.copyOf(header.getDigest(), length + 2);
 
+        // Setup pre-digest.
         HeaderDigest preDigest = new HeaderDigest();
         preDigest.setId(ConsensusEngine.BABE);
         preDigest.setType(DigestType.PRE_RUNTIME);
@@ -158,12 +159,11 @@ public class BabeService implements SlotChangeListener {
 
         newDigests[length + 1] = preDigest;
 
-        //TODO Use DigestHelper to create and sign a seal. It seems that we need a keypair to sign a seal. Currently,
-        // we do not have a way to retrieve that from here. An idea is to somehow use the block lottery to retrieve the
-        // public key from the authority list and use it with the KeyStore to retrieve the needed secret key. This way
-        // we can also support multiple session keys per lottery if it's needed. Another idea could be to create a cfg
-        // that would store a single KeyPair.
-        //newDigests[length + 2] = DigestHelper.buildSealHeaderDigest()
+        Authority auth = epochState.getCurrentEpochData().getAuthorities()
+                .get((int) digest.getAuthorityIndex());
+        Schnorrkel.KeyPair keyPair = keyStore.getKeyPair(KeyType.BABE, auth.getPublicKey())
+                .orElseThrow(() -> new KeyStoreException("No KeyPair found for provided pub key."));
+        newDigests[length + 2] = DigestHelper.buildSealHeaderDigest(header, keyPair);
 
         return newDigests;
     }
