@@ -51,8 +51,7 @@ public class TransactionProcessor {
 
     public byte[] handlePoolOnlyExternalTransaction(Extrinsic extrinsic) throws TransactionValidationException {
         ValidTransaction validTransaction = validateExternalTransaction(extrinsic);
-        byte[] result = transactionState.addToPool(validTransaction);
-        return result;
+        return transactionState.addToPool(validTransaction);
     }
 
     private void processTransaction(Extrinsic extrinsic, PeerId peerId) throws TransactionValidationException {
