@@ -50,12 +50,17 @@ public class TransactionProcessor {
     }
 
     public byte[] handlePoolOnlyExternalTransaction(Extrinsic extrinsic) throws TransactionValidationException {
-        ValidTransaction validTransaction = validateExternalTransaction(extrinsic);
+        TransactionValidationResponse response = validateExternalTransaction(extrinsic);
+        checkIfTransactionValidityResponseContainsError(response);
+        ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
         return transactionState.addToPool(validTransaction);
     }
 
     private void processTransaction(Extrinsic extrinsic, PeerId peerId) throws TransactionValidationException {
-        ValidTransaction validTransaction = validateExternalTransaction(extrinsic);
+        TransactionValidationResponse response = validateExternalTransaction(extrinsic);
+        checkIfTransactionValidityResponseContainsError(response);
+
+        ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
         validTransaction.getIgnore().add(peerId);
 
         if (transactionState.shouldAddToQueue(validTransaction)) {
@@ -72,58 +77,67 @@ public class TransactionProcessor {
 
         for (Extrinsic extrinsic : extrinsicSet) {
 
-            ValidTransaction validTransaction;
+            TransactionValidationResponse response;
             try {
-                validTransaction = validateExternalTransaction(extrinsic);
+                response = validateExternalTransaction(extrinsic);
 
+                if (!Objects.isNull(response.getValidityError()) ) {
+                    if (response.getValidityError().shouldReject()) {
+                        transactionState.removeExtrinsicFromPool(extrinsic);
+                    }
+                    continue;
+                }
+
+                var validTransaction = new ValidTransaction(extrinsic, response.getValidity());
                 if (transactionState.shouldAddToQueue(validTransaction)) {
+                    transactionState.removeExtrinsicFromPool(extrinsic);
                     transactionState.pushTransaction(validTransaction);
                 }
 
-            } catch (TransactionValidationException e) {
+            } catch (IllegalStateException e) {
                 log.fine("Dropping invalid transaction from the pool " + extrinsic.toString() + e.getMessage());
-            } finally {
-                // Transactions must always be removed from the pool
-                transactionState.removeExtrinsicFromPool(extrinsic);
             }
         }
     }
 
-    private ValidTransaction validateExternalTransaction(Extrinsic extrinsic)
-            throws TransactionValidationException {
+    private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic)
+            throws IllegalStateException {
+
         if (!transactionState.isInitialized()) {
-            throw new TransactionValidationException("Transaction state is not initialized.");
+            throw new IllegalStateException("Transaction state is not initialized.");
         }
 
-        if (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic)) {
-            throw new TransactionValidationException("Transaction already validated.");
+        if (transactionState.existsInQueue(extrinsic)) {
+            throw new IllegalStateException("Transaction already validated.");
         }
 
         final BlockHeader header = blockState.bestBlockHeader();
         if (header == null) {
-            throw new TransactionValidationException("No best block header found while validating.");
+            throw new IllegalStateException("No best block header found while validating.");
         }
 
         final Runtime runtime = blockState.getRuntime(header.getHash());
         if (runtime == null) {
             // This should be an unreachable state, but the blockState method has a return null.
-            throw new TransactionValidationException("No runtime found for block header " + header.getHash()
+            throw new IllegalStateException("No runtime found for block header " + header.getHash()
                     + " while validating.");
         }
 
-        TransactionValidationResponse response = runtime.validateTransaction(createScaleValidationRequest(
+        return runtime.validateTransaction(createScaleValidationRequest(
                 runtime.getCachedVersion().getApis()
                         .getApiVersion(ApiVersionName.TRANSACTION_QUEUE_API.getHashedName()),
                 TransactionSource.EXTERNAL,
                 header.getHash(),
                 extrinsic
         ));
+    }
+
+    private void checkIfTransactionValidityResponseContainsError(TransactionValidationResponse response)
+            throws TransactionValidationException {
 
         if (!Objects.isNull(response.getValidityError())) {
             throw new TransactionValidationException(response.getValidityError().toString());
         }
-
-        return new ValidTransaction(extrinsic, response.getValidity());
     }
 
     private static TransactionValidationRequest createScaleValidationRequest(BigInteger txQueueVersion,
