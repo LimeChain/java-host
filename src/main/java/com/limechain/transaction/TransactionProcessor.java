@@ -75,15 +75,15 @@ public class TransactionProcessor {
             ValidTransaction validTransaction;
             try {
                 validTransaction = validateExternalTransaction(extrinsic);
-            } catch (TransactionValidationException e) {
-                log.fine("Dropping invalid transaction from the pool " + extrinsic.toString()
-                        + " from protocol: " + e.getMessage());
-                transactionState.removeExtrinsicFromPool(extrinsic);
-                continue;
-            }
 
-            if (transactionState.shouldAddToQueue(validTransaction)) {
-                transactionState.pushTransaction(validTransaction);
+                if (transactionState.shouldAddToQueue(validTransaction)) {
+                    transactionState.pushTransaction(validTransaction);
+                }
+
+            } catch (TransactionValidationException e) {
+                log.fine("Dropping invalid transaction from the pool " + extrinsic.toString() + e.getMessage());
+            } finally {
+                // Transactions must always be removed from the pool
                 transactionState.removeExtrinsicFromPool(extrinsic);
             }
         }
