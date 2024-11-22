@@ -1,5 +1,8 @@
 package com.limechain.network.protocol.blockannounce;
 
+import com.limechain.network.ConnectionManager;
+import com.limechain.network.dto.PeerInfo;
+import com.limechain.network.dto.ProtocolStreams;
 import com.limechain.network.kad.KademliaService;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshake;
 import com.limechain.utils.RandomGenerationUtils;
@@ -9,13 +12,16 @@ import io.ipfs.multihash.Multihash;
 import io.libp2p.core.AddressBook;
 import io.libp2p.core.Host;
 import io.libp2p.core.PeerId;
+import io.libp2p.core.Stream;
 import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.protocol.Ping;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.peergos.HostBuilder;
 
@@ -23,8 +29,8 @@ import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.util.List;
 
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class BlockAnnounceServiceTest {
@@ -38,22 +44,58 @@ class BlockAnnounceServiceTest {
     private AddressBook addressBook;
     @Mock
     private BlockAnnounceController blockAnnounceController;
+    @Mock
+    private PeerInfo peerInfo;
+    @Mock
+    private Stream stream;
+    @Mock
+    private ProtocolStreams protocolStreams;
+    @Mock
+    private ConnectionManager connectionManager;
 
+    @InjectMocks
     private final BlockAnnounceService blockAnnounceService = new BlockAnnounceService("pid");
 
     @BeforeEach
     public void setupEach() throws NoSuchFieldException, IllegalAccessException {
-        when(host.getAddressBook()).thenReturn(addressBook);
         setPrivateFieldOfSuperclass(blockAnnounceService, "protocol", protocol);
     }
 
     @Test
     void sendHandshake() {
+        when(host.getAddressBook()).thenReturn(addressBook);
         when(protocol.dialPeer(host, peerId, addressBook)).thenReturn(blockAnnounceController);
 
         blockAnnounceService.sendHandshake(host, peerId);
 
         verify(blockAnnounceController).sendHandshake();
+    }
+
+    @Test
+    void sendBlockAnnounceMessageeWhenNotConnectionShouldSendHandshake() {
+        byte[] message = {1, 2, 3, 4};
+        when(host.getAddressBook()).thenReturn(addressBook);
+        when(protocol.dialPeer(host, peerId, addressBook)).thenReturn(blockAnnounceController);
+
+        blockAnnounceService.sendBlockAnnounceMessage(host, peerId, message);
+
+        verify(blockAnnounceController).sendHandshake();
+    }
+
+    @Test
+    void sendBlockAnnounceMessageWhenExistingConnection() {
+        byte[] message = {1, 2, 3, 4};
+        when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
+        when(peerInfo.getBlockAnnounceStreams()).thenReturn(protocolStreams);
+        when(protocolStreams.getInitiator()).thenReturn(stream);
+
+        try (MockedConstruction<BlockAnnounceController> mock = mockConstruction(BlockAnnounceController.class)) {
+            blockAnnounceService.sendBlockAnnounceMessage(host, peerId, message);
+
+            assertEquals(1, mock.constructed().size());
+            BlockAnnounceController controller = mock.constructed().getFirst();
+            verify(controller).sendBlockAnnounceMessage(message);
+        }
     }
 
     @Disabled("This is an integration test")

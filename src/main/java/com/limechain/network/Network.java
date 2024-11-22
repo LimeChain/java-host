@@ -19,6 +19,7 @@ import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.StringUtils;
+import com.limechain.utils.async.AsyncExecutor;
 import io.ipfs.multiaddr.MultiAddress;
 import io.ipfs.multihash.Multihash;
 import io.libp2p.core.Host;
@@ -49,6 +50,7 @@ import static com.limechain.network.kad.KademliaService.REPLICATION;
 public class Network {
     public static final String LOCAL_IPV4_TCP_ADDRESS = "/ip4/127.0.0.1/tcp/";
     private static final int HOST_PORT = 30333;
+    private static final int ASYNC_EXECUTOR_POOL_SIZE = 10;
     private static final Random RANDOM = new Random();
     @Getter
     private final Chain chain;
@@ -312,5 +314,10 @@ public class Network {
 
     public void sendNeighbourMessage(PeerId peerId) {
         grandpaService.sendNeighbourMessage(this.host, peerId);
+    }
+
+    public void sendBlockAnnounceMessage(byte[] encodedBlockAnnounceMessage) {
+        AsyncExecutor asyncExecutor = AsyncExecutor.withPoolSize(ASYNC_EXECUTOR_POOL_SIZE);
+        connectionManager.getPeerIds().forEach(p -> asyncExecutor.executeAndForget(() -> blockAnnounceService.sendBlockAnnounceMessage(this.host, p, encodedBlockAnnounceMessage)));
     }
 }

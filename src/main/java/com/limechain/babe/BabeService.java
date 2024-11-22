@@ -21,6 +21,13 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.storage.block.BlockState;
+import com.limechain.exception.scale.ScaleEncodingException;
+import com.limechain.network.Network;
+import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
+import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.rpc.server.AppBean;
+import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.transaction.TransactionState;
 import com.limechain.transaction.dto.ApplyExtrinsicResult;
@@ -33,9 +40,12 @@ import com.limechain.utils.async.AsyncExecutor;
 import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import lombok.extern.java.Log;
+import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import org.apache.commons.collections4.map.HashedMap;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -56,11 +66,13 @@ public class BabeService implements SlotChangeListener {
     private final KeyStore keyStore;
     private final AsyncExecutor asyncExecutor;
     private final Map<BigInteger, BabePreDigest> slotToPreRuntimeDigest = new HashedMap<>();
+    private final Network network;
 
-    public BabeService(TransactionState transactionState, EpochState epochState, KeyStore keyStore) {
+    public BabeService(TransactionState transactionState, EpochState epochState, KeyStore keyStore, Network network) {
         this.transactionState = transactionState;
         this.epochState = epochState;
         this.keyStore = keyStore;
+        this.network = network;
 
         blockState = AppBean.getBean(BlockState.class);
         asyncExecutor = AsyncExecutor.withSingleThread();
@@ -278,5 +290,22 @@ public class BabeService implements SlotChangeListener {
             BigInteger nextEpochIndex = slot.getEpochIndex().add(BigInteger.ONE);
             executeEpochLottery(nextEpochIndex);
         }
+    }
+
+    public byte[] createEncodedBlockAnnounceMessage(BlockHeader blockHeader) {
+        BlockAnnounceMessage blockAnnounceMessage = new BlockAnnounceMessage();
+        blockAnnounceMessage.setHeader(blockHeader);
+        blockAnnounceMessage.setBestBlock(blockHeader.getHash().equals(blockState.bestBlockHash()));
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
+            writer.write(new BlockAnnounceMessageScaleWriter(), blockAnnounceMessage);
+        } catch (IOException e) {
+            throw new ScaleEncodingException(e);
+        }
+        return buf.toByteArray();
+    }
+
+    public void broadcastBlock(BlockHeader blockHeader) {
+        network.sendBlockAnnounceMessage(createEncodedBlockAnnounceMessage(blockHeader));
     }
 }

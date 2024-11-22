@@ -13,4 +13,11 @@ public class BlockAnnounceController {
     public void sendHandshake() {
         engine.writeHandshakeToStream(stream, stream.remotePeerId());
     }
+
+    /**
+     * Sends a block announce message over the controller stream.
+     */
+    public void sendBlockAnnounceMessage(byte[] encodedBlockAnnounceMessage) {
+        engine.writeBlockAnnounceMessage(stream, stream.remotePeerId(), encodedBlockAnnounceMessage);
+    }
 }

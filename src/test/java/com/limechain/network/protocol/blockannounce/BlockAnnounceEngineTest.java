@@ -149,4 +149,13 @@ class BlockAnnounceEngineTest {
             verify(warpSyncState).syncBlockAnnounce(blockAnnounceMessage);
         }
     }
+
+    @Test
+    void writeBlockAnnounceMessage() {
+        byte[] message = {1, 2, 3, 4};
+
+        blockAnnounceEngine.writeBlockAnnounceMessage(stream, peerId, message);
+
+        verify(stream).writeAndFlush(message);
+    }
 }
