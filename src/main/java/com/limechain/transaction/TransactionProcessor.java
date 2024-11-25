@@ -82,12 +82,15 @@ public class TransactionProcessor {
                 response = validateExternalTransaction(extrinsic);
 
                 if (!Objects.isNull(response.getValidityError())) {
+                    // A validity error does not always indicate that the extrinsic should be dropped from the pool.
+                    // We must also check the 'shouldReject' flag.
                     if (response.getValidityError().shouldReject()) {
                         transactionState.removeExtrinsicFromPool(extrinsic);
                     }
                     continue;
                 }
 
+                // If no validity error object is present, the extrinsic is removed from the pool and added to the queue.
                 var validTransaction = new ValidTransaction(extrinsic, response.getValidity());
                 if (transactionState.shouldAddToQueue(validTransaction)) {
                     transactionState.removeExtrinsicFromPool(extrinsic);
@@ -95,7 +98,10 @@ public class TransactionProcessor {
                 }
 
             } catch (TransactionValidationException e) {
-                log.fine("Dropping invalid transaction from the pool " + extrinsic.toString() + e.getMessage());
+                // In an exception is thrown, no action is taken because maintainTransactionPool is invoked frequently,
+                // and the failed validation will probably succeed in a subsequent execution.
+                log.fine("Error during transaction validation while maintaining the pool "
+                        + extrinsic.toString() + e.getMessage());
             }
         }
     }
