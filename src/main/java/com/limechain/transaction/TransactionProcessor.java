@@ -44,10 +44,7 @@ public class TransactionProcessor {
             } catch (TransactionValidationException e) {
                 log.fine("Error when validating transaction " + current.toString()
                         + " from protocol: " + e.getMessage());
-                continue;
             }
-
-            maintainTransactionPool();
         }
     }
 
@@ -75,7 +72,16 @@ public class TransactionProcessor {
         return extrinsic.toString();
     }
 
-    private void maintainTransactionPool() {
+    // Removes any transaction that was included in the new block, also revalidate the transactions in the pool and
+    // add them to the queue if necessary
+    public synchronized void maintainTransactionPool(Block block) {
+        if (!transactionState.isInitialized()) return;
+
+        List<Extrinsic> newBlockExtrinsics = block.getBody().getExtrinsics();
+        for (Extrinsic extrinsic : newBlockExtrinsics) {
+            transactionState.removeExtrinsic(extrinsic);
+        }
+
         Set<Extrinsic> extrinsicSet = Arrays.stream(transactionState.pendingInPool())
                 .map(ValidTransaction::getExtrinsic)
                 .collect(Collectors.toSet());
