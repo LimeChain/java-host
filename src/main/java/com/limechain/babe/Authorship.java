@@ -75,12 +75,13 @@ public class Authorship {
 
             var authorityIndex = entry.getKey();
             var keyPair = entry.getValue();
+            var publicKey = new Schnorrkel.PublicKey(keyPair.getPublicKey());
 
             var threshold = calculatePrimaryThreshold(c, authorities, authorityIndex);
 
             Schnorrkel schnorrkel = Schnorrkel.getInstance();
             VrfOutputAndProof vrfOutputAndProof = schnorrkel.vrfSign(keyPair, transcript);
-            byte[] vrfBytes = schnorrkel.makeBytes(keyPair, transcript, vrfOutputAndProof);
+            byte[] vrfBytes = schnorrkel.makeBytes(publicKey, transcript, vrfOutputAndProof);
 
             if (vrfBytes.length != 16) {
                 throw new IllegalArgumentException("VRF byte array must be exactly 16 bytes long");
