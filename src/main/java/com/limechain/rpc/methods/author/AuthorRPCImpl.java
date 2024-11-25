@@ -99,9 +99,7 @@ public class AuthorRPCImpl {
         );
 
         try {
-            return StringUtils.toHexWithPrefix(
-                    transactionProcessor.handlePoolOnlyExternalTransaction(decodedExtrinsic)
-            );
+            return transactionProcessor.handleSingleExternalTransaction(decodedExtrinsic, null);
         } catch (TransactionValidationException e) {
             throw new ExecutionFailedException("Failed to executed submit_extrinsic call: " + e.getMessage());
         }

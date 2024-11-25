@@ -2,6 +2,7 @@ package com.limechain.transaction;
 
 import com.limechain.exception.misc.RuntimeApiVersionException;
 import com.limechain.exception.transaction.TransactionValidationException;
+import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.version.ApiVersionName;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,7 +40,7 @@ public class TransactionProcessor {
         for (Extrinsic current : extrinsics) {
 
             try {
-                processTransaction(current, peerId);
+                handleSingleExternalTransaction(current, peerId);
             } catch (TransactionValidationException e) {
                 log.fine("Error when validating transaction " + current.toString()
                         + " from protocol: " + e.getMessage());
@@ -49,25 +51,28 @@ public class TransactionProcessor {
         }
     }
 
-    public byte[] handlePoolOnlyExternalTransaction(Extrinsic extrinsic) {
-        TransactionValidationResponse response = validateExternalTransaction(extrinsic);
-        checkIfTransactionValidityResponseContainsError(response);
-        ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
-        return transactionState.addToPool(validTransaction);
+    // Returns the hash of the extrinsic on success or propagates TransactionValidationException on failure.
+    public String handleSingleExternalTransaction(Extrinsic extrinsic, PeerId peerId) {
+        return processTransaction(extrinsic, peerId);
     }
 
-    private void processTransaction(Extrinsic extrinsic, PeerId peerId) {
+    private String processTransaction(Extrinsic extrinsic, PeerId peerId) {
         TransactionValidationResponse response = validateExternalTransaction(extrinsic);
         checkIfTransactionValidityResponseContainsError(response);
 
         ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
-        validTransaction.getIgnore().add(peerId);
+
+        if (peerId != null) {
+            validTransaction.getIgnore().add(peerId);
+        }
 
         if (transactionState.shouldAddToQueue(validTransaction)) {
             transactionState.pushTransaction(validTransaction);
         } else {
             transactionState.addToPool(validTransaction);
         }
+
+        return extrinsic.toString();
     }
 
     private void maintainTransactionPool() {

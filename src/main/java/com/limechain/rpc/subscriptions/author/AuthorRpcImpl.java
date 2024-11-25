@@ -49,7 +49,7 @@ public class AuthorRpcImpl implements AuthorRpc {
         );
 
         try {
-            transactionProcessor.handlePoolOnlyExternalTransaction(decodedExtrinsic);
+            transactionProcessor.handleSingleExternalTransaction(decodedExtrinsic, null);
         } catch (TransactionValidationException e) {
             throw new ExecutionFailedException("Failed to executed submit_extrinsic call: " + e.getMessage());
         }
