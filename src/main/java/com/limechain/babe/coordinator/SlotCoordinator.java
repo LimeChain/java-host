@@ -1,6 +1,6 @@
 package com.limechain.babe.coordinator;
 
-import com.limechain.babe.dto.EpochSlot;
+import com.limechain.babe.dto.Slot;
 import com.limechain.babe.state.EpochState;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
@@ -67,7 +67,7 @@ public class SlotCoordinator {
         log.log(Level.FINE, String.format("Slot Number: %d | Epoch Index: %d | Is Last Slot: %s",
                 currentSlotNumber, currentEpochIndex, isLastSlot));
 
-        EpochSlot slot = new EpochSlot(epochState.getSlotStartTime(currentSlotNumber),
+        Slot slot = new Slot(epochState.getSlotStartTime(currentSlotNumber),
                 Duration.ofMillis(epochState.getSlotDuration().longValue()),
                 currentSlotNumber,
                 currentEpochIndex);

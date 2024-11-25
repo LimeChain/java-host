@@ -2,7 +2,7 @@ package com.limechain.babe;
 
 import com.limechain.babe.coordinator.SlotChangeEvent;
 import com.limechain.babe.coordinator.SlotChangeListener;
-import com.limechain.babe.dto.EpochSlot;
+import com.limechain.babe.dto.Slot;
 import com.limechain.babe.dto.InherentData;
 import com.limechain.babe.dto.InherentType;
 import com.limechain.babe.predigest.BabePreDigest;
@@ -92,14 +92,14 @@ public class BabeService implements SlotChangeListener {
         }
     }
 
-    private void handleSlot(EpochSlot epochSlot, BabePreDigest preDigest) {
+    private void handleSlot(Slot slot, BabePreDigest preDigest) {
         log.fine(String.format("Producing block for slot %s in epoch %s.",
-                epochSlot.getNumber(), epochSlot.getEpochIndex()));
+                slot.getNumber(), slot.getEpochIndex()));
 
         Block block;
         try {
-            BlockHeader parentHeader = getParentBlockHeader(epochSlot.getNumber());
-            block = produceBlock(parentHeader, epochSlot, preDigest);
+            BlockHeader parentHeader = getParentBlockHeader(slot.getNumber());
+            block = produceBlock(parentHeader, slot, preDigest);
         } catch (Exception e) {
             log.warning(String.format("Exception producing block: %s", e.getMessage()));
             return;
@@ -108,20 +108,20 @@ public class BabeService implements SlotChangeListener {
         //TODO Network improvements: emmit a produced block event.
     }
 
-    private Block produceBlock(BlockHeader parentHeader, EpochSlot epochSlot, BabePreDigest preDigest) {
+    private Block produceBlock(BlockHeader parentHeader, Slot slot, BabePreDigest preDigest) {
         BlockHeader newBlockHeader = new BlockHeader();
         newBlockHeader.setParentHash(parentHeader.getHash());
-        newBlockHeader.setBlockNumber(epochSlot.getNumber().add(BigInteger.ONE));
+        newBlockHeader.setBlockNumber(slot.getNumber().add(BigInteger.ONE));
 
         Runtime runtime = blockState.getRuntime(parentHeader.getHash());
         runtime.initializeBlock(newBlockHeader);
 
         log.fine("Initialized block via runtime call.");
 
-        ExtrinsicArray inherents = produceBlockInherents(epochSlot, runtime);
+        ExtrinsicArray inherents = produceBlockInherents(slot, runtime);
         log.fine("Finished with inherents for block.");
 
-        List<ValidTransaction> transactions = produceBlockTransactions(epochSlot, runtime);
+        List<ValidTransaction> transactions = produceBlockTransactions(slot, runtime);
         log.fine("Finished with extrinsics for block.");
 
         BlockHeader finalizedHeader;
@@ -168,12 +168,12 @@ public class BabeService implements SlotChangeListener {
         return newDigests;
     }
 
-    private List<ValidTransaction> produceBlockTransactions(EpochSlot epochSlot, Runtime runtime) {
+    private List<ValidTransaction> produceBlockTransactions(Slot slot, Runtime runtime) {
         List<ValidTransaction> toAdd = new ArrayList<>();
 
         // Keep 1/3 of the slot duration for validating and importing block.
-        Instant slotEnd = epochSlot.getStart()
-                .plus(epochSlot.getDuration()
+        Instant slotEnd = slot.getStart()
+                .plus(slot.getDuration()
                         .multipliedBy(2)
                         .dividedBy(3));
 
@@ -218,14 +218,14 @@ public class BabeService implements SlotChangeListener {
         return toAdd;
     }
 
-    private ExtrinsicArray produceBlockInherents(EpochSlot epochSlot, Runtime runtime) {
+    private ExtrinsicArray produceBlockInherents(Slot slot, Runtime runtime) {
         InherentData inherentData = new InherentData();
 
         inherentData.getData().put(InherentType.TIMESTAMP0.toByteArray(),
-                ScaleUtils.Encode.encode(new UInt64Writer(), BigInteger.valueOf(epochSlot.getStart().toEpochMilli())));
+                ScaleUtils.Encode.encode(new UInt64Writer(), BigInteger.valueOf(slot.getStart().toEpochMilli())));
 
         inherentData.getData().put(InherentType.BABESLOT.toByteArray(),
-                ScaleUtils.Encode.encode(new UInt64Writer(), epochSlot.getNumber()));
+                ScaleUtils.Encode.encode(new UInt64Writer(), slot.getNumber()));
 
         // Empty till we find out what this exactly is used for.
         inherentData.getData().put(InherentType.PARACHN0.toByteArray(), new byte[]{});
@@ -278,7 +278,7 @@ public class BabeService implements SlotChangeListener {
 
     @Override
     public void slotChanged(SlotChangeEvent event) {
-        EpochSlot slot = event.getEpochSlot();
+        Slot slot = event.getSlot();
 
         // Invoke-Block-Authoring
         BabePreDigest preDigest = slotToPreRuntimeDigest.get(slot.getNumber());

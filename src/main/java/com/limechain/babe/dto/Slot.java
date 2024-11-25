@@ -8,7 +8,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 @Value
-public class EpochSlot implements Serializable {
+public class Slot implements Serializable {
 
     Instant start;
     Duration duration;

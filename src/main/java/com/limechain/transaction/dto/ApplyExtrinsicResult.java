@@ -7,8 +7,8 @@ import org.jetbrains.annotations.Nullable;
 public class ApplyExtrinsicResult {
 
     @Nullable
-    DispatchOutcome outcome;
+    private DispatchOutcome outcome;
 
     @Nullable
-    TransactionValidityError validityError;
+    private TransactionValidityError validityError;
 }
