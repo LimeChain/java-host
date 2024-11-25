@@ -3,13 +3,13 @@ package com.limechain.babe;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.babe.state.EpochState;
+import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.BabeEpoch;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.math.BigRational;
-import com.limechain.chain.lightsyncstate.Authority;
 import io.emeraldpay.polkaj.merlin.TranscriptData;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
@@ -230,14 +230,8 @@ public class Authorship {
 
         Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap = new LinkedMap<>();
 
-        for (Authority authority : authorities) {
-            var privateKey = keyStore.get(KeyType.BABE, authority.getPublicKey());
-            if (privateKey != null) {
-                Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(authority.getPublicKey());
-                Schnorrkel.KeyPair keyPair = new Schnorrkel.KeyPair(publicKey, privateKey);
-                indexKeyPairMap.put(authorities.indexOf(authority), keyPair);
-            }
-        }
+        authorities.forEach(a -> keyStore.getKeyPair(KeyType.BABE, a.getPublicKey())
+                .ifPresent(keyPair -> indexKeyPairMap.put(authorities.indexOf(a), keyPair)));
 
         return indexKeyPairMap;
     }

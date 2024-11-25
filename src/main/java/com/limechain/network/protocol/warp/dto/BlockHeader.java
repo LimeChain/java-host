@@ -16,7 +16,6 @@ public class BlockHeader {
     // TODO: Make this const configurable
     public static final int BLOCK_NUMBER_SIZE = 4;
 
-
     private Hash256 parentHash;
     private BigInteger blockNumber;
     private Hash256 stateRoot;
@@ -26,12 +25,12 @@ public class BlockHeader {
     @Override
     public String toString() {
         return "BlockHeader{" +
-               "parentHash=" + parentHash +
-               ", blockNumber=" + blockNumber +
-               ", stateRoot=" + stateRoot +
-               ", extrinsicsRoot=" + extrinsicsRoot +
-               ", digest=" + Arrays.toString(digest) +
-               '}';
+                "parentHash=" + parentHash +
+                ", blockNumber=" + blockNumber +
+                ", stateRoot=" + stateRoot +
+                ", extrinsicsRoot=" + extrinsicsRoot +
+                ", digest=" + Arrays.toString(digest) +
+                '}';
     }
 
     public Hash256 getHash() {

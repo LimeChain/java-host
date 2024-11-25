@@ -3,7 +3,10 @@ package com.limechain.runtime;
 import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.api.scale.BabeApiConfigurationReader;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
+import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.network.protocol.warp.dto.Block;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.writer.BlockBodyWriter;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
 import com.limechain.rpc.methods.author.dto.DecodedKeysReader;
@@ -12,14 +15,20 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.runtime.version.scale.RuntimeVersionReader;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
+import com.limechain.transaction.dto.ApplyExtrinsicResult;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ExtrinsicArray;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
 import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.structure.nibble.Nibbles;
+import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;
+import com.limechain.utils.scale.readers.ApplyExtrinsicResultReader;
 import com.limechain.utils.scale.readers.TransactionValidationReader;
+import com.limechain.utils.scale.writers.BlockInherentsWriter;
 import com.limechain.utils.scale.writers.TransactionValidationWriter;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import lombok.AccessLevel;
@@ -77,9 +86,32 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
+    public BlockHeader finalizeBlock() {
+        byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_FINALIZE_BLOCK);
+        return ScaleUtils.Decode.decode(encodedResponse, new BlockHeaderReader());
+    }
+
+
+    @Override
     public byte[] checkInherents(Block block, InherentData inherentData) {
         byte[] encodedRequest = serializeCheckInherentsParameter(block, inherentData);
         return call(RuntimeEndpoint.BLOCKBUILDER_CHECK_INHERENTS, encodedRequest);
+    }
+
+    @Override
+    public ApplyExtrinsicResult applyExtrinsic(Extrinsic extrinsic) {
+        byte[] encodedRequest = ScaleUtils.Encode.encodeAsListOfBytes(ByteArrayUtils.toIterable(extrinsic.getData()));
+        byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_APPLY_EXTRINISIC, encodedRequest);
+
+        return ScaleUtils.Decode.decode(encodedResponse, new ApplyExtrinsicResultReader());
+    }
+
+    @Override
+    public ExtrinsicArray inherentExtrinsics(com.limechain.babe.dto.InherentData inherentData) {
+        byte[] encodedRequest = ScaleUtils.Encode.encode(new BlockInherentsWriter(), inherentData);
+        byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_INHERENT_EXTRINISICS, encodedRequest);
+
+        return ScaleUtils.Decode.decode(encodedResponse, new TransactionReader());
     }
 
     @Override
@@ -106,6 +138,12 @@ public class RuntimeImpl implements Runtime {
         if (accessor != null) {
             accessor.setShouldBackup(true);
         }
+    }
+
+    @Override
+    public void initializeBlock(BlockHeader blockHeader) {
+        byte[] encHeader = ScaleUtils.Encode.encode(BlockHeaderScaleWriter.getInstance(), blockHeader);
+        call(RuntimeEndpoint.CORE_INITIALIZE_BLOCK, encHeader);
     }
 
     @Override
