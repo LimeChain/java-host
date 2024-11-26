@@ -90,7 +90,7 @@ public class TransactionProcessor {
                 }
 
             } catch (TransactionValidationException e) {
-                // In an exception is thrown, no action is taken because maintainTransactionPool is invoked frequently,
+                // If an exception is thrown, no action is taken because maintainTransactionPool is invoked frequently,
                 // and the failed validation will probably succeed in a subsequent execution.
                 log.fine("Error during transaction validation while maintaining the pool "
                         + extrinsic.toString() + e.getMessage());
