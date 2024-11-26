@@ -54,13 +54,13 @@ class TransactionStateTest {
     void testShouldAddToQueue_AllRequiredProvided() {
         TransactionValidity validity1 = new TransactionValidity(
                 BigInteger.TEN, null, new byte[][]{TAG_1, TAG_2}, BigInteger.ZERO, true);
-        ValidTransaction existingTransaction = new ValidTransaction(null, validity1);
+        ValidTransaction existingTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity1);
 
         sut.pushTransaction(existingTransaction);
 
         TransactionValidity validity2 = new TransactionValidity(
                 BigInteger.ONE, new byte[][]{TAG_1, TAG_2}, null, BigInteger.ZERO, true);
-        ValidTransaction validTransaction = new ValidTransaction(null, validity2);
+        ValidTransaction validTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity2);
 
         boolean result = sut.shouldAddToQueue(validTransaction);
         assertTrue(result);
@@ -70,13 +70,13 @@ class TransactionStateTest {
     void testShouldAddToQueue_NotAllRequiredProvided() {
         TransactionValidity validity1 = new TransactionValidity(
                 BigInteger.TEN, null, new byte[][]{TAG_1}, BigInteger.ZERO, true);
-        ValidTransaction existingTransaction = new ValidTransaction(null, validity1);
+        ValidTransaction existingTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity1);
 
         sut.pushTransaction(existingTransaction);
 
         TransactionValidity validity2 = new TransactionValidity(
                 BigInteger.ONE, new byte[][]{TAG_1, TAG_2}, null, BigInteger.ZERO, true);
-        ValidTransaction validTransaction = new ValidTransaction(null, validity2);
+        ValidTransaction validTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity2);
 
         boolean result = sut.shouldAddToQueue(validTransaction);
         assertFalse(result);
@@ -86,7 +86,7 @@ class TransactionStateTest {
     void testShouldAddToQueue_EmptyTransactionQueue() {
         TransactionValidity validity2 = new TransactionValidity(
                 BigInteger.ONE, new byte[][]{TAG_1}, null, BigInteger.ZERO, true);
-        ValidTransaction validTransaction = new ValidTransaction(null, validity2);
+        ValidTransaction validTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity2);
 
         boolean result = sut.shouldAddToQueue(validTransaction);
         assertFalse(result);
@@ -96,13 +96,13 @@ class TransactionStateTest {
     void testShouldAddToQueue_TransactionHasNoRequires() {
         TransactionValidity validity1 = new TransactionValidity(
                 BigInteger.TEN, null, new byte[][]{TAG_1}, BigInteger.ZERO, true);
-        ValidTransaction existingTransaction = new ValidTransaction(null, validity1);
+        ValidTransaction existingTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity1);
 
         sut.pushTransaction(existingTransaction);
 
         TransactionValidity validity2 = new TransactionValidity(
                 BigInteger.ONE, new byte[][]{}, null, BigInteger.ZERO, true);
-        ValidTransaction validTransaction = new ValidTransaction(null, validity2);
+        ValidTransaction validTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity2);
 
         boolean result = sut.shouldAddToQueue(validTransaction);
         assertTrue(result);
@@ -112,13 +112,13 @@ class TransactionStateTest {
     void testShouldAddToQueue_TransactionHasNoProvides() {
         TransactionValidity validity1 = new TransactionValidity(
                 BigInteger.TEN, null, new byte[][]{}, BigInteger.ZERO, true);
-        ValidTransaction existingTransaction = new ValidTransaction(null, validity1);
+        ValidTransaction existingTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity1);
 
         sut.pushTransaction(existingTransaction);
 
         TransactionValidity validity2 = new TransactionValidity(
                 BigInteger.ONE, new byte[][]{TAG_1}, null, BigInteger.ZERO, true);
-        ValidTransaction validTransaction = new ValidTransaction(null, validity2);
+        ValidTransaction validTransaction = new ValidTransaction(new Extrinsic(new byte[32]), validity2);
 
         boolean result = sut.shouldAddToQueue(validTransaction);
         assertFalse(result);
