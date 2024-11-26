@@ -13,7 +13,6 @@ import com.limechain.runtime.RuntimeFactory;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.trie.TrieStorage;
-import com.limechain.trie.BlockTrieAccessor;
 import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
 import com.limechain.utils.StringUtils;

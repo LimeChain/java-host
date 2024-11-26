@@ -47,7 +47,7 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.5.7")
     implementation("org.javatuples:javatuples:1.2")
 
-    implementation("com.github.luben:zstd-jni:1.5.6-7")
+    implementation("com.github.luben:zstd-jni:1.5.6-8")
 
     // Prometheus
     implementation("io.prometheus:prometheus-metrics-core:1.3.3")
@@ -72,7 +72,7 @@ dependencies {
     implementation("com.google.guava:guava:33.3.1-jre")
 
     // Apache commons
-    implementation("commons-io:commons-io:2.17.0")
+    implementation("commons-io:commons-io:2.18.0")
 
 }
 

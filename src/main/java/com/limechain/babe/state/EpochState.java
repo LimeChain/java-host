@@ -64,6 +64,10 @@ public class EpochState {
         return BigInteger.valueOf(Instant.now().toEpochMilli()).divide(slotDuration);
     }
 
+    public Instant getSlotStartTime(BigInteger slotNumber) {
+        return Instant.ofEpochMilli(slotNumber.multiply(slotDuration).longValue());
+    }
+
     // (currentSlotNumber - genesisSlotNumber) / epochLength = epochIndex
     // Dividing BigIntegers results in rounding down when the result is not a whole number,
     // which is the intended behavior for calculating epochIndex.
@@ -75,7 +79,7 @@ public class EpochState {
     // The formula is the same as below but different variable is isolated, and we
     // leverage the fact that epochStartSlotNumber is achieved when
     // (currentSlotNumber - genesisSlotNumber) / epochLength results in whole number
-    public BigInteger getCurrentEpochStartSlotNumer() {
+    public BigInteger getCurrentEpochStartSlotNumber() {
         return getCurrentEpochIndex().multiply(epochLength).add(genesisSlotNumber);
     }
 
@@ -90,6 +94,6 @@ public class EpochState {
     // is preferable because calling the methods from the epoch state may result in calculations
     // made in two different epochs.
     public BigInteger getCurrentEpochEndSlotNumber() {
-        return getCurrentEpochStartSlotNumer().add(epochLength).subtract(BigInteger.ONE);
+        return getCurrentEpochStartSlotNumber().add(epochLength).subtract(BigInteger.ONE);
     }
 }

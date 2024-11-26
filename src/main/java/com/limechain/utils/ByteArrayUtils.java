@@ -2,8 +2,10 @@ package com.limechain.utils;
 
 import lombok.experimental.UtilityClass;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 @UtilityClass
 public class ByteArrayUtils {
@@ -118,5 +120,20 @@ public class ByteArrayUtils {
                         source.stream()
                                 .anyMatch(sourceArray -> Arrays.equals(sourceArray, targetArray))
                 );
+    }
+
+    /**
+     * Converts a primitive byte array to an {@code Iterable<Byte>}.
+     *
+     * @param byteArray the array of primitive bytes to be converted, must not be {@code null}.
+     * @return an {@code Iterable<Byte>} containing all elements of the input array, each element
+     * boxed as a {@code Byte}.
+     */
+    public static Iterable<Byte> toIterable(byte[] byteArray) {
+        List<Byte> byteList = new ArrayList<>(byteArray.length);
+        for (byte b : byteArray) {
+            byteList.add(b);
+        }
+        return byteList;
     }
 }
