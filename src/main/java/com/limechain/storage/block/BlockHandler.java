@@ -8,6 +8,7 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.request.ProtocolRequester;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.transaction.TransactionProcessor;
 import com.limechain.utils.async.AsyncExecutor;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
@@ -24,16 +25,20 @@ public class BlockHandler {
     private final EpochState epochState;
     private final ProtocolRequester requester;
     private final RuntimeBuilder builder;
+    private final TransactionProcessor transactionProcessor;
 
     private final AsyncExecutor asyncExecutor;
 
-    public BlockHandler(EpochState epochState, ProtocolRequester requester, RuntimeBuilder builder) {
+    public BlockHandler(EpochState epochState,
+                        ProtocolRequester requester,
+                        RuntimeBuilder builder,
+                        TransactionProcessor transactionProcessor) {
         this.epochState = epochState;
         this.requester = requester;
+        this.transactionProcessor = transactionProcessor;
         this.builder = builder;
 
         this.blockState = BlockState.getInstance();
-
         asyncExecutor = AsyncExecutor.withPoolSize(10);
     }
 
@@ -79,5 +84,8 @@ public class BlockHandler {
                     epochState.updateNextEpochConfig(cm);
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
+
+        asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
+);
     }
 }
