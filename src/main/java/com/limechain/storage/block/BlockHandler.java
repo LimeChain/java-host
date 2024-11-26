@@ -76,7 +76,7 @@ public class BlockHandler {
 
         DigestHelper.getBabeConsensusMessage(header.getDigest())
                 .ifPresent(cm -> {
-                    epochState.updateNextEpochBlockConfig(cm);
+                    epochState.updateNextEpochConfig(cm);
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
     }

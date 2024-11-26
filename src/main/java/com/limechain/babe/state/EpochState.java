@@ -33,17 +33,24 @@ public class EpochState {
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
         this.epochLength = babeApiConfiguration.getEpochLength();
-        this.currentEpochData = new EpochData(babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
-        this.currentEpochDescriptor = new EpochDescriptor(babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
+        this.currentEpochData = new EpochData(
+                babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
+        this.currentEpochDescriptor = new EpochDescriptor(
+                babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
         this.isInitialized = true;
     }
 
-    public void updateNextEpochBlockConfig(BabeConsensusMessage message) {
+    public void updateNextEpochConfig(BabeConsensusMessage message) {
         switch (message.getFormat()) {
             case NEXT_EPOCH_DATA -> this.nextEpochData = message.getNextEpochData();
             case DISABLED_AUTHORITY -> this.disabledAuthority = message.getDisabledAuthority();
             case NEXT_EPOCH_DESCRIPTOR -> this.nextEpochDescriptor = message.getNextEpochDescriptor();
         }
+    }
+
+    public void switchEpoch() {
+        currentEpochData = nextEpochData;
+        currentEpochDescriptor = nextEpochDescriptor;
     }
 
     public void setGenesisSlotNumber(BigInteger retrievedGenesisSlotNumber) {

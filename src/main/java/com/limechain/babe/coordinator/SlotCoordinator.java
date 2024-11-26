@@ -45,12 +45,14 @@ public class SlotCoordinator {
     }
 
     private void checkAndTriggerEvent() {
-        var currentSlotNumber = epochState.getCurrentSlotNumber();
-        var currentEpochIndex = epochState.getCurrentEpochIndex();
+        BigInteger currentSlotNumber = epochState.getCurrentSlotNumber();
+        BigInteger currentEpochIndex = epochState.getCurrentEpochIndex();
 
         if (hasSlotChanged(currentSlotNumber)) {
-            var isLastSlot = isLastSlotFromCurrentEpoch(currentSlotNumber);
-            triggerEvent(currentSlotNumber, currentEpochIndex, isLastSlot);
+            if (currentSlotNumber.compareTo(lastSlotOfCurrentEpoch) > 0) {
+                epochState.switchEpoch();
+            }
+            triggerEvent(currentSlotNumber, currentEpochIndex);
             updateSlotCoordinatorFields(currentSlotNumber);
         }
     }
@@ -63,7 +65,9 @@ public class SlotCoordinator {
         return currentSlotNumber.compareTo(lastSlotOfCurrentEpoch) == 0;
     }
 
-    private void triggerEvent(BigInteger currentSlotNumber, BigInteger currentEpochIndex, boolean isLastSlot) {
+    private void triggerEvent(BigInteger currentSlotNumber, BigInteger currentEpochIndex) {
+        boolean isLastSlot = isLastSlotFromCurrentEpoch(currentSlotNumber);
+
         log.log(Level.FINE, String.format("Slot Number: %d | Epoch Index: %d | Is Last Slot: %s",
                 currentSlotNumber, currentEpochIndex, isLastSlot));
 
