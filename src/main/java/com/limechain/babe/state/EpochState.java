@@ -1,9 +1,7 @@
 package com.limechain.babe.state;
 
 import com.limechain.babe.api.BabeApiConfiguration;
-import com.limechain.babe.consensus.scale.BabeConsensusMessageReader;
 import com.limechain.babe.consensus.BabeConsensusMessage;
-import com.limechain.utils.scale.ScaleUtils;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
 
@@ -35,19 +33,24 @@ public class EpochState {
     public void initialize(BabeApiConfiguration babeApiConfiguration) {
         this.slotDuration = babeApiConfiguration.getSlotDuration();
         this.epochLength = babeApiConfiguration.getEpochLength();
-        this.currentEpochData = new EpochData(babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
-        this.currentEpochDescriptor = new EpochDescriptor(babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
+        this.currentEpochData = new EpochData(
+                babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
+        this.currentEpochDescriptor = new EpochDescriptor(
+                babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
         this.isInitialized = true;
     }
 
-    //TODO: Call this form the BlockImporter class when it it created!
-    public void updateNextEpochBlockConfig(byte[] message) {
-        BabeConsensusMessage babeConsensusMessage = ScaleUtils.Decode.decode(message, new BabeConsensusMessageReader());
-        switch (babeConsensusMessage.getFormat()) {
-            case NEXT_EPOCH_DATA -> this.nextEpochData = babeConsensusMessage.getNextEpochData();
-            case DISABLED_AUTHORITY -> this.disabledAuthority = babeConsensusMessage.getDisabledAuthority();
-            case NEXT_EPOCH_DESCRIPTOR -> this.nextEpochDescriptor = babeConsensusMessage.getNextEpochDescriptor();
+    public void updateNextEpochConfig(BabeConsensusMessage message) {
+        switch (message.getFormat()) {
+            case NEXT_EPOCH_DATA -> this.nextEpochData = message.getNextEpochData();
+            case DISABLED_AUTHORITY -> this.disabledAuthority = message.getDisabledAuthority();
+            case NEXT_EPOCH_DESCRIPTOR -> this.nextEpochDescriptor = message.getNextEpochDescriptor();
         }
+    }
+
+    public void switchEpoch() {
+        currentEpochData = nextEpochData;
+        currentEpochDescriptor = nextEpochDescriptor;
     }
 
     public void setGenesisSlotNumber(BigInteger retrievedGenesisSlotNumber) {

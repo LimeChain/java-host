@@ -95,7 +95,7 @@ public class BlockAnnounceEngine {
 
         if (BlockState.getInstance().isInitialized()) {
             //TODO Network improvements: Block requests should be sent to the peer that announced the block itself.
-            blockHandler.handleBlock(Instant.now(), announce.getHeader());
+            blockHandler.handleBlockHeader(Instant.now(), announce.getHeader());
         }
     }
 

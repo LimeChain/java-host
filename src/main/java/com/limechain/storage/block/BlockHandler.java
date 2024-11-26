@@ -1,7 +1,8 @@
 package com.limechain.storage.block;
 
-import com.limechain.exception.storage.BlockStorageGenericException;
+import com.limechain.babe.state.EpochState;
 import com.limechain.network.protocol.sync.BlockRequestField;
+import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.request.ProtocolRequester;
@@ -21,28 +22,29 @@ import java.util.concurrent.CompletableFuture;
 public class BlockHandler {
 
     private final BlockState blockState;
+    private final EpochState epochState;
     private final ProtocolRequester requester;
     private final RuntimeBuilder builder;
     private final TransactionProcessor transactionProcessor;
 
     private final AsyncExecutor asyncExecutor;
 
-    public BlockHandler(ProtocolRequester requester,
+    public BlockHandler(EpochState epochState,
+                        ProtocolRequester requester,
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor) {
-
+        this.epochState = epochState;
         this.requester = requester;
-        this.builder = builder;
         this.transactionProcessor = transactionProcessor;
+        this.builder = builder;
 
         this.blockState = BlockState.getInstance();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
     }
 
-    public synchronized void handleBlock(Instant arrivalTime, BlockHeader header) {
+    public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header) {
         try {
-            if (blockState.getHighestFinalizedNumber().compareTo(header.getBlockNumber()) >= 0
-                    || blockState.hasHeader(header.getHash())) {
+            if (blockState.hasHeader(header.getHash())) {
                 log.fine("Skipping announced block: " + header.getBlockNumber() + " " + header.getHash());
                 return;
             }
@@ -59,35 +61,30 @@ public class BlockHandler {
                         BlockRequestField.ALL, header.getHash(), 1).join();
             }
 
-            Block blockWithBody = blocks.getFirst();
-
-            importBlock(newRuntime, blockWithBody, arrivalTime);
-
-            asyncExecutor.executeAndForget(() -> {
-                try {
-                    newRuntime.executeBlock(blockWithBody);
-                    log.info("Finished executing " + blockWithBody.getHeader().getHash());
-                    transactionProcessor.maintainTransactionPool(blockWithBody);
-                } catch (BlockStorageGenericException ex) {
-                    log.warning(ex.getMessage());
-                }
-            });
-
+            handleBlock(newRuntime, blocks.getFirst(), arrivalTime);
         } catch (Exception e) {
-            // TODO Think of a proper way to restart importing process.
-            log.warning("Block announce processing malfunctioned: " + e.getMessage());
+            log.warning("Error while importing announced block: " + e.getMessage());
         }
     }
 
-    private void importBlock(Runtime newRuntime, Block blockWithBody, Instant arrivalTime) {
-        try {
-            blockState.addBlockWithArrivalTime(blockWithBody, arrivalTime);
-            blockState.storeRuntime(blockWithBody.getHeader().getHash(), newRuntime);
-        } catch (BlockStorageGenericException ex) {
-            throw new BlockStorageGenericException(ex.getMessage());
-        }
+    private void handleBlock(Runtime runtime, Block block, Instant arrivalTime) {
+        BlockHeader header = block.getHeader();
 
-        log.info("Imported announced block: " + blockWithBody.getHeader().getBlockNumber()
-                + " " + blockWithBody.getHeader().getHash());
+        blockState.addBlockWithArrivalTime(block, arrivalTime);
+        blockState.storeRuntime(header.getHash(), runtime);
+        log.fine(String.format("Added block No: %s with hash: %s to block tree.",
+                block.getHeader().getBlockNumber(), header.getHash()));
+
+        runtime.executeBlock(block);
+        log.fine(String.format("Executed block No: %s with hash: %s.",
+                block.getHeader().getBlockNumber(), header.getHash()));
+
+        DigestHelper.getBabeConsensusMessage(header.getDigest())
+                .ifPresent(cm -> {
+                    epochState.updateNextEpochConfig(cm);
+                    log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
+                });
+
+        asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }
 }

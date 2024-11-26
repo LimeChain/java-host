@@ -2,6 +2,8 @@ package com.limechain.babe;
 
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.PreDigestType;
+import com.limechain.babe.state.EpochData;
+import com.limechain.babe.state.EpochDescriptor;
 import com.limechain.babe.state.EpochState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.BabeEpoch;
@@ -30,12 +32,19 @@ import java.util.logging.Level;
 public class Authorship {
 
     public static BabePreDigest claimSlot(EpochState epochState, BigInteger slotNumber, KeyStore keyStore) {
+        // These null checks are needed in case we're at genesis and the epoch data is loaded from the config.
+        EpochData nextEpochData = epochState.getNextEpochData() != null
+                ? epochState.getNextEpochData()
+                : epochState.getCurrentEpochData();
+        EpochDescriptor nextEpochDescriptor = epochState.getNextEpochDescriptor() != null
+                ? epochState.getNextEpochDescriptor()
+                : epochState.getCurrentEpochDescriptor();
 
-        var randomness = epochState.getCurrentEpochData().getRandomness();
-        var epochIndex = epochState.getCurrentEpochIndex();
-        var c = epochState.getCurrentEpochDescriptor().getConstant();
-        var authorities = epochState.getCurrentEpochData().getAuthorities();
-        var allowedSlots = epochState.getCurrentEpochDescriptor().getAllowedSlots();
+        List<Authority> authorities = nextEpochData.getAuthorities();
+        byte[] randomness = nextEpochData.getRandomness();
+        Pair<BigInteger, BigInteger> c = nextEpochDescriptor.getConstant();
+        BabeEpoch.BabeAllowedSlots allowedSlots = nextEpochDescriptor.getAllowedSlots();
+        BigInteger epochIndex = epochState.getCurrentEpochIndex().add(BigInteger.ONE);
 
         var indexKeyPairMap = getOwnedKeyPairsFromAuthoritySet(authorities, keyStore);
 
