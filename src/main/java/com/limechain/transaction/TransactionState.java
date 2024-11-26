@@ -3,6 +3,7 @@ package com.limechain.transaction;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.ByteArrayUtils;
+import com.limechain.utils.HashUtils;
 import lombok.Getter;
 import lombok.extern.java.Log;
 import org.jetbrains.annotations.NotNull;
@@ -40,8 +41,9 @@ public class TransactionState {
         isInitialized = true;
     }
 
-    public void pushTransaction(ValidTransaction validTransaction) {
+    public byte[] pushTransaction(ValidTransaction validTransaction) {
         transactionQueue.add(validTransaction);
+        return HashUtils.hashWithBlake2b(validTransaction.getExtrinsic().getData());
     }
 
     public ValidTransaction pollTransaction() {
