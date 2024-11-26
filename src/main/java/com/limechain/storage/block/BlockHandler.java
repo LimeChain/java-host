@@ -86,6 +86,5 @@ public class BlockHandler {
                 });
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
-);
     }
 }
