@@ -49,27 +49,8 @@ public class TransactionProcessor {
     }
 
     // Returns the hash of the extrinsic on success or propagates TransactionValidationException on failure.
-    public String handleSingleExternalTransaction(Extrinsic extrinsic, PeerId peerId) {
+    public byte[] handleSingleExternalTransaction(Extrinsic extrinsic, PeerId peerId) {
         return processTransaction(extrinsic, peerId);
-    }
-
-    private String processTransaction(Extrinsic extrinsic, PeerId peerId) {
-        TransactionValidationResponse response = validateExternalTransaction(extrinsic);
-        checkIfTransactionValidityResponseContainsError(response);
-
-        ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
-
-        if (peerId != null) {
-            validTransaction.getIgnore().add(peerId);
-        }
-
-        if (transactionState.shouldAddToQueue(validTransaction)) {
-            transactionState.pushTransaction(validTransaction);
-        } else {
-            transactionState.addToPool(validTransaction);
-        }
-
-        return extrinsic.toString();
     }
 
     // Removes any transaction that was included in the new block, also revalidate the transactions in the pool and
@@ -114,6 +95,23 @@ public class TransactionProcessor {
                 log.fine("Error during transaction validation while maintaining the pool "
                         + extrinsic.toString() + e.getMessage());
             }
+        }
+    }
+
+    private byte[] processTransaction(Extrinsic extrinsic, PeerId peerId) {
+        TransactionValidationResponse response = validateExternalTransaction(extrinsic);
+        checkIfTransactionValidityResponseContainsError(response);
+
+        ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
+
+        if (peerId != null) {
+            validTransaction.getIgnore().add(peerId);
+        }
+
+        if (transactionState.shouldAddToQueue(validTransaction)) {
+            return transactionState.pushTransaction(validTransaction);
+        } else {
+            return transactionState.addToPool(validTransaction);
         }
     }
 
