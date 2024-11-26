@@ -37,7 +37,7 @@ public class BlockHandler {
         asyncExecutor = AsyncExecutor.withPoolSize(10);
     }
 
-    public synchronized void handleBlockNoBody(Instant arrivalTime, BlockHeader header) {
+    public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header) {
         try {
             if (blockState.hasHeader(header.getHash())) {
                 log.fine("Skipping announced block: " + header.getBlockNumber() + " " + header.getHash());
@@ -56,13 +56,13 @@ public class BlockHandler {
                         BlockRequestField.ALL, header.getHash(), 1).join();
             }
 
-            handleWholeBlock(newRuntime, blocks.getFirst(), arrivalTime);
+            handleBlock(newRuntime, blocks.getFirst(), arrivalTime);
         } catch (Exception e) {
             log.warning("Error while importing announced block: " + e.getMessage());
         }
     }
 
-    private void handleWholeBlock(Runtime runtime, Block block, Instant arrivalTime) {
+    private void handleBlock(Runtime runtime, Block block, Instant arrivalTime) {
         BlockHeader header = block.getHeader();
 
         blockState.addBlockWithArrivalTime(block, arrivalTime);
