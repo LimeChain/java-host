@@ -11,12 +11,8 @@ import com.limechain.babe.state.EpochState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.misc.BabeGenericException;
 import com.limechain.exception.misc.KeyStoreException;
-import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.transaction.ApplyExtrinsicException;
-import com.limechain.network.PeerMessageCoordinator;
-import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
-import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockBody;
@@ -26,6 +22,8 @@ import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
+import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
@@ -38,15 +36,12 @@ import com.limechain.transaction.dto.TransactionValidityError;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.async.AsyncExecutor;
 import com.limechain.utils.scale.ScaleUtils;
-import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import lombok.extern.java.Log;
 import org.apache.commons.collections4.map.HashedMap;
 import org.springframework.stereotype.Component;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -66,19 +61,18 @@ public class BabeService implements SlotChangeListener {
     private final KeyStore keyStore;
     private final AsyncExecutor asyncExecutor;
     private final Map<BigInteger, BabePreDigest> slotToPreRuntimeDigest = new HashedMap<>();
-    private final PeerMessageCoordinator messageCoordinator;
+    private final RuntimeBuilder runtimeBuilder;
+    private final BlockHandler blockHandler;
 
-    public BabeService(TransactionState transactionState,
-                       EpochState epochState,
-                       KeyStore keyStore,
-                       PeerMessageCoordinator messageCoordinator) {
+    public BabeService(TransactionState transactionState, EpochState epochState, KeyStore keyStore, RuntimeBuilder runtimeBuilder, BlockHandler blockHandler) {
         this.transactionState = transactionState;
         this.epochState = epochState;
         this.keyStore = keyStore;
-        this.messageCoordinator = messageCoordinator;
+        this.runtimeBuilder = runtimeBuilder;
 
         blockState = AppBean.getBean(BlockState.class);
         asyncExecutor = AsyncExecutor.withSingleThread();
+        this.blockHandler = blockHandler;
     }
 
     private void executeEpochLottery(BigInteger epochIndex) {
@@ -108,7 +102,7 @@ public class BabeService implements SlotChangeListener {
             return;
         }
 
-        //TODO Network improvements: emmit a produced block event.
+        blockHandler.handleProducedBlock(block);
     }
 
     private Block produceBlock(BlockHeader parentHeader, Slot slot, BabePreDigest preDigest) {
@@ -117,19 +111,20 @@ public class BabeService implements SlotChangeListener {
         newBlockHeader.setBlockNumber(slot.getNumber().add(BigInteger.ONE));
 
         Runtime runtime = blockState.getRuntime(parentHeader.getHash());
-        runtime.initializeBlock(newBlockHeader);
+        Runtime newRuntime = runtimeBuilder.copyRuntime(runtime);
+        newRuntime.initializeBlock(newBlockHeader);
 
         log.fine("Initialized block via runtime call.");
 
-        ExtrinsicArray inherents = produceBlockInherents(slot, runtime);
+        ExtrinsicArray inherents = produceBlockInherents(slot, newRuntime);
         log.fine("Finished with inherents for block.");
 
-        List<ValidTransaction> transactions = produceBlockTransactions(slot, runtime);
+        List<ValidTransaction> transactions = produceBlockTransactions(slot, newRuntime);
         log.fine("Finished with extrinsics for block.");
 
         BlockHeader finalizedHeader;
         try {
-            finalizedHeader = runtime.finalizeBlock();
+            finalizedHeader = newRuntime.finalizeBlock();
         } catch (Exception e) {
             transactions.forEach(transactionState::pushTransaction);
             throw new BabeGenericException("Block finalization failed. Pushed transaction back to queue.");
@@ -145,6 +140,8 @@ public class BabeService implements SlotChangeListener {
                 .toList());
 
         BlockBody body = new BlockBody(bodyExtrinsics);
+
+        blockState.storeRuntime(finalizedHeader.getHash(), newRuntime);
 
         return new Block(finalizedHeader, body);
     }
@@ -293,22 +290,5 @@ public class BabeService implements SlotChangeListener {
             BigInteger nextEpochIndex = slot.getEpochIndex().add(BigInteger.ONE);
             executeEpochLottery(nextEpochIndex);
         }
-    }
-
-    public byte[] createEncodedBlockAnnounceMessage(BlockHeader blockHeader) {
-        BlockAnnounceMessage blockAnnounceMessage = new BlockAnnounceMessage();
-        blockAnnounceMessage.setHeader(blockHeader);
-        blockAnnounceMessage.setBestBlock(blockHeader.getHash().equals(blockState.bestBlockHash()));
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new BlockAnnounceMessageScaleWriter(), blockAnnounceMessage);
-        } catch (IOException e) {
-            throw new ScaleEncodingException(e);
-        }
-        return buf.toByteArray();
-    }
-
-    public void broadcastBlock(BlockHeader blockHeader) {
-        messageCoordinator.sendBlockAnnounceMessage(createEncodedBlockAnnounceMessage(blockHeader));
     }
 }

@@ -12,10 +12,10 @@ import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessag
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
-import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessageBuilder;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleReader;
+import com.limechain.network.protocol.message.ProtocolMessageBuilder;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.libp2p.core.PeerId;
@@ -31,12 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigInteger;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockConstruction;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unused")
 @ExtendWith(MockitoExtension.class)
@@ -52,18 +47,18 @@ class GrandpaEngineTest {
     @Mock
     private WarpSyncState warpSyncState;
     @Mock
-    private NeighbourMessageBuilder neighbourMessageBuilder;
+    private ProtocolMessageBuilder protocolMessageBuilder;
     @Mock
     private BlockAnnounceHandshakeBuilder blockAnnounceHandshakeBuilder;
 
     private final NeighbourMessage neighbourMessage =
             new NeighbourMessage(1, BigInteger.ONE, BigInteger.TWO, BigInteger.TEN);
     private final byte[] encodedNeighbourMessage
-            = new byte[] {2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+            = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
 
     @Test
     void receiveRequestWithUnknownGrandpaTypeShouldLogAndIgnore() {
-        byte[] unknownTypeMessage = new byte[] {7, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+        byte[] unknownTypeMessage = new byte[]{7, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
 
         grandpaEngine.receiveRequest(unknownTypeMessage, stream);
 
@@ -74,7 +69,7 @@ class GrandpaEngineTest {
     // INITIATOR STREAM
     @Test
     void receiveNonHandshakeRequestOnInitiatorStreamShouldLogAndIgnore() {
-        byte[] message = new byte[] {2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+        byte[] message = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
         when(stream.isInitiator()).thenReturn(true);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(peerId.toString()).thenReturn("P1");
@@ -87,10 +82,10 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeOnInitiatorStreamShouldAddStreamToConnection() {
-        byte[] message = new byte[] { 2 };
+        byte[] message = new byte[]{2};
         when(stream.isInitiator()).thenReturn(true);
         when(stream.remotePeerId()).thenReturn(peerId);
-        when(neighbourMessageBuilder.getNeighbourMessage()).thenReturn(neighbourMessage);
+        when(protocolMessageBuilder.buildNeighbourMessage()).thenReturn(neighbourMessage);
 
         grandpaEngine.receiveRequest(message, stream);
 
@@ -99,18 +94,19 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeOnInitiatorStreamShouldSendNeighbourMessageBack() {
-        byte[] message = new byte[] { 2 };
-        when(neighbourMessageBuilder.getNeighbourMessage()).thenReturn(neighbourMessage);
+        byte[] message = new byte[]{2};
+        when(protocolMessageBuilder.buildNeighbourMessage()).thenReturn(neighbourMessage);
         when(stream.isInitiator()).thenReturn(true);
 
         grandpaEngine.receiveRequest(message, stream);
 
         verify(stream).writeAndFlush(encodedNeighbourMessage);
     }
+
     // RESPONDER STREAM
     @Test
     void receiveNonHandshakeRequestOnResponderStreamWhenNotConnectedShouldLogAndCloseStream() {
-        byte[] message = new byte[] {2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+        byte[] message = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
         when(stream.isInitiator()).thenReturn(false);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isGrandpaConnected(peerId)).thenReturn(false);
@@ -124,7 +120,7 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeRequestOnResponderStreamWhenAlreadyConnectedShouldLogAndCloseStream() {
-        byte[] message = new byte[] { 2 };
+        byte[] message = new byte[]{2};
         when(stream.isInitiator()).thenReturn(false);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isGrandpaConnected(peerId)).thenReturn(true);
@@ -138,7 +134,7 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeRequestOnResponderStreamWhenNotConnectedShouldAddStreamToConnection() {
-        byte[] message = new byte[] { 2 };
+        byte[] message = new byte[]{2};
         when(stream.isInitiator()).thenReturn(false);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isGrandpaConnected(peerId)).thenReturn(false);
@@ -152,7 +148,7 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeRequestOnResponderStreamWhenNotConnectedShouldSendHandshakeBack() {
-        byte[] message = new byte[] { 2 };
+        byte[] message = new byte[]{2};
         Integer role = NodeRole.LIGHT.getValue();
 
         when(stream.isInitiator()).thenReturn(false);
@@ -165,12 +161,12 @@ class GrandpaEngineTest {
 
         grandpaEngine.receiveRequest(message, stream);
 
-        verify(stream).writeAndFlush(new byte[] { role.byteValue() });
+        verify(stream).writeAndFlush(new byte[]{role.byteValue()});
     }
 
     @Test
     void receiveCommitMessageOnResponderStreamWhenShouldSyncCommit() {
-        byte[] message = new byte[] { 1, 2, 3 };
+        byte[] message = new byte[]{1, 2, 3};
         CommitMessage commitMessage = mock(CommitMessage.class);
 
         when(stream.isInitiator()).thenReturn(false);
@@ -188,9 +184,9 @@ class GrandpaEngineTest {
 
     @Test
     @Disabled("Unknown race condition causes some of the runs to fail")
-    // TODO: find and fix the problem condition. Used to have a thread sleep for 100 millis before last verify
+        // TODO: find and fix the problem condition. Used to have a thread sleep for 100 millis before last verify
     void receiveNeighbourMessageOnResponderStreamWhenShouldSyncNeighbourMessage() {
-        byte[] message = new byte[] { 2, 1, -24, 60, 0, 0, 0, 0, 0, 0, 37, 6, 0, 0, 0, 0, 0, 0, -37, 118, 4, 1 };
+        byte[] message = new byte[]{2, 1, -24, 60, 0, 0, 0, 0, 0, 0, 37, 6, 0, 0, 0, 0, 0, 0, -37, 118, 4, 1};
         NeighbourMessage neighbourMessage = mock(NeighbourMessage.class);
 
         when(stream.isInitiator()).thenReturn(false);
@@ -225,7 +221,7 @@ class GrandpaEngineTest {
 
     @Test
     void receiveCatchUpRequestMessageOnResponderStreamShouldLogAndIgnore() {
-        byte[] message = new byte[] { 3, 2, 3 };
+        byte[] message = new byte[]{3, 2, 3};
         CatchUpReqMessage catchUpReqMessage = mock(CatchUpReqMessage.class);
 
         when(stream.isInitiator()).thenReturn(false);
@@ -244,7 +240,7 @@ class GrandpaEngineTest {
 
     @Test
     void receiveCatchUpResponseMessageOnResponderStreamShouldLogAndIgnore() {
-        byte[] message = new byte[] { 4, 2, 3 };
+        byte[] message = new byte[]{4, 2, 3};
         CatchUpMessage catchUpMessage = mock(CatchUpMessage.class);
 
         when(stream.isInitiator()).thenReturn(false);
@@ -276,7 +272,7 @@ class GrandpaEngineTest {
 
     @Test
     void writeNeighbourMessage() {
-        when(neighbourMessageBuilder.getNeighbourMessage()).thenReturn(neighbourMessage);
+        when(protocolMessageBuilder.buildNeighbourMessage()).thenReturn(neighbourMessage);
 
         grandpaEngine.writeNeighbourMessage(stream, peerId);
 

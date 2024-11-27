@@ -11,11 +11,11 @@ import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessag
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
-import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessageBuilder;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleReader;
+import com.limechain.network.protocol.message.ProtocolMessageBuilder;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
@@ -40,13 +40,13 @@ public class GrandpaEngine {
 
     protected ConnectionManager connectionManager;
     protected WarpSyncState warpSyncState;
-    protected NeighbourMessageBuilder neighbourMessageBuilder;
+    protected ProtocolMessageBuilder protocolMessageBuilder;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
 
     public GrandpaEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
-        neighbourMessageBuilder = new NeighbourMessageBuilder();
+        protocolMessageBuilder = new ProtocolMessageBuilder();
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
     }
 
@@ -190,7 +190,7 @@ public class GrandpaEngine {
     public void writeNeighbourMessage(Stream stream, PeerId peerId) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(NeighbourMessageScaleWriter.getInstance(), neighbourMessageBuilder.getNeighbourMessage());
+            writer.write(NeighbourMessageScaleWriter.getInstance(), protocolMessageBuilder.buildNeighbourMessage());
         } catch (IOException e) {
             throw new ScaleEncodingException(e);
         }

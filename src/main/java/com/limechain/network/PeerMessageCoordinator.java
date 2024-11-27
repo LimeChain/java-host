@@ -1,7 +1,10 @@
 package com.limechain.network;
 
 import com.limechain.network.kad.KademliaService;
+import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
+import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
 import com.limechain.utils.async.AsyncExecutor;
+import com.limechain.utils.scale.ScaleUtils;
 import io.libp2p.core.PeerId;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -40,10 +43,15 @@ public class PeerMessageCoordinator {
         });
     }
 
-    public void sendBlockAnnounceMessage(byte[] encodedBlockAnnounceMessage) {
-        sendMessageToActivePeers(peerId ->
-                asyncExecutor.executeAndForget(() -> network.getBlockAnnounceService().sendBlockAnnounceMessage(
-                        network.getHost(), peerId, encodedBlockAnnounceMessage))
+    public void sendBlockAnnounceMessageExcludingPeer(BlockAnnounceMessage message, PeerId excluding) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(new BlockAnnounceMessageScaleWriter(), message);
+        sendMessageToActivePeers(p -> {
+                    if (p.equals(excluding)) {
+                        return;
+                    }
+                    asyncExecutor.executeAndForget(() -> network.getBlockAnnounceService().sendBlockAnnounceMessage(
+                            network.getHost(), p, scaleMessage));
+                }
         );
     }
 
