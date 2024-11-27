@@ -71,7 +71,7 @@ public class TransactionProcessor {
 
             TransactionValidationResponse response;
             try {
-                response = validateExternalTransaction(extrinsic);
+                response = validateExternalTransaction(extrinsic, Boolean.FALSE);
 
                 if (!Objects.isNull(response.getValidityError())) {
                     // A validity error does not always indicate that the extrinsic should be dropped from the pool.
@@ -99,29 +99,39 @@ public class TransactionProcessor {
     }
 
     private byte[] processTransaction(Extrinsic extrinsic, PeerId peerId) {
-        TransactionValidationResponse response = validateExternalTransaction(extrinsic);
-        checkIfTransactionValidityResponseContainsError(response);
+        TransactionValidationResponse response = validateExternalTransaction(extrinsic, Boolean.TRUE);
 
-        ValidTransaction validTransaction = new ValidTransaction(extrinsic, response.getValidity());
+        ValidTransaction validTransaction = new ValidTransaction(
+                extrinsic,
+                response.getValidityError() == null ? response.getValidity() : null
+        );
 
         if (peerId != null) {
             validTransaction.getIgnore().add(peerId);
         }
 
-        if (transactionState.shouldAddToQueue(validTransaction)) {
-            return transactionState.pushTransaction(validTransaction);
-        } else {
+        if (Objects.nonNull(response.getValidityError())) {
+            if (response.getValidityError().shouldReject()) {
+                throw new TransactionValidationException(response.getValidityError().toString());
+            }
+            // Validity error where shouldReject is false means adding the transaction directly to the pool
             return transactionState.addToPool(validTransaction);
         }
+
+        return transactionState.shouldAddToQueue(validTransaction)
+                ? transactionState.pushTransaction(validTransaction)
+                : transactionState.addToPool(validTransaction);
     }
 
-    private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic) {
+    private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic,
+                                                                      boolean validateExistenceInState) {
 
         if (!transactionState.isInitialized()) {
             throw new TransactionValidationException("Transaction state is not initialized.");
         }
 
-        if (transactionState.existsInQueue(extrinsic)) {
+        if (validateExistenceInState &&
+                (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic))) {
             throw new TransactionValidationException("Transaction already validated.");
         }
 
@@ -144,12 +154,6 @@ public class TransactionProcessor {
                 header.getHash(),
                 extrinsic
         ));
-    }
-
-    private void checkIfTransactionValidityResponseContainsError(TransactionValidationResponse response) {
-        if (!Objects.isNull(response.getValidityError())) {
-            throw new TransactionValidationException(response.getValidityError().toString());
-        }
     }
 
     private static TransactionValidationRequest createScaleValidationRequest(BigInteger txQueueVersion,
