@@ -2,7 +2,7 @@ package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.global.MissingObjectException;
 import com.limechain.network.protocol.warp.dto.WarpSyncResponse;
-import com.limechain.network.request.ProtocolRequester;
+import com.limechain.network.PeerRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
@@ -18,14 +18,14 @@ public class RequestFragmentsAction implements WarpSyncAction {
 
     private final WarpSyncState warpSyncState;
     private final Hash256 blockHash;
-    private final ProtocolRequester requester;
+    private final PeerRequester requester;
     private WarpSyncResponse result;
     private Exception error;
 
     public RequestFragmentsAction(Hash256 blockHash) {
         this.blockHash = blockHash;
         this.warpSyncState = AppBean.getBean(WarpSyncState.class);
-        this.requester = AppBean.getBean(ProtocolRequester.class);
+        this.requester = AppBean.getBean(PeerRequester.class);
     }
 
     @Override

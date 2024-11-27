@@ -5,7 +5,7 @@ import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.network.request.ProtocolRequester;
+import com.limechain.network.PeerRequester;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.transaction.TransactionProcessor;
@@ -23,14 +23,14 @@ public class BlockHandler {
 
     private final BlockState blockState;
     private final EpochState epochState;
-    private final ProtocolRequester requester;
+    private final PeerRequester requester;
     private final RuntimeBuilder builder;
     private final TransactionProcessor transactionProcessor;
 
     private final AsyncExecutor asyncExecutor;
 
     public BlockHandler(EpochState epochState,
-                        ProtocolRequester requester,
+                        PeerRequester requester,
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor) {
         this.epochState = epochState;

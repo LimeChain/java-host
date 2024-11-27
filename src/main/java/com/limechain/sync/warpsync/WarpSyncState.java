@@ -3,7 +3,8 @@ package com.limechain.sync.warpsync;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
-import com.limechain.network.Network;
+import com.limechain.network.PeerMessageCoordinator;
+import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
@@ -17,7 +18,6 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
-import com.limechain.network.request.ProtocolRequester;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBConstants;
@@ -57,7 +57,8 @@ import java.util.logging.Level;
 public class WarpSyncState {
 
     private final SyncState syncState;
-    private final Network network;
+    private final PeerRequester requester;
+    private final PeerMessageCoordinator messageCoordinator;
     private final KVRepository<String, Object> db;
 
     public static final String CODE_KEY = StringUtils.toHex(":code");
@@ -73,39 +74,38 @@ public class WarpSyncState {
     private byte[] runtimeCode;
 
     protected final RuntimeBuilder runtimeBuilder;
-    private final ProtocolRequester requester;
     //TODO Yordan: maybe we won't need this anymore.
     private final Set<BigInteger> scheduledRuntimeUpdateBlocks;
     private final PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges;
 
 
     public WarpSyncState(SyncState syncState,
-                         Network network,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder,
-                         ProtocolRequester requester) {
+                         PeerRequester requester,
+                         PeerMessageCoordinator messageCoordinator) {
         this(syncState,
-                network,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
                 new PriorityQueue<>(Comparator.comparing(Pair::getValue0)),
-                requester);
+                requester,
+                messageCoordinator);
     }
 
     public WarpSyncState(SyncState syncState,
-                         Network network,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
                          PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges,
-                         ProtocolRequester requester) {
+                         PeerRequester requester,
+                         PeerMessageCoordinator messageCoordinator) {
         this.syncState = syncState;
-        this.network = network;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
         this.scheduledAuthorityChanges = scheduledAuthorityChanges;
         this.requester = requester;
+        this.messageCoordinator = messageCoordinator;
     }
 
     /**
@@ -269,7 +269,7 @@ public class WarpSyncState {
      * @param peerId           sender of message
      */
     public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
-        network.sendNeighbourMessage(peerId);
+        messageCoordinator.sendNeighbourMessageToPeer(peerId);
         if (warpSyncFinished && neighbourMessage.getSetId().compareTo(syncState.getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
@@ -318,7 +318,7 @@ public class WarpSyncState {
         }
         if (warpSyncFinished && updated) {
             log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
-            new Thread(network::sendMessagesToPeers).start();
+            new Thread(messageCoordinator::sendMessagesToPeers).start();
         }
     }
 
