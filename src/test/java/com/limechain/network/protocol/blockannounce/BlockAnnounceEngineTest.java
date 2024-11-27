@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.blockannounce;
 
+import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshake;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
@@ -51,6 +52,8 @@ class BlockAnnounceEngineTest {
     private BlockAnnounceHandshake handshake;
     @Mock
     private BlockAnnounceHandshakeBuilder handshakeBuilder;
+    @Mock
+    private BlockProductionVerifier verifier;
 
     @Test
     void receiveNonHandshakeRequestWhenNotConnectedShouldIgnore() {
@@ -119,6 +122,7 @@ class BlockAnnounceEngineTest {
         byte[] message = new byte[] { 1, 2, 3 };
         BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
         when(blockAnnounceMessage.getHeader()).thenReturn(mock(BlockHeader.class));
+        when(verifier.verifyAuthorship(any())).thenReturn(true);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(true);
 
@@ -137,6 +141,7 @@ class BlockAnnounceEngineTest {
         byte[] message = new byte[] { 1, 2, 3 };
         BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
         when(blockAnnounceMessage.getHeader()).thenReturn(mock(BlockHeader.class));
+        when(verifier.verifyAuthorship(any())).thenReturn(true);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(true);
 

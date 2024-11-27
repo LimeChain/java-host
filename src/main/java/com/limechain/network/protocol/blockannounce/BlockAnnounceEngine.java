@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.blockannounce;
 
+import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshake;
@@ -36,12 +37,14 @@ public class BlockAnnounceEngine {
     protected WarpSyncState warpSyncState;
     private BlockHandler blockHandler;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
+    private BlockProductionVerifier verifier;
 
     public BlockAnnounceEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
         blockHandler = AppBean.getBean(BlockHandler.class);
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
+        verifier = new BlockProductionVerifier();
     }
 
     public void receiveRequest(byte[] msg, Stream stream) {
@@ -84,14 +87,19 @@ public class BlockAnnounceEngine {
 
     private void handleBlockAnnounce(byte[] msg, PeerId peerId) {
         BlockAnnounceMessage announce = ScaleUtils.Decode.decode(msg, new BlockAnnounceMessageScaleReader());
-        connectionManager.updatePeer(peerId, announce);
-        //TODO Yordan: Do we actually need this since each block has a runtime?
-        warpSyncState.syncBlockAnnounce(announce);
         log.log(Level.FINE, "Received block announce for block #" + announce.getHeader().getBlockNumber() +
                 " from " + peerId +
                 " with hash:" + announce.getHeader().getHash() +
                 " parentHash:" + announce.getHeader().getParentHash() +
                 " stateRoot:" + announce.getHeader().getStateRoot());
+
+        if (!verifier.verifyAuthorship(announce.getHeader())) {
+            log.log(Level.SEVERE, "Received block #" + announce.getHeader().getBlockNumber() + " is not verified");
+            return;
+        }
+        connectionManager.updatePeer(peerId, announce);
+        //TODO Yordan: Do we actually need this since each block has a runtime?
+        warpSyncState.syncBlockAnnounce(announce);
 
         if (BlockState.getInstance().isInitialized()) {
             //TODO Network improvements: Block requests should be sent to the peer that announced the block itself.
