@@ -5,18 +5,15 @@ import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessag
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.SyncState;
+import lombok.experimental.UtilityClass;
 
-
+@UtilityClass
 public class ProtocolMessageBuilder {
-    private static final int NEIGHBOUR_MESSAGE_VERSION = 1;
-
-    private final SyncState syncState;
-
-    public ProtocolMessageBuilder() {
-        this.syncState = AppBean.getBean(SyncState.class);
-    }
+    private final int NEIGHBOUR_MESSAGE_VERSION = 1;
 
     public NeighbourMessage buildNeighbourMessage() {
+        SyncState syncState = AppBean.getBean(SyncState.class);
+
         return new NeighbourMessage(
                 NEIGHBOUR_MESSAGE_VERSION,
                 syncState.getLatestRound(),
@@ -25,7 +22,7 @@ public class ProtocolMessageBuilder {
         );
     }
 
-    public static BlockAnnounceMessage buildBlockAnnounceMessage(BlockHeader blockHeader, boolean isBestBlock) {
+    public BlockAnnounceMessage buildBlockAnnounceMessage(BlockHeader blockHeader, boolean isBestBlock) {
         return new BlockAnnounceMessage(
                 blockHeader,
                 isBestBlock

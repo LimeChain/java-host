@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigInteger;
@@ -46,8 +47,6 @@ class GrandpaEngineTest {
     private ConnectionManager connectionManager;
     @Mock
     private WarpSyncState warpSyncState;
-    @Mock
-    private ProtocolMessageBuilder protocolMessageBuilder;
     @Mock
     private BlockAnnounceHandshakeBuilder blockAnnounceHandshakeBuilder;
 
@@ -82,25 +81,29 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeOnInitiatorStreamShouldAddStreamToConnection() {
-        byte[] message = new byte[]{2};
-        when(stream.isInitiator()).thenReturn(true);
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(protocolMessageBuilder.buildNeighbourMessage()).thenReturn(neighbourMessage);
+        try (MockedStatic<ProtocolMessageBuilder> builder = mockStatic(ProtocolMessageBuilder.class)) {
+            byte[] message = new byte[]{2};
+            when(stream.isInitiator()).thenReturn(true);
+            when(stream.remotePeerId()).thenReturn(peerId);
+            builder.when(ProtocolMessageBuilder::buildNeighbourMessage).thenReturn(neighbourMessage);
 
-        grandpaEngine.receiveRequest(message, stream);
+            grandpaEngine.receiveRequest(message, stream);
 
-        verify(connectionManager).addGrandpaStream(stream);
+            verify(connectionManager).addGrandpaStream(stream);
+        }
     }
 
     @Test
     void receiveHandshakeOnInitiatorStreamShouldSendNeighbourMessageBack() {
-        byte[] message = new byte[]{2};
-        when(protocolMessageBuilder.buildNeighbourMessage()).thenReturn(neighbourMessage);
-        when(stream.isInitiator()).thenReturn(true);
+        try (MockedStatic<ProtocolMessageBuilder> builder = mockStatic(ProtocolMessageBuilder.class)) {
+            byte[] message = new byte[]{2};
+            when(stream.isInitiator()).thenReturn(true);
+            builder.when(ProtocolMessageBuilder::buildNeighbourMessage).thenReturn(neighbourMessage);
 
-        grandpaEngine.receiveRequest(message, stream);
+            grandpaEngine.receiveRequest(message, stream);
 
-        verify(stream).writeAndFlush(encodedNeighbourMessage);
+            verify(stream).writeAndFlush(encodedNeighbourMessage);
+        }
     }
 
     // RESPONDER STREAM
@@ -272,10 +275,12 @@ class GrandpaEngineTest {
 
     @Test
     void writeNeighbourMessage() {
-        when(protocolMessageBuilder.buildNeighbourMessage()).thenReturn(neighbourMessage);
+        try (MockedStatic<ProtocolMessageBuilder> builder = mockStatic(ProtocolMessageBuilder.class)) {
+            builder.when(ProtocolMessageBuilder::buildNeighbourMessage).thenReturn(neighbourMessage);
 
-        grandpaEngine.writeNeighbourMessage(stream, peerId);
+            grandpaEngine.writeNeighbourMessage(stream, peerId);
 
-        verify(stream).writeAndFlush(encodedNeighbourMessage);
+            verify(stream).writeAndFlush(encodedNeighbourMessage);
+        }
     }
 }

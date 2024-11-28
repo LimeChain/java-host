@@ -40,13 +40,11 @@ public class GrandpaEngine {
 
     protected ConnectionManager connectionManager;
     protected WarpSyncState warpSyncState;
-    protected ProtocolMessageBuilder protocolMessageBuilder;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
 
     public GrandpaEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
-        protocolMessageBuilder = new ProtocolMessageBuilder();
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
     }
 
@@ -190,7 +188,7 @@ public class GrandpaEngine {
     public void writeNeighbourMessage(Stream stream, PeerId peerId) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(NeighbourMessageScaleWriter.getInstance(), protocolMessageBuilder.buildNeighbourMessage());
+            writer.write(NeighbourMessageScaleWriter.getInstance(), ProtocolMessageBuilder.buildNeighbourMessage());
         } catch (IOException e) {
             throw new ScaleEncodingException(e);
         }
