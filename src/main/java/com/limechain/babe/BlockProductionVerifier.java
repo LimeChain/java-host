@@ -2,6 +2,7 @@ package com.limechain.babe;
 
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.state.EpochData;
+import com.limechain.babe.state.EpochDescriptor;
 import com.limechain.babe.state.EpochState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.network.protocol.warp.DigestHelper;
@@ -26,9 +27,7 @@ import java.util.logging.Level;
 @Log
 public class BlockProductionVerifier {
 
-    private EpochState epochState = AppBean.getBean(EpochState.class);
-
-    public boolean verifyAuthorship(BlockHeader blockHeader) {
+    public boolean verifyAuthorship(BlockHeader blockHeader, EpochData currentEpochData, EpochDescriptor descriptor, BigInteger currentEpochIndex, BigInteger currentSlotNumber) {
         HeaderDigest[] headerDigests = blockHeader.getDigest();
         Optional<BabePreDigest> babePreDigest = DigestHelper.getBabePreRuntimeDigest(headerDigests);
         HeaderDigest sealDigest = headerDigests[headerDigests.length - 1];
@@ -36,11 +35,8 @@ public class BlockProductionVerifier {
             return false;
         }
 
-        EpochData currentEpochData = epochState.getCurrentEpochData();
         List<Authority> authorities = currentEpochData.getAuthorities();
         byte[] randomness = currentEpochData.getRandomness();
-        BigInteger currentEpochIndex = epochState.getCurrentEpochIndex();
-        BigInteger currentSlotNumber = epochState.getCurrentSlotNumber();
         byte[] signatureData = sealDigest.getMessage();
         int authorityIndex = babePreDigest.map(BabePreDigest::getAuthorityIndex).map(Math::toIntExact).get();
         Authority verifyingAuthority = authorities.get(authorityIndex);
@@ -49,17 +45,17 @@ public class BlockProductionVerifier {
         VerifySignature signature = new VerifySignature(signatureData, blockHeader.getHashBytes(), verifyingAuthority.getPublicKey(), Key.SR25519);
 
         return Sr25519Utils.verifySignature(signature) &&
-                verifySlotWinner(authorityIndex, authorities, currentEpochIndex, randomness, currentSlotNumber, vrfOutputAndProof);
+                verifySlotWinner(authorityIndex, authorities, currentEpochIndex, randomness, descriptor, currentSlotNumber, vrfOutputAndProof);
     }
 
-    public boolean verifySlotWinner(int authorityIndex, List<Authority> authorities, BigInteger epochIndex, byte[] randomness, BigInteger slotNumber, VrfOutputAndProof vrfOutputAndProof) {
+    private boolean verifySlotWinner(int authorityIndex, List<Authority> authorities, BigInteger epochIndex, byte[] randomness, EpochDescriptor descriptor, BigInteger slotNumber, VrfOutputAndProof vrfOutputAndProof) {
         Authority verifyingAuthority = authorities.get(authorityIndex);
         Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(verifyingAuthority.getPublicKey());
 
         TranscriptData transcript = Authorship.makeTranscript(randomness, slotNumber, epochIndex);
 
         BigInteger threshold = Authorship.calculatePrimaryThreshold(
-                epochState.getCurrentEpochDescriptor().getConstant(),
+                descriptor.getConstant(),
                 authorities,
                 authorityIndex);
 
