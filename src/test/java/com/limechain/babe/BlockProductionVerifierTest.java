@@ -176,7 +176,6 @@ class BlockProductionVerifierTest {
         when(sealDigest.getType()).thenReturn(DigestType.PRE_RUNTIME);
 
         boolean result = blockProductionVerifier.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, BigInteger.ONE, BigInteger.TEN);
-        ;
         assertFalse(result);
     }
 }
