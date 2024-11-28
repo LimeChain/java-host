@@ -137,6 +137,7 @@ public class FullSyncMachine {
 
     private void finishFullSync() {
         messageCoordinator.handshakeBootNodes();
+        //TODO: We don't need to send/receive transactions if we aren't authoring node
         messageCoordinator.handshakePeers();
     }
 

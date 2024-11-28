@@ -1,22 +1,16 @@
 package com.limechain.network.protocol.transaction;
 
-import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
-import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.transaction.TransactionProcessor;
-import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
-import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.Stream;
 import lombok.extern.java.Log;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.logging.Level;
 
 /**
@@ -141,19 +135,9 @@ public class TransactionEngine {
      * @param stream <b>responder</b> stream to write the message to
      * @param peerId peer to send to
      */
-    public void writeTransactionsMessage(Stream stream, PeerId peerId) {
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        //TODO Replace empty transaction messages once we have validation working.
-        try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new TransactionWriter(), new ExtrinsicArray(new Extrinsic[]{
-                    new Extrinsic(new byte[]{}), new Extrinsic(new byte[]{})
-            }));
-        } catch (IOException e) {
-            throw new ScaleEncodingException(e);
-        }
-
+    public void writeTransactionsMessage(Stream stream, PeerId peerId, byte[] encodedTransactionMessage) {
         log.log(Level.INFO, "Sending transaction message to peer " + peerId);
-        //TODO send transaction message containing non repetitive transactions for peer.
+        stream.writeAndFlush(encodedTransactionMessage);
     }
 
     private boolean isHandshake(byte[] message) {

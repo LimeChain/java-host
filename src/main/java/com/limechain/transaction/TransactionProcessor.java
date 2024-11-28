@@ -2,6 +2,7 @@ package com.limechain.transaction;
 
 import com.limechain.exception.misc.RuntimeApiVersionException;
 import com.limechain.exception.transaction.TransactionValidationException;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
@@ -29,10 +30,12 @@ import java.util.stream.Collectors;
 public class TransactionProcessor {
 
     private final TransactionState transactionState;
+    private final PeerMessageCoordinator messageCoordinator;
     private final BlockState blockState;
 
-    public TransactionProcessor(TransactionState transactionState) {
+    public TransactionProcessor(TransactionState transactionState, PeerMessageCoordinator messageCoordinator) {
         this.transactionState = transactionState;
+        this.messageCoordinator = messageCoordinator;
         this.blockState = BlockState.getInstance();
     }
 
@@ -118,9 +121,13 @@ public class TransactionProcessor {
             return transactionState.addToPool(validTransaction);
         }
 
-        return transactionState.shouldAddToQueue(validTransaction)
+        var result = transactionState.shouldAddToQueue(validTransaction)
                 ? transactionState.pushTransaction(validTransaction)
                 : transactionState.addToPool(validTransaction);
+
+        messageCoordinator.sendTransactionMessageExcludingPeer(extrinsic, validTransaction.getIgnore());
+
+        return result;
     }
 
     private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic,
@@ -132,6 +139,7 @@ public class TransactionProcessor {
 
         if (validateExistenceInState &&
                 (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic))) {
+            //TODO: Update the getIgnore field of the transaction
             throw new TransactionValidationException("Transaction already validated.");
         }
 

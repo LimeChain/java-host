@@ -3,12 +3,16 @@ package com.limechain.network;
 import com.limechain.network.kad.KademliaService;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
+import com.limechain.network.protocol.transaction.scale.TransactionWriter;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ExtrinsicArray;
 import com.limechain.utils.async.AsyncExecutor;
 import com.limechain.utils.scale.ScaleUtils;
 import io.libp2p.core.PeerId;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -38,8 +42,9 @@ public class PeerMessageCoordinator {
         sendMessageToActivePeers(peerId -> {
             asyncExecutor.executeAndForget(() ->
                     network.getGrandpaService().sendNeighbourMessage(network.getHost(), peerId));
-            asyncExecutor.executeAndForget(() ->
-                    network.getTransactionsService().sendTransactionsMessage(network.getHost(), peerId));
+            //TODO: We might not need that
+//            asyncExecutor.executeAndForget(() ->
+//                    network.getTransactionsService().sendTransactionsMessage(network.getHost(), peerId, new byte[0]));
         });
     }
 
@@ -53,6 +58,20 @@ public class PeerMessageCoordinator {
                             network.getHost(), p, scaleMessage));
                 }
         );
+    }
+
+    public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> excludingList) {
+        ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
+        byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
+
+        sendMessageToActivePeers(p -> {
+            if (excludingList.contains(p)) {
+                return;
+            }
+            asyncExecutor.executeAndForget(() -> network.getTransactionsService().sendTransactionsMessage(
+                    network.getHost(), p, scaleMessage
+            ));
+        });
     }
 
     private void sendMessageToActivePeers(Consumer<PeerId> messageAction) {
