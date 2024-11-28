@@ -19,7 +19,6 @@ import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.StringUtils;
-import com.limechain.utils.async.AsyncExecutor;
 import io.ipfs.multiaddr.MultiAddress;
 import io.ipfs.multihash.Multihash;
 import io.libp2p.core.Host;
@@ -45,39 +44,37 @@ import static com.limechain.network.kad.KademliaService.REPLICATION;
 /**
  * A Network class that handles all peer connections and Kademlia
  */
-@Component
 @Log
+@Getter
+@Component
 public class Network {
     public static final String LOCAL_IPV4_TCP_ADDRESS = "/ip4/127.0.0.1/tcp/";
     private static final int HOST_PORT = 30333;
     private static final int ASYNC_EXECUTOR_POOL_SIZE = 10;
     private static final Random RANDOM = new Random();
-    @Getter
+
     private final Chain chain;
-    @Getter
     private final NodeRole nodeRole;
+
     private final String[] bootNodes;
     private final ConnectionManager connectionManager;
-    @Getter
-    private SyncService syncService;
-    @Getter
-    private StateService stateService;
-    @Getter
-    private WarpSyncService warpSyncService;
-    @Getter
-    private LightMessagesService lightMessagesService;
-    @Getter
     private KademliaService kademliaService;
+    private Host host;
+
+    private SyncService syncService;
+    private StateService stateService;
+    private WarpSyncService warpSyncService;
+    private LightMessagesService lightMessagesService;
+
     private BlockAnnounceService blockAnnounceService;
     private GrandpaService grandpaService;
     private TransactionsService transactionsService;
+
     private Ping ping;
-    @Getter
+
     private PeerId currentSelectedPeer;
-    @Getter
-    private Host host;
-    private boolean started = false;
     private int bootPeerIndex = 0;
+    private boolean started = false;
 
     /**
      * Initializes a host for the peer connection,
@@ -289,35 +286,5 @@ public class Network {
             }
         }
     }
-
-    public void blockAnnounceHandshakeBootNodes() {
-        kademliaService.getBootNodePeerIds()
-                .stream()
-                .distinct()
-                .forEach(p -> new Thread(() -> blockAnnounceService.sendHandshake(this.host, p)).start());
-    }
-
-    public void handshakePeers() {
-        connectionManager.getPeerIds().forEach(p -> {
-            new Thread(() -> grandpaService.sendHandshake(this.host, p)).start();
-            new Thread(() -> transactionsService.sendHandshake(this.host, p)).start();
-        });
-    }
-
-    @Scheduled(fixedRate = 5, initialDelay = 5, timeUnit = TimeUnit.MINUTES)
-    public void sendMessagesToPeers() {
-        connectionManager.getPeerIds().forEach(peerId ->
-                grandpaService.sendNeighbourMessage(this.host, peerId));
-        connectionManager.getPeerIds().forEach(peerId ->
-                transactionsService.sendTransactionsMessage(this.host, peerId));
-    }
-
-    public void sendNeighbourMessage(PeerId peerId) {
-        grandpaService.sendNeighbourMessage(this.host, peerId);
-    }
-
-    public void sendBlockAnnounceMessage(byte[] encodedBlockAnnounceMessage) {
-        AsyncExecutor asyncExecutor = AsyncExecutor.withPoolSize(ASYNC_EXECUTOR_POOL_SIZE);
-        connectionManager.getPeerIds().forEach(p -> asyncExecutor.executeAndForget(() -> blockAnnounceService.sendBlockAnnounceMessage(this.host, p, encodedBlockAnnounceMessage)));
-    }
 }
+

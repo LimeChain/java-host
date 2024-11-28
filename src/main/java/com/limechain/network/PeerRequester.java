@@ -1,8 +1,7 @@
-package com.limechain.network.request;
+package com.limechain.network;
 
 import com.google.protobuf.ByteString;
 import com.limechain.exception.global.ExecutionFailedException;
-import com.limechain.network.Network;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.sync.BlockRequestDto;
 import com.limechain.network.protocol.sync.BlockRequestField;
@@ -25,14 +24,14 @@ import java.util.concurrent.CompletableFuture;
 
 @Log
 @Component
-public class ProtocolRequester {
+public class PeerRequester {
 
     private static final String BLOCK_REQUEST_ERROR = "There was an issue in the block request: ";
 
     private final AsyncExecutor asyncExecutor;
     private final Network network;
 
-    public ProtocolRequester(Network network) {
+    public PeerRequester(Network network) {
         this.network = network;
 
         asyncExecutor = AsyncExecutor.withPoolSize(50);
@@ -62,7 +61,7 @@ public class ProtocolRequester {
 
     public CompletableFuture<List<Block>> requestBlocks(BlockRequestField field, int startNumber, int amount) {
         return asyncExecutor.executeAsync(() -> requestBlocks(field, startNumber, null, amount).stream()
-                        .map(ProtocolRequester::protobufDecodeBlock)
+                        .map(PeerRequester::protobufDecodeBlock)
                         .toList())
                 .exceptionally(e -> {
                     log.fine(BLOCK_REQUEST_ERROR + e.getMessage());
@@ -72,7 +71,7 @@ public class ProtocolRequester {
 
     public CompletableFuture<List<Block>> requestBlocks(BlockRequestField field, Hash256 startHash, int amount) {
         return asyncExecutor.executeAsync(() -> requestBlocks(field, null, startHash, amount).stream()
-                        .map(ProtocolRequester::protobufDecodeBlock)
+                        .map(PeerRequester::protobufDecodeBlock)
                         .toList())
                 .exceptionally(e -> {
                     log.fine(BLOCK_REQUEST_ERROR + e.getMessage());

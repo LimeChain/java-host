@@ -8,7 +8,8 @@ import com.limechain.config.HostConfig;
 import com.limechain.config.SystemInfo;
 import com.limechain.constants.GenesisBlockHash;
 import com.limechain.network.Network;
-import com.limechain.network.request.ProtocolRequester;
+import com.limechain.network.PeerMessageCoordinator;
+import com.limechain.network.PeerRequester;
 import com.limechain.rpc.server.UnsafeInterceptor;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBInitializer;
@@ -86,11 +87,12 @@ public class CommonConfig {
     }
 
     @Bean
-    public WarpSyncState warpSyncState(Network network, SyncState syncState,
+    public WarpSyncState warpSyncState(SyncState syncState,
                                        KVRepository<String, Object> repository,
                                        RuntimeBuilder runtimeBuilder,
-                                       ProtocolRequester requester) {
-        return new WarpSyncState(syncState, network, repository, runtimeBuilder, requester);
+                                       PeerRequester requester,
+                                       PeerMessageCoordinator messageCoordinator) {
+        return new WarpSyncState(syncState, repository, runtimeBuilder, requester, messageCoordinator);
     }
 
     @Bean
@@ -103,9 +105,10 @@ public class CommonConfig {
     public FullSyncMachine fullSyncMachine(HostConfig hostConfig, Network network,
                                            SyncState syncState,
                                            TransactionState transactionState,
-                                           ProtocolRequester requester,
+                                           PeerRequester requester,
+                                           PeerMessageCoordinator coordinator,
                                            BlockHandler blockHandler) {
-        return new FullSyncMachine(network, syncState, transactionState, requester, blockHandler, hostConfig);
+        return new FullSyncMachine(network, syncState, transactionState, requester, coordinator, blockHandler, hostConfig);
     }
 
     @Bean

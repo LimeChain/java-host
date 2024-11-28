@@ -8,6 +8,7 @@ import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.Network;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
@@ -15,7 +16,7 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.network.request.ProtocolRequester;
+import com.limechain.network.PeerRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
@@ -58,7 +59,8 @@ public class FullSyncMachine {
     private final Network networkService;
     private final SyncState syncState;
     private final TransactionState transactionState;
-    private final ProtocolRequester requester;
+    private final PeerRequester requester;
+    private final PeerMessageCoordinator messageCoordinator;
     private final BlockHandler blockHandler;
     private final BlockState blockState = BlockState.getInstance();
     private final TrieStorage trieStorage = AppBean.getBean(TrieStorage.class);
@@ -70,13 +72,15 @@ public class FullSyncMachine {
     public FullSyncMachine(Network networkService,
                            SyncState syncState,
                            TransactionState transactionState,
-                           ProtocolRequester requester,
+                           PeerRequester requester,
+                           PeerMessageCoordinator messageCoordinator,
                            BlockHandler blockHandler,
                            HostConfig hostConfig) {
         this.networkService = networkService;
         this.syncState = syncState;
         this.transactionState = transactionState;
         this.requester = requester;
+        this.messageCoordinator = messageCoordinator;
         this.blockHandler = blockHandler;
         this.hostConfig = hostConfig;
     }
@@ -132,8 +136,8 @@ public class FullSyncMachine {
     }
 
     private void finishFullSync() {
-        networkService.blockAnnounceHandshakeBootNodes();
-        networkService.handshakePeers();
+        messageCoordinator.handshakeBootNodes();
+        messageCoordinator.handshakePeers();
     }
 
     private void initializeStates() {
