@@ -49,14 +49,14 @@ public class TransactionEngine {
      * @param stream  stream, where the request was received
      */
     public void receiveRequest(byte[] message, Stream stream) {
-        log.log(Level.INFO, "TRANSACTION REQUEST: ", message);
+        log.log(Level.INFO, "TRANSACTION REQUEST: " + new String(message));
 
-        if (message == null) {
+        if (message == null || message.length == 0) {
             log.log(Level.WARNING,
                     String.format("Transactions message is null from Peer %s", stream.remotePeerId()));
             return;
         }
-        log.log(Level.FINE, "Transaction message length:" + message.length);
+        log.log(Level.INFO, "Transaction message length:" + message.length);
 
         if (stream.isInitiator()) {
             handleInitiatorStreamMessage(message, stream);
@@ -66,6 +66,8 @@ public class TransactionEngine {
     }
 
     private void handleInitiatorStreamMessage(byte[] message, Stream stream) {
+        log.log(Level.INFO, "handleInitiatorStreamMessage: PeerId " + stream.remotePeerId());
+
         PeerId peerId = stream.remotePeerId();
 
         if (!isHandshake(message)) {
@@ -75,13 +77,22 @@ public class TransactionEngine {
         }
 
         connectionManager.addTransactionsStream(stream);
+        log.log(Level.INFO, "Transaction msg: " + new String(message));
         log.log(Level.INFO, "Received transactions handshake from " + peerId);
-        //TODO Replace empty transaction messages once we have validation working.
         stream.writeAndFlush(new byte[]{});
-//        stream.writeAndFlush(message);
+        log.log(Level.INFO, "Still working");
+
+//        if (connectionManager.isTransactionsConnected(peerId)) {
+//            byte[] transactionsForPeer = transactionProcessor.getTransactionsForPeer(peerId);
+//            stream.writeAndFlush(transactionsForPeer);
+//            log.log(Level.INFO, "Still working 1");
+//        }
+//        log.log(Level.INFO, "Still working 2");
     }
 
     private void handleResponderStreamMessage(byte[] message, Stream stream) {
+        log.log(Level.INFO, "handleResponderStreamMessage: PeerId" + stream.remotePeerId());
+
         PeerId peerId = stream.remotePeerId();
         boolean connectedToPeer = connectionManager.isTransactionsConnected(peerId);
 
@@ -92,32 +103,46 @@ public class TransactionEngine {
         }
 
         if (isHandshake(message)) {
+            log.log(Level.INFO, "handleResponderStreamMessage handleHandshake: PeerId" + stream.remotePeerId());
+
             handleHandshake(peerId, stream);
         } else {
-            handleTransactionMessage(message, peerId);
+            log.log(Level.INFO, "handleResponderStreamMessage handleTransactionMessage: PeerId" + stream.remotePeerId());
+
+            handleTransactionMessage(message, stream);
         }
     }
 
+    //TODO: Think about this method!
     private void handleHandshake(PeerId peerId, Stream stream) {
         if (connectionManager.isTransactionsConnected(peerId)) {
             log.log(Level.INFO, "Received existing transactions handshake from " + peerId);
             stream.close();
-        } else {
-            connectionManager.addTransactionsStream(stream);
-            log.log(Level.INFO, "Received transactions handshake from " + peerId);
         }
+
+        connectionManager.addTransactionsStream(stream);
+        log.log(Level.INFO, "Received transactions handshake from " + peerId);
+
         writeHandshakeToStream(stream, peerId);
     }
 
-    private void handleTransactionMessage(byte[] message, PeerId peerId) {
+    private void handleTransactionMessage(byte[] message, Stream stream) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         ExtrinsicArray transactions = reader.read(new TransactionReader());
-        log.log(Level.FINE, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
-                + peerId);
+        log.log(Level.INFO, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
+                + stream.remotePeerId());
 
         synchronized (LOCK) {
-            transactionProcessor.handleExternalTransactions(transactions.getExtrinsics(), peerId);
+            transactionProcessor.handleExternalTransactions(transactions.getExtrinsics(), stream.remotePeerId());
         }
+
+        //TODO: Broadcast received transaction to other peers if they are valid and the propagate flag is true
+//        for (Extrinsic extrinsic : transactions.getExtrinsics()) {
+//            ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
+//            byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
+//            //TODO: we should send the transactions to other streams, not the one that is the sender
+////            writeTransactionsMessage(stream, scaleMessage);
+//        }
     }
 
     /**
@@ -128,19 +153,19 @@ public class TransactionEngine {
      */
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
         byte[] handshake = new byte[]{};
-
         log.log(Level.INFO, "Sending transactions handshake to " + peerId);
         stream.writeAndFlush(handshake);
     }
 
     /**
+     * Ï
      * Send our Transactions message from {@link WarpSyncState} on a given <b>responder</b> stream.
      *
-     * @param stream <b>responder</b> stream to write the message to
-     * @param peerId peer to send to
+     * @param stream                    <b>responder</b> stream to write the message to
+     * @param encodedTransactionMessage scale encoded transaction message
      */
-    public void writeTransactionsMessage(Stream stream, PeerId peerId, byte[] encodedTransactionMessage) {
-        log.log(Level.INFO, "Sending transaction message to peer " + peerId);
+    public void writeTransactionsMessage(Stream stream, byte[] encodedTransactionMessage) {
+        log.log(Level.INFO, "Sending transaction message to peer " + stream.remotePeerId());
         stream.writeAndFlush(encodedTransactionMessage);
     }
 

@@ -24,6 +24,6 @@ public class TransactionController {
      * Sends a neighbour message over the controller stream.
      */
     public void sendTransactionsMessage(byte[] encodedTransactionMessage) {
-        engine.writeTransactionsMessage(stream, stream.remotePeerId(), encodedTransactionMessage);
+        engine.writeTransactionsMessage(stream, encodedTransactionMessage);
     }
 }

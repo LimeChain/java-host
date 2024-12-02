@@ -3,16 +3,19 @@ package com.limechain.transaction;
 import com.limechain.exception.misc.RuntimeApiVersionException;
 import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.network.PeerMessageCoordinator;
+import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.version.ApiVersionName;
 import com.limechain.storage.block.BlockState;
 import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ExtrinsicArray;
 import com.limechain.transaction.dto.TransactionSource;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
 import com.limechain.transaction.dto.ValidTransaction;
+import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.PeerId;
 import lombok.extern.java.Log;
@@ -24,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Log
 @Component
@@ -37,6 +41,20 @@ public class TransactionProcessor {
         this.transactionState = transactionState;
         this.messageCoordinator = messageCoordinator;
         this.blockState = BlockState.getInstance();
+    }
+
+    public byte[] getTransactionsForPeer(PeerId peerId) {
+        Extrinsic[] extrinsics = Stream.concat(
+                        Stream.of(Arrays.stream(transactionState.pending())
+                                .filter(t -> !t.getIgnore().contains(peerId))
+                                .map(ValidTransaction::getExtrinsic)),
+                        Stream.of(Arrays.stream(transactionState.pendingInPool())
+                                .filter(t -> !t.getIgnore().contains(peerId))
+                                .map(ValidTransaction::getExtrinsic)))
+                .toArray(Extrinsic[]::new);
+
+        ExtrinsicArray extrinsicArray = new ExtrinsicArray(extrinsics);
+        return ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
     }
 
     public void handleExternalTransactions(Extrinsic[] extrinsics, PeerId peerId) {
