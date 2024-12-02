@@ -1,5 +1,6 @@
 package com.limechain.storage.block;
 
+import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.babe.state.EpochState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -33,6 +34,7 @@ public class BlockHandler {
     private final RuntimeBuilder builder;
     private final AsyncExecutor asyncExecutor;
     private final TransactionProcessor transactionProcessor;
+    private final BlockProductionVerifier verifier;
 
     public BlockHandler(EpochState epochState,
                         PeerRequester requester,
@@ -44,15 +46,16 @@ public class BlockHandler {
         this.messageCoordinator = messageCoordinator;
         this.builder = builder;
         this.transactionProcessor = transactionProcessor;
-
+        this.verifier = new BlockProductionVerifier();
         blockState = BlockState.getInstance();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
     }
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
         try {
-            //TODO verify block validity here.
-            if (blockState.hasHeader(header.getHash())) {
+
+            if (blockState.hasHeader(header.getHash()) || !verifier.verifyAuthorship(header, epochState.getCurrentEpochData(),
+                    epochState.getCurrentEpochDescriptor(), epochState.getCurrentEpochIndex(), epochState.getCurrentSlotNumber())) {
                 log.fine("Skipping announced block: " + header.getBlockNumber() + " " + header.getHash());
                 return;
             }
