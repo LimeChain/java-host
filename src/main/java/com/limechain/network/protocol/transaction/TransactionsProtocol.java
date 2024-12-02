@@ -78,7 +78,7 @@ public class TransactionsProtocol extends ProtocolHandler<TransactionController>
         public void onMessage(@NotNull Stream stream, ByteBuf msg) {
             byte[] messageBytes = new byte[msg.readableBytes()];
             msg.readBytes(messageBytes);
-            engine.receiveRequest(messageBytes, stream.remotePeerId(), stream);
+            engine.receiveRequest(messageBytes, stream);
         }
 
         @Override

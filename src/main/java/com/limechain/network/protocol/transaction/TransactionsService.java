@@ -30,9 +30,7 @@ public class TransactionsService extends NetworkService<TransactionMessages> {
                         stream -> new TransactionController(stream).sendTransactionsMessage(encodedTransactionMessage),
                         () -> sendHandshake(us, peerId)
                 );
-
     }
-
 
     public void sendHandshake(Host us, PeerId peerId) {
         try {

@@ -42,9 +42,6 @@ public class PeerMessageCoordinator {
         sendMessageToActivePeers(peerId -> {
             asyncExecutor.executeAndForget(() ->
                     network.getGrandpaService().sendNeighbourMessage(network.getHost(), peerId));
-            //TODO: We might not need that
-//            asyncExecutor.executeAndForget(() ->
-//                    network.getTransactionsService().sendTransactionsMessage(network.getHost(), peerId, new byte[0]));
         });
     }
 

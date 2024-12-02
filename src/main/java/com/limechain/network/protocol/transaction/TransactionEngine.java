@@ -46,13 +46,14 @@ public class TransactionEngine {
      * <p>Logs and ignores other message types.</p>
      *
      * @param message received message as byre array
-     * @param peerId  peer id of sender
      * @param stream  stream, where the request was received
      */
-    public void receiveRequest(byte[] message, PeerId peerId, Stream stream) {
+    public void receiveRequest(byte[] message, Stream stream) {
+        log.log(Level.INFO, "TRANSACTION REQUEST: ", message);
+
         if (message == null) {
             log.log(Level.WARNING,
-                    String.format("Transactions message is null from Peer %s", peerId));
+                    String.format("Transactions message is null from Peer %s", stream.remotePeerId()));
             return;
         }
         log.log(Level.FINE, "Transaction message length:" + message.length);
@@ -66,15 +67,18 @@ public class TransactionEngine {
 
     private void handleInitiatorStreamMessage(byte[] message, Stream stream) {
         PeerId peerId = stream.remotePeerId();
+
         if (!isHandshake(message)) {
             stream.close();
             log.log(Level.WARNING, "Non handshake message on initiator transactions stream from peer " + peerId);
             return;
         }
+
         connectionManager.addTransactionsStream(stream);
         log.log(Level.INFO, "Received transactions handshake from " + peerId);
         //TODO Replace empty transaction messages once we have validation working.
         stream.writeAndFlush(new byte[]{});
+//        stream.writeAndFlush(message);
     }
 
     private void handleResponderStreamMessage(byte[] message, Stream stream) {
