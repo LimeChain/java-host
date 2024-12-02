@@ -74,17 +74,13 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
 
     @Override
     public void prepareBackup() {
-        if (shouldBackup) {
-            backupTrieService = new DiskTrieService(diskTrieService);
-        }
+        backupTrieService = new DiskTrieService(diskTrieService);
     }
 
     @Override
     public void backup() {
-        if (shouldBackup) {
-            diskTrieService = new DiskTrieService(backupTrieService);
-            backupTrieService = null;
-        }
+        diskTrieService = backupTrieService;
+        backupTrieService = null;
     }
 
     @Override
