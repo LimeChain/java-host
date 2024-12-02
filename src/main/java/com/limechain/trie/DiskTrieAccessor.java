@@ -90,4 +90,22 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
         }
         return diskTrieService.getMerkleRoot();
     }
+
+    @Override
+    public void startTransaction() {
+        loadedChildTries.forEach((_, value) -> value.startTransaction());
+        diskTrieService.startTransaction();
+    }
+
+    @Override
+    public void rollbackTransaction() {
+        loadedChildTries.forEach((_, value) -> value.rollbackTransaction());
+        diskTrieService.rollbackTransaction();
+    }
+
+    @Override
+    public void commitTransaction() {
+        loadedChildTries.forEach((_, value) -> value.commitTransaction());
+        diskTrieService.commitTransaction();
+    }
 }

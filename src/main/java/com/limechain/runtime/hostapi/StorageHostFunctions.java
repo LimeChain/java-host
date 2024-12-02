@@ -1,6 +1,7 @@
 package com.limechain.runtime.hostapi;
 
 import com.limechain.exception.scale.ScaleEncodingException;
+import com.limechain.exception.trie.TrieTransactionException;
 import com.limechain.runtime.SharedMemory;
 import com.limechain.runtime.hostapi.dto.RuntimePointerSize;
 import com.limechain.runtime.version.StateVersion;
@@ -17,6 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.lang.Nullable;
 import org.wasmer.ImportObject;
+import org.wasmer.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,6 +36,8 @@ import static com.limechain.runtime.hostapi.PartialHostApi.newImportObjectPair;
 @Log
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 public class StorageHostFunctions implements PartialHostApi {
+    public static final String TRANSACTION_PANIC = "No active transaction.";
+
     private final SharedMemory sharedMemory;
     private final TrieAccessor trieAccessor;
 
@@ -48,66 +52,66 @@ public class StorageHostFunctions implements PartialHostApi {
     @Override
     public Map<Endpoint, ImportObject.FuncImport> getFunctionImports() {
         return Map.ofEntries(
-            newImportObjectPair(Endpoint.ext_storage_set_version_1, argv -> {
-                extStorageSetVersion1(
-                    new RuntimePointerSize(argv.get(0)),
-                    new RuntimePointerSize(argv.get(1)));
-            }),
-            newImportObjectPair(Endpoint.ext_storage_get_version_1, argv -> {
-                return extStorageGetVersion1(new RuntimePointerSize(argv.get(0))).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_read_version_1, argv -> {
-                return extStorageReadVersion1(
-                    new RuntimePointerSize(argv.get(0)), new RuntimePointerSize(argv.get(1)),
-                    argv.get(2).intValue()).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_clear_version_1, argv -> {
-                extStorageClearVersion1(new RuntimePointerSize(argv.get(0)));
-            }),
+                newImportObjectPair(Endpoint.ext_storage_set_version_1, argv -> {
+                    extStorageSetVersion1(
+                            new RuntimePointerSize(argv.get(0)),
+                            new RuntimePointerSize(argv.get(1)));
+                }),
+                newImportObjectPair(Endpoint.ext_storage_get_version_1, argv -> {
+                    return extStorageGetVersion1(new RuntimePointerSize(argv.get(0))).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_read_version_1, argv -> {
+                    return extStorageReadVersion1(
+                            new RuntimePointerSize(argv.get(0)), new RuntimePointerSize(argv.get(1)),
+                            argv.get(2).intValue()).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_clear_version_1, argv -> {
+                    extStorageClearVersion1(new RuntimePointerSize(argv.get(0)));
+                }),
 
-            newImportObjectPair(Endpoint.ext_storage_exists_version_1, argv -> {
-                return extStorageExistsVersion1(new RuntimePointerSize(argv.get(0)));
-            }),
+                newImportObjectPair(Endpoint.ext_storage_exists_version_1, argv -> {
+                    return extStorageExistsVersion1(new RuntimePointerSize(argv.get(0)));
+                }),
 
-            newImportObjectPair(Endpoint.ext_storage_clear_prefix_version_1, argv -> {
-                extStorageClearPrefixVersion1(new RuntimePointerSize(argv.get(0)));
-            }),
+                newImportObjectPair(Endpoint.ext_storage_clear_prefix_version_1, argv -> {
+                    extStorageClearPrefixVersion1(new RuntimePointerSize(argv.get(0)));
+                }),
 
-            newImportObjectPair(Endpoint.ext_storage_clear_prefix_version_2, argv -> {
-                return extStorageClearPrefixVersion2(
-                    new RuntimePointerSize(argv.get(0)),
-                    new RuntimePointerSize(argv.get(1))
-                ).pointerSize();
+                newImportObjectPair(Endpoint.ext_storage_clear_prefix_version_2, argv -> {
+                    return extStorageClearPrefixVersion2(
+                            new RuntimePointerSize(argv.get(0)),
+                            new RuntimePointerSize(argv.get(1))
+                    ).pointerSize();
 
-            }),
-            newImportObjectPair(Endpoint.ext_storage_append_version_1, argv -> {
-                extStorageAppendVersion1(
-                    new RuntimePointerSize(argv.get(0)), new RuntimePointerSize(argv.get(1))
-                );
-            }),
+                }),
+                newImportObjectPair(Endpoint.ext_storage_append_version_1, argv -> {
+                    extStorageAppendVersion1(
+                            new RuntimePointerSize(argv.get(0)), new RuntimePointerSize(argv.get(1))
+                    );
+                }),
 
-            newImportObjectPair(Endpoint.ext_storage_root_version_1, argv -> {
-                return extStorageRootVersion1().pointerSize();
-            }),
+                newImportObjectPair(Endpoint.ext_storage_root_version_1, argv -> {
+                    return extStorageRootVersion1().pointerSize();
+                }),
 
-            newImportObjectPair(Endpoint.ext_storage_root_version_2, argv -> {
-                return extStorageRootVersion2(argv.get(0).intValue()).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_changes_root_version_1, argv -> {
-                return extStorageChangesRootVersion1(new RuntimePointerSize(argv.get(0))).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_next_key_version_1, argv -> {
-                return extStorageNextKeyVersion1(new RuntimePointerSize(argv.get(0))).pointerSize();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_start_transaction_version_1, argv -> {
-                extStorageStartTransactionVersion1();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_rollback_transaction_version_1, argv -> {
-                extStorageRollbackTransactionVersion1();
-            }),
-            newImportObjectPair(Endpoint.ext_storage_commit_transaction_version_1, argv -> {
-                extStorageCommitTransactionVersion1();
-            })
+                newImportObjectPair(Endpoint.ext_storage_root_version_2, argv -> {
+                    return extStorageRootVersion2(argv.get(0).intValue()).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_changes_root_version_1, argv -> {
+                    return extStorageChangesRootVersion1(new RuntimePointerSize(argv.get(0))).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_next_key_version_1, argv -> {
+                    return extStorageNextKeyVersion1(new RuntimePointerSize(argv.get(0))).pointerSize();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_start_transaction_version_1, argv -> {
+                    extStorageStartTransactionVersion1();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_rollback_transaction_version_1, argv -> {
+                    extStorageRollbackTransactionVersion1();
+                }),
+                newImportObjectPair(Endpoint.ext_storage_commit_transaction_version_1, argv -> {
+                    extStorageCommitTransactionVersion1();
+                })
         );
     }
 
@@ -355,9 +359,9 @@ public class StorageHostFunctions implements PartialHostApi {
         log.fine("");
 
         byte[] nextKey = trieAccessor.getNextKey(key)
-            .map(NibblesUtils::toBytesAppending)
-            .map(this::asByteArray)
-            .orElse(null);
+                .map(NibblesUtils::toBytesAppending)
+                .map(this::asByteArray)
+                .orElse(null);
 
         return sharedMemory.writeData(scaleEncodedOption(nextKey));
     }
@@ -386,7 +390,12 @@ public class StorageHostFunctions implements PartialHostApi {
      * Any changes made during that transaction are discarded. It’s legal to call this function multiple times in a row.
      */
     public void extStorageRollbackTransactionVersion1() {
-        trieAccessor.rollbackTransaction();
+        log.fine("extStorageRollbackTransactionVersion1");
+        try {
+            trieAccessor.rollbackTransaction();
+        } catch (TrieTransactionException e) {
+            Util.nativePanic(TRANSACTION_PANIC);
+        }
     }
 
     /**
@@ -395,6 +404,11 @@ public class StorageHostFunctions implements PartialHostApi {
      * It’s legal to call this function multiple times in a row.
      */
     public void extStorageCommitTransactionVersion1() {
-        trieAccessor.commitTransaction();
+        log.fine("extStorageCommitTransactionVersion1");
+        try {
+            trieAccessor.commitTransaction();
+        } catch (TrieTransactionException e) {
+            Util.nativePanic(TRANSACTION_PANIC);
+        }
     }
 }
