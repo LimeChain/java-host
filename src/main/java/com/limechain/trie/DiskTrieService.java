@@ -1,6 +1,7 @@
 package com.limechain.trie;
 
 import com.google.common.primitives.Bytes;
+import com.limechain.exception.trie.TrieTransactionException;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.storage.DeleteByPrefixResult;
 import com.limechain.storage.trie.TrieStorage;
@@ -43,7 +44,7 @@ public class DiskTrieService {
     public static final String UNFINISHED_TRAVERSAL_ERROR =
             "Traversal result cannot be unfinished at this point in the logic";
     private final TrieStorage trieStorage;
-    private final TrieChanges trieChanges;
+    private final List<TrieChanges> transactions = new ArrayList<>();
 
     private byte[] trieMerkleRoot;
 
@@ -51,7 +52,7 @@ public class DiskTrieService {
         this.trieStorage = trieStorage;
         this.trieMerkleRoot = trieMerkleRoot;
 
-        this.trieChanges = TrieChanges.empty();
+        transactions.add(TrieChanges.empty());
     }
 
     /**
@@ -62,7 +63,38 @@ public class DiskTrieService {
     DiskTrieService(DiskTrieService original) {
         trieStorage = original.trieStorage;
         trieMerkleRoot = original.trieMerkleRoot.clone();
-        trieChanges = TrieChanges.copy(original.trieChanges);
+        transactions.addAll(original.transactions.stream()
+                .map(TrieChanges::copy)
+                .toList());
+    }
+
+    private TrieChanges getCurrentTrieChanges() {
+        if (transactions.isEmpty()) {
+            throw new IllegalStateException("The should be at least one trie state loaded in memory.");
+        }
+
+        return transactions.getLast();
+    }
+
+    public void startTransaction() {
+        transactions.add(TrieChanges.copy(getCurrentTrieChanges()));
+    }
+
+    public void rollbackTransaction() {
+        if (transactions.size() < 2) {
+            throw new TrieTransactionException("No active transaction to rollback.");
+        }
+
+        transactions.removeLast();
+    }
+
+    public void commitTransaction() {
+        if (transactions.size() < 2) {
+            throw new TrieTransactionException("No active transaction to commit.");
+        }
+
+        TrieChanges transaction = transactions.removeLast();
+        transactions.set(transactions.size() - 1, transaction);
     }
 
     /**
@@ -75,7 +107,7 @@ public class DiskTrieService {
      * @return An {@link Optional} with the found storage value or an empty optional otherwise.
      */
     public Optional<byte[]> findStorageValue(Nibbles key) {
-        Optional<PendingTrieNodeChange> change = trieChanges.getFromCache(key);
+        Optional<PendingTrieNodeChange> change = getCurrentTrieChanges().getFromCache(key);
         return change.<Optional<byte[]>>map(pendingTrieNodeChange ->
                         pendingTrieNodeChange instanceof PendingInsertUpdate update
                                 ? Optional.ofNullable(update.value())
@@ -193,7 +225,7 @@ public class DiskTrieService {
                 closestSuccessor.getKey(),
                 closestSuccessor.getValue()));
 
-        trieChanges.updateCache(executionUpdates);
+        getCurrentTrieChanges().updateCache(executionUpdates);
     }
 
     /**
@@ -205,7 +237,7 @@ public class DiskTrieService {
      * @return A {@link TreeMap} of the newly created node and its updated parent/children if any.
      */
     private TreeMap<Nibbles, PendingInsertUpdate> executeInsert(byte[] merkleRoot, NodeInsertionData insertionData) {
-        boolean isRoot = trieChanges.getRoot().isEmpty() &&
+        boolean isRoot = getCurrentTrieChanges().getRoot().isEmpty() &&
                 trieStorage.getTrieNodeFromMerkleValue(merkleRoot) == null;
 
         // If trie is empty insert the newly created node as root.
@@ -458,7 +490,7 @@ public class DiskTrieService {
      */
     @Nullable
     private TrieNodeData getCachedChildAtIndex(Nibbles parentFullKey, Nibble childIndex) {
-        Optional<PendingInsertUpdate> cached = trieChanges.getChildByIndex(parentFullKey, childIndex);
+        Optional<PendingInsertUpdate> cached = getCurrentTrieChanges().getChildByIndex(parentFullKey, childIndex);
 
         if (cached.isPresent()) {
             PendingInsertUpdate update = cached.get();
@@ -486,7 +518,7 @@ public class DiskTrieService {
         switch (traversalResult) {
             case TraversalResult.Found found -> {
                 TreeMap<Nibbles, PendingTrieNodeChange> executionUpdates = executeDeletion(found.getFoundNode());
-                trieChanges.updateCache(mergeDeletionUpdatesWithTraversed(
+                getCurrentTrieChanges().updateCache(mergeDeletionUpdatesWithTraversed(
                         executionUpdates, traversalResult.traversedNodes));
             }
             case TraversalResult.NotFound ignored -> log.fine("DELETE: Node not found at key " + key);
@@ -538,7 +570,7 @@ public class DiskTrieService {
                 }
 
                 TreeMap<Nibbles, PendingTrieNodeChange> executionUpdates = executeDeletion(node);
-                trieChanges.updateCache(mergeDeletionUpdatesWithTraversed(
+                getCurrentTrieChanges().updateCache(mergeDeletionUpdatesWithTraversed(
                         executionUpdates, traversalResult.traversedNodes));
 
                 return new DeleteByPrefixResult(deleted.get(), true);
@@ -587,7 +619,7 @@ public class DiskTrieService {
 
         if (limit == null || deleted.get() < limit) {
             PendingTrieNodeChange remove = new PendingRemove();
-            trieChanges.updateCache(new TreeMap<>(Map.of(foundNodeFullKey, remove)));
+            getCurrentTrieChanges().updateCache(new TreeMap<>(Map.of(foundNodeFullKey, remove)));
             if (childNode.getValue() != null) {
                 deleted.incrementAndGet();
             }
@@ -600,7 +632,7 @@ public class DiskTrieService {
                     foundNodeChildrenCopy,
                     false
             );
-            trieChanges.updateCache(new TreeMap<>(Map.of(foundNodeFullKey, update)));
+            getCurrentTrieChanges().updateCache(new TreeMap<>(Map.of(foundNodeFullKey, update)));
             return Optional.of(update);
         }
     }
@@ -707,7 +739,7 @@ public class DiskTrieService {
             // Add merged parent + child update.
             result.put(mergedUpdate.getKey(), mergedUpdate.getValue());
             // Remove old parent from cache.
-            trieChanges.removeFromCache(parent.getFullKey());
+            getCurrentTrieChanges().removeFromCache(parent.getFullKey());
 
             // Point grandparent to newly merged parent + child.
             TraversedNode grandParent = parent.getParent();
@@ -766,13 +798,13 @@ public class DiskTrieService {
      * This method persists the changes from the cache layer to the disk. It also clears the cache.
      */
     public void persistChanges() {
-        Map<Nibbles, PendingInsertUpdate> updates = trieChanges.getChanges().entrySet().stream()
+        Map<Nibbles, PendingInsertUpdate> updates = getCurrentTrieChanges().getChanges().entrySet().stream()
                 .filter(e -> e.getValue() instanceof PendingInsertUpdate)
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> (PendingInsertUpdate) e.getValue()));
 
         trieStorage.updateTrieStorage(updates);
 
-        trieChanges.clear();
+        getCurrentTrieChanges().clear();
     }
 
     /**
@@ -781,7 +813,7 @@ public class DiskTrieService {
      * @return a byte array of the merkle root.
      */
     public byte[] getMerkleRoot() {
-        trieChanges.getRoot().ifPresent(r -> trieMerkleRoot = r.newMerkleValue());
+        getCurrentTrieChanges().getRoot().ifPresent(r -> trieMerkleRoot = r.newMerkleValue());
         return trieMerkleRoot;
     }
 
@@ -819,10 +851,10 @@ public class DiskTrieService {
      */
     private TraversalResult traverseCache(Nibbles key) {
         List<Map.Entry<Nibbles, PendingInsertUpdate>> entriesInKeyPath =
-                trieChanges.getEntriesInKeyPath(PendingInsertUpdate.class, key);
+                getCurrentTrieChanges().getEntriesInKeyPath(PendingInsertUpdate.class, key);
 
         // If cache is empty or no cached entries are in sought key path continue to disk traverse.
-        if (trieChanges.isCacheEmpty() || entriesInKeyPath.isEmpty()) {
+        if (getCurrentTrieChanges().isCacheEmpty() || entriesInKeyPath.isEmpty()) {
             return new TraversalResult.Unfinished(new ArrayList<>());
         }
 
@@ -830,7 +862,7 @@ public class DiskTrieService {
 
         // If cache contains exact key match we have 2 options. If it's pending a deletion we return a NotFound result,
         // Found otherwise. No need for disk traversal after this.
-        if (trieChanges.isKeyInCache(key)) {
+        if (getCurrentTrieChanges().isKeyInCache(key)) {
             TraversedNode last = traversedNodes.getLast();
             TraversalResult result;
 

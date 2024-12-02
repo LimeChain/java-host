@@ -74,17 +74,13 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
 
     @Override
     public void prepareBackup() {
-        if (shouldBackup) {
-            backupTrieService = new DiskTrieService(diskTrieService);
-        }
+        backupTrieService = new DiskTrieService(diskTrieService);
     }
 
     @Override
     public void backup() {
-        if (shouldBackup) {
-            diskTrieService = new DiskTrieService(backupTrieService);
-            backupTrieService = null;
-        }
+        diskTrieService = backupTrieService;
+        backupTrieService = null;
     }
 
     @Override
@@ -93,5 +89,23 @@ public sealed class DiskTrieAccessor extends TrieAccessor permits DiskChildTrieA
             throw new IllegalStateException("Trie state version must match runtime call one.");
         }
         return diskTrieService.getMerkleRoot();
+    }
+
+    @Override
+    public void startTransaction() {
+        loadedChildTries.forEach((_, value) -> value.startTransaction());
+        diskTrieService.startTransaction();
+    }
+
+    @Override
+    public void rollbackTransaction() {
+        loadedChildTries.forEach((_, value) -> value.rollbackTransaction());
+        diskTrieService.rollbackTransaction();
+    }
+
+    @Override
+    public void commitTransaction() {
+        loadedChildTries.forEach((_, value) -> value.commitTransaction());
+        diskTrieService.commitTransaction();
     }
 }

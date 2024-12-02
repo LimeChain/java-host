@@ -26,17 +26,11 @@ public abstract sealed class TrieAccessor permits MemoryTrieAccessor, DiskTrieAc
     protected byte[] mainTrieRoot;
     @Setter
     protected StateVersion currentStateVersion;
-    // Runtime instance sets this to false only when executing `Core_execute_block`.
-    @Setter
-    protected boolean shouldBackup;
 
     protected TrieAccessor(TrieStorage trieStorage, byte[] mainTrieRoot) {
         this.trieStorage = trieStorage;
         this.mainTrieRoot = mainTrieRoot;
         this.loadedChildTries = new HashMap<>();
-
-        // Default backup state is true since we need it for all calls but one.
-        shouldBackup = true;
     }
 
     /**
