@@ -172,7 +172,6 @@ public class GrandpaEngine {
      */
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
         byte[] handshake = new byte[]{
-                //TODO: Strange source for the node role -> hostConfig looks like better solution
                 (byte) handshakeBuilder.getBlockAnnounceHandshake().getNodeRole()
         };
 
