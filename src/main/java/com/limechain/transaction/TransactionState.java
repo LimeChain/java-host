@@ -127,22 +127,15 @@ public class TransactionState {
         return transactionPool.insert(validTransaction);
     }
 
-    public Set<PeerId> addAndReturnIgnoredPeers(Extrinsic extrinsic, PeerId peerId) {
+    public void addAndReturnIgnoredPeers(Extrinsic extrinsic, PeerId peerId) {
         if (existsInQueue(extrinsic)) {
-
             for (ValidTransaction validTransaction : transactionQueue) {
                 if (validTransaction.getExtrinsic().equals(extrinsic)) {
                     validTransaction.getIgnore().add(peerId);
-                    return validTransaction.getIgnore();
                 }
             }
-
         } else if (existsInPool(extrinsic)) {
-            ValidTransaction validTransaction = transactionPool.get(extrinsic);
-            validTransaction.getIgnore().add(peerId);
-            return validTransaction.getIgnore();
+            transactionPool.get(extrinsic).getIgnore().add(peerId);
         }
-
-        return Set.of();
     }
 }

@@ -117,7 +117,6 @@ public class TransactionProcessor {
             if (response.getValidityError().shouldReject()) {
                 throw new TransactionValidationException(response.getValidityError().toString());
             }
-            messageCoordinator.sendTransactionMessageExcludingPeer(extrinsic, validTransaction.getIgnore());
             // Validity error where shouldReject is false means adding the transaction directly to the pool
             return transactionState.addToPool(validTransaction);
         }
@@ -126,7 +125,9 @@ public class TransactionProcessor {
                 ? transactionState.pushTransaction(validTransaction)
                 : transactionState.addToPool(validTransaction);
 
-        messageCoordinator.sendTransactionMessageExcludingPeer(extrinsic, validTransaction.getIgnore());
+        if (response.getValidity() != null && response.getValidity().getPropagate()) {
+            messageCoordinator.sendTransactionMessageExcludingPeer(validTransaction.getExtrinsic(), validTransaction.getIgnore());
+        }
 
         return result;
     }
@@ -143,8 +144,7 @@ public class TransactionProcessor {
                 (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic))) {
 
             if (peerId != null) {
-                Set<PeerId> excludingPeersSet = transactionState.addAndReturnIgnoredPeers(extrinsic, peerId);
-                messageCoordinator.sendTransactionMessageExcludingPeer(extrinsic, excludingPeersSet);
+                transactionState.addAndReturnIgnoredPeers(extrinsic, peerId);
             }
 
             throw new TransactionValidationException("Transaction already validated.");
