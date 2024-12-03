@@ -3,13 +3,11 @@ package com.limechain.babe;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.state.EpochData;
 import com.limechain.babe.state.EpochDescriptor;
-import com.limechain.babe.state.EpochState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.hostapi.dto.Key;
 import com.limechain.runtime.hostapi.dto.VerifySignature;
 import com.limechain.utils.LittleEndianUtils;
@@ -41,14 +39,28 @@ public class BlockProductionVerifier {
         int authorityIndex = babePreDigest.map(BabePreDigest::getAuthorityIndex).map(Math::toIntExact).get();
         Authority verifyingAuthority = authorities.get(authorityIndex);
 
-        VrfOutputAndProof vrfOutputAndProof = VrfOutputAndProof.wrap(babePreDigest.get().getVrfOutput(), babePreDigest.get().getVrfProof());
-        VerifySignature signature = new VerifySignature(signatureData, blockHeader.getHashBytes(), verifyingAuthority.getPublicKey(), Key.SR25519);
+        VrfOutputAndProof vrfOutputAndProof = VrfOutputAndProof.wrap(
+                babePreDigest.get().getVrfOutput(), babePreDigest.get().getVrfProof());
+        VerifySignature signature = new VerifySignature(
+                signatureData, blockHeader.getHashBytes(), verifyingAuthority.getPublicKey(), Key.SR25519);
 
         return Sr25519Utils.verifySignature(signature) &&
-                verifySlotWinner(authorityIndex, authorities, currentEpochIndex, randomness, descriptor, currentSlotNumber, vrfOutputAndProof);
+                verifySlotWinner(authorityIndex,
+                        authorities,
+                        currentEpochIndex,
+                        randomness,
+                        descriptor,
+                        currentSlotNumber,
+                        vrfOutputAndProof);
     }
 
-    private boolean verifySlotWinner(int authorityIndex, List<Authority> authorities, BigInteger epochIndex, byte[] randomness, EpochDescriptor descriptor, BigInteger slotNumber, VrfOutputAndProof vrfOutputAndProof) {
+    private boolean verifySlotWinner(int authorityIndex,
+                                     List<Authority> authorities,
+                                     BigInteger epochIndex,
+                                     byte[] randomness,
+                                     EpochDescriptor descriptor,
+                                     BigInteger slotNumber,
+                                     VrfOutputAndProof vrfOutputAndProof) {
         Authority verifyingAuthority = authorities.get(authorityIndex);
         Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(verifyingAuthority.getPublicKey());
 

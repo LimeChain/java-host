@@ -20,7 +20,6 @@ import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
-import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
@@ -80,7 +79,7 @@ public class RuntimeImpl implements Runtime {
     @Override
     public TransactionValidationResponse validateTransaction(TransactionValidationRequest request) {
         byte[] encodedRequest = ScaleUtils.Encode.encode(new TransactionValidationWriter(), request);
-        byte[] encodedResponse = call(RuntimeEndpoint.TRANSACTION_QUEUE_VALIDATE_TRANSACTION, encodedRequest);
+        byte[] encodedResponse = callAndBackup(RuntimeEndpoint.TRANSACTION_QUEUE_VALIDATE_TRANSACTION, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new TransactionValidationReader());
     }
@@ -127,17 +126,8 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public void executeBlock(Block block) {
-        TrieAccessor accessor = context.trieAccessor;
-        if (accessor != null) {
-            accessor.setShouldBackup(false);
-        }
-
         byte[] param = serializeExecuteBlockParameter(block);
         call(RuntimeEndpoint.CORE_EXECUTE_BLOCK, param);
-
-        if (accessor != null) {
-            accessor.setShouldBackup(true);
-        }
     }
 
     @Override
@@ -186,8 +176,23 @@ public class RuntimeImpl implements Runtime {
      * @return the SCALE encoded response
      */
     @Nullable
-    private byte[] call(RuntimeEndpoint function) {
+    private synchronized byte[] call(RuntimeEndpoint function) {
         return callInner(function, new RuntimePointerSize(0, 0));
+    }
+
+    /**
+     * Calls an exported runtime function with no parameters and backup state changes.
+     *
+     * @param function the name Runtime function to call
+     * @return the SCALE encoded response
+     */
+    @Nullable
+    private synchronized byte[] callAndBackup(RuntimeEndpoint function) {
+        context.trieAccessor.prepareBackup();
+        byte[] result = callInner(function, new RuntimePointerSize(0, 0));
+        context.trieAccessor.backup();
+
+        return result;
     }
 
     /**
@@ -198,26 +203,32 @@ public class RuntimeImpl implements Runtime {
      * @return the SCALE encoded response
      */
     @Nullable
-    private byte[] call(RuntimeEndpoint function, @NotNull byte[] parameter) {
+    private synchronized byte[] call(RuntimeEndpoint function, @NotNull byte[] parameter) {
         return callInner(function, context.getSharedMemory().writeData(parameter));
     }
 
+    /**
+     * Calls an exported runtime function with parameters and backup state changes.
+     *
+     * @param function  the name Runtime function to call
+     * @param parameter the SCALE encoded tuple of parameters
+     * @return the SCALE encoded response
+     */
     @Nullable
-    private synchronized byte[] callInner(RuntimeEndpoint function, RuntimePointerSize parameterPtrSize) {
-        TrieAccessor accessor = context.trieAccessor;
+    private synchronized byte[] callAndBackup(RuntimeEndpoint function, @NotNull byte[] parameter) {
+        context.trieAccessor.prepareBackup();
+        byte[] result = callInner(function, context.getSharedMemory().writeData(parameter));
+        context.trieAccessor.backup();
 
-        if (accessor != null) {
-            accessor.prepareBackup();
-        }
+        return result;
+    }
 
+    @Nullable
+    private byte[] callInner(RuntimeEndpoint function, RuntimePointerSize parameterPtrSize) {
         String functionName = function.getName();
         log.log(Level.FINE, "Making a runtime call: " + functionName);
         Object[] response = instance.exports.getFunction(functionName)
                 .apply(parameterPtrSize.pointer(), parameterPtrSize.size());
-
-        if (accessor != null) {
-            accessor.backup();
-        }
 
         if (response == null) {
             return null;

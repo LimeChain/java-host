@@ -53,9 +53,17 @@ public class BlockHandler {
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
         try {
+            if (epochState.isInitialized() && !verifier.verifyAuthorship(header,
+                    epochState.getCurrentEpochData(),
+                    epochState.getCurrentEpochDescriptor(),
+                    epochState.getCurrentEpochIndex(),
+                    epochState.getCurrentSlotNumber())) {
+                log.fine("Block No: " + header.getBlockNumber() + " with hash: " + header.getHash()
+                        + " cannot be verified.");
+                return;
+            }
 
-            if (blockState.hasHeader(header.getHash()) || !verifier.verifyAuthorship(header, epochState.getCurrentEpochData(),
-                    epochState.getCurrentEpochDescriptor(), epochState.getCurrentEpochIndex(), epochState.getCurrentSlotNumber())) {
+            if (blockState.hasHeader(header.getHash())) {
                 log.fine("Skipping announced block: " + header.getBlockNumber() + " " + header.getHash());
                 return;
             }
