@@ -61,6 +61,14 @@ public class PeerMessageCoordinator {
         );
     }
 
+    /**
+     * Scale encodes the provided extrinsic and sends it to all connected peers, excluding
+     * those specified in the provided set. The excluded peers are typically the ones that
+     * originally sent the transaction to our node.
+     *
+     * @param extrinsic    the transaction data to encode and propagate to peers.
+     * @param excludingSet a set of peer IDs that should not receive the encoded transaction
+     */
     public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> excludingSet) {
         ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
         byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
