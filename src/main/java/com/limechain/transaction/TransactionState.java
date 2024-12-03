@@ -4,6 +4,7 @@ import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.HashUtils;
+import io.libp2p.core.PeerId;
 import lombok.Getter;
 import lombok.extern.java.Log;
 import org.jetbrains.annotations.NotNull;
@@ -124,5 +125,24 @@ public class TransactionState {
 
     public byte[] addToPool(ValidTransaction validTransaction) {
         return transactionPool.insert(validTransaction);
+    }
+
+    public Set<PeerId> addAndReturnIgnoredPeers(Extrinsic extrinsic, PeerId peerId) {
+        if (existsInQueue(extrinsic)) {
+
+            for (ValidTransaction validTransaction : transactionQueue) {
+                if (validTransaction.getExtrinsic().equals(extrinsic)) {
+                    validTransaction.getIgnore().add(peerId);
+                    return validTransaction.getIgnore();
+                }
+            }
+
+        } else if (existsInPool(extrinsic)) {
+            ValidTransaction validTransaction = transactionPool.get(extrinsic);
+            validTransaction.getIgnore().add(peerId);
+            return validTransaction.getIgnore();
+        }
+
+        return Set.of();
     }
 }

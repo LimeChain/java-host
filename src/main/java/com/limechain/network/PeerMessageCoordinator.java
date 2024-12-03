@@ -57,12 +57,12 @@ public class PeerMessageCoordinator {
         );
     }
 
-    public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> excludingList) {
+    public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> excludingSet) {
         ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
         byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
 
         sendMessageToActivePeers(p -> {
-            if (excludingList.contains(p)) {
+            if (excludingSet.contains(p)) {
                 return;
             }
             asyncExecutor.executeAndForget(() -> network.getTransactionsService().sendTransactionsMessage(

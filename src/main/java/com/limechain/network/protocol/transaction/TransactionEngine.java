@@ -80,14 +80,6 @@ public class TransactionEngine {
         log.log(Level.INFO, "Transaction msg: " + new String(message));
         log.log(Level.INFO, "Received transactions handshake from " + peerId);
         stream.writeAndFlush(new byte[]{});
-        log.log(Level.INFO, "Still working");
-
-//        if (connectionManager.isTransactionsConnected(peerId)) {
-//            byte[] transactionsForPeer = transactionProcessor.getTransactionsForPeer(peerId);
-//            stream.writeAndFlush(transactionsForPeer);
-//            log.log(Level.INFO, "Still working 1");
-//        }
-//        log.log(Level.INFO, "Still working 2");
     }
 
     private void handleResponderStreamMessage(byte[] message, Stream stream) {

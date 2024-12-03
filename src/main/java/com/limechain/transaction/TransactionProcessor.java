@@ -3,19 +3,16 @@ package com.limechain.transaction;
 import com.limechain.exception.misc.RuntimeApiVersionException;
 import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.network.PeerMessageCoordinator;
-import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.version.ApiVersionName;
 import com.limechain.storage.block.BlockState;
 import com.limechain.transaction.dto.Extrinsic;
-import com.limechain.transaction.dto.ExtrinsicArray;
 import com.limechain.transaction.dto.TransactionSource;
 import com.limechain.transaction.dto.TransactionValidationRequest;
 import com.limechain.transaction.dto.TransactionValidationResponse;
 import com.limechain.transaction.dto.ValidTransaction;
-import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.PeerId;
 import lombok.extern.java.Log;
@@ -27,7 +24,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Log
 @Component
@@ -41,20 +37,6 @@ public class TransactionProcessor {
         this.transactionState = transactionState;
         this.messageCoordinator = messageCoordinator;
         this.blockState = BlockState.getInstance();
-    }
-
-    public byte[] getTransactionsForPeer(PeerId peerId) {
-        Extrinsic[] extrinsics = Stream.concat(
-                        Stream.of(Arrays.stream(transactionState.pending())
-                                .filter(t -> !t.getIgnore().contains(peerId))
-                                .map(ValidTransaction::getExtrinsic)),
-                        Stream.of(Arrays.stream(transactionState.pendingInPool())
-                                .filter(t -> !t.getIgnore().contains(peerId))
-                                .map(ValidTransaction::getExtrinsic)))
-                .toArray(Extrinsic[]::new);
-
-        ExtrinsicArray extrinsicArray = new ExtrinsicArray(extrinsics);
-        return ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
     }
 
     public void handleExternalTransactions(Extrinsic[] extrinsics, PeerId peerId) {
@@ -92,7 +74,7 @@ public class TransactionProcessor {
 
             TransactionValidationResponse response;
             try {
-                response = validateExternalTransaction(extrinsic, Boolean.FALSE);
+                response = validateExternalTransaction(extrinsic, null, Boolean.FALSE);
 
                 if (!Objects.isNull(response.getValidityError())) {
                     // A validity error does not always indicate that the extrinsic should be dropped from the pool.
@@ -120,7 +102,7 @@ public class TransactionProcessor {
     }
 
     private byte[] processTransaction(Extrinsic extrinsic, PeerId peerId) {
-        TransactionValidationResponse response = validateExternalTransaction(extrinsic, Boolean.TRUE);
+        TransactionValidationResponse response = validateExternalTransaction(extrinsic, peerId, Boolean.TRUE);
 
         ValidTransaction validTransaction = new ValidTransaction(
                 extrinsic,
@@ -135,6 +117,7 @@ public class TransactionProcessor {
             if (response.getValidityError().shouldReject()) {
                 throw new TransactionValidationException(response.getValidityError().toString());
             }
+            messageCoordinator.sendTransactionMessageExcludingPeer(extrinsic, validTransaction.getIgnore());
             // Validity error where shouldReject is false means adding the transaction directly to the pool
             return transactionState.addToPool(validTransaction);
         }
@@ -149,6 +132,7 @@ public class TransactionProcessor {
     }
 
     private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic,
+                                                                      PeerId peerId,
                                                                       boolean validateExistenceInState) {
 
         if (!transactionState.isInitialized()) {
@@ -157,7 +141,12 @@ public class TransactionProcessor {
 
         if (validateExistenceInState &&
                 (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic))) {
-            //TODO: Update the getIgnore field of the transaction
+
+            if (peerId != null) {
+                Set<PeerId> excludingPeersSet = transactionState.addAndReturnIgnoredPeers(extrinsic, peerId);
+                messageCoordinator.sendTransactionMessageExcludingPeer(extrinsic, excludingPeersSet);
+            }
+
             throw new TransactionValidationException("Transaction already validated.");
         }
 
