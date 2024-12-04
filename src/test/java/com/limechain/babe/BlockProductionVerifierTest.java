@@ -8,6 +8,7 @@ import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.runtime.Runtime;
 import com.limechain.utils.Sr25519Utils;
 import io.emeraldpay.polkaj.merlin.TranscriptData;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
@@ -52,6 +53,9 @@ class BlockProductionVerifierTest {
 
     @Mock
     private BabePreDigest babePreDigest;
+
+    @Mock
+    private Runtime runtime;
 
     private final BigInteger epochIndex = BigInteger.ONE;
     private final byte[] randomness = new byte[]{0x01, 0x02, 0x03};
@@ -106,7 +110,7 @@ class BlockProductionVerifierTest {
 
             mockedSr25519.when(() -> Sr25519Utils.verifySignature(any())).thenReturn(true);
 
-            boolean result = verifierSpy.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, epochIndex, slotNumber);
+            boolean result = verifierSpy.verifyAuthorship(runtime, blockHeader, currentEpochData, epochDescriptor, epochIndex, slotNumber);
 
             assertTrue(result);
 
@@ -158,7 +162,7 @@ class BlockProductionVerifierTest {
 
             mockedSr25519.when(() -> Sr25519Utils.verifySignature(any())).thenReturn(true);
 
-            boolean result = verifierSpy.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, epochIndex, slotNumber);
+            boolean result = verifierSpy.verifyAuthorship(runtime, blockHeader, currentEpochData, epochDescriptor, epochIndex, slotNumber);
 
             assertFalse(result);
 
@@ -175,7 +179,7 @@ class BlockProductionVerifierTest {
         when(blockHeader.getDigest()).thenReturn(headerDigests);
         when(sealDigest.getType()).thenReturn(DigestType.PRE_RUNTIME);
 
-        boolean result = blockProductionVerifier.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, BigInteger.ONE, BigInteger.TEN);
+        boolean result = blockProductionVerifier.verifyAuthorship(runtime, blockHeader, currentEpochData, epochDescriptor, BigInteger.ONE, BigInteger.TEN);
         assertFalse(result);
     }
 }

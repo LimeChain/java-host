@@ -53,7 +53,11 @@ public class BlockHandler {
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
         try {
-            if (epochState.isInitialized() && !verifier.verifyAuthorship(header,
+            Runtime runtime = blockState.getRuntime(header.getParentHash());
+            Runtime newRuntime = builder.copyRuntime(runtime);
+
+            if (epochState.isInitialized() && !verifier.verifyAuthorship(newRuntime,
+                    header,
                     epochState.getCurrentEpochData(),
                     epochState.getCurrentEpochDescriptor(),
                     epochState.getCurrentEpochIndex(),
@@ -70,9 +74,6 @@ public class BlockHandler {
 
             CompletableFuture<List<Block>> responseFuture = requester.requestBlocks(
                     BlockRequestField.ALL, header.getHash(), 1);
-
-            Runtime runtime = blockState.getRuntime(header.getParentHash());
-            Runtime newRuntime = builder.copyRuntime(runtime);
 
             List<Block> blocks = responseFuture.join();
             while (blocks.isEmpty()) {
