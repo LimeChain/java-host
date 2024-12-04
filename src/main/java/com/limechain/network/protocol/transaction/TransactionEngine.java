@@ -1,22 +1,16 @@
 package com.limechain.network.protocol.transaction;
 
-import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
-import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.transaction.TransactionProcessor;
-import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
-import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.Stream;
 import lombok.extern.java.Log;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.logging.Level;
 
 /**
@@ -52,13 +46,12 @@ public class TransactionEngine {
      * <p>Logs and ignores other message types.</p>
      *
      * @param message received message as byre array
-     * @param peerId  peer id of sender
      * @param stream  stream, where the request was received
      */
-    public void receiveRequest(byte[] message, PeerId peerId, Stream stream) {
-        if (message == null) {
+    public void receiveRequest(byte[] message, Stream stream) {
+        if (message == null || message.length == 0) {
             log.log(Level.WARNING,
-                    String.format("Transactions message is null from Peer %s", peerId));
+                    String.format("Transactions message is null from Peer %s", stream.remotePeerId()));
             return;
         }
         log.log(Level.FINE, "Transaction message length:" + message.length);
@@ -72,14 +65,15 @@ public class TransactionEngine {
 
     private void handleInitiatorStreamMessage(byte[] message, Stream stream) {
         PeerId peerId = stream.remotePeerId();
+
         if (!isHandshake(message)) {
             stream.close();
             log.log(Level.WARNING, "Non handshake message on initiator transactions stream from peer " + peerId);
             return;
         }
+
         connectionManager.addTransactionsStream(stream);
         log.log(Level.INFO, "Received transactions handshake from " + peerId);
-        //TODO Replace empty transaction messages once we have validation working.
         stream.writeAndFlush(new byte[]{});
     }
 
@@ -96,7 +90,7 @@ public class TransactionEngine {
         if (isHandshake(message)) {
             handleHandshake(peerId, stream);
         } else {
-            handleTransactionMessage(message, peerId);
+            handleTransactionMessage(message, stream);
         }
     }
 
@@ -104,21 +98,22 @@ public class TransactionEngine {
         if (connectionManager.isTransactionsConnected(peerId)) {
             log.log(Level.INFO, "Received existing transactions handshake from " + peerId);
             stream.close();
-        } else {
-            connectionManager.addTransactionsStream(stream);
-            log.log(Level.INFO, "Received transactions handshake from " + peerId);
         }
+
+        connectionManager.addTransactionsStream(stream);
+        log.log(Level.INFO, "Received transactions handshake from " + peerId);
+
         writeHandshakeToStream(stream, peerId);
     }
 
-    private void handleTransactionMessage(byte[] message, PeerId peerId) {
+    private void handleTransactionMessage(byte[] message, Stream stream) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         ExtrinsicArray transactions = reader.read(new TransactionReader());
         log.log(Level.FINE, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
-                + peerId);
+                + stream.remotePeerId());
 
         synchronized (LOCK) {
-            transactionProcessor.handleExternalTransactions(transactions.getExtrinsics(), peerId);
+            transactionProcessor.handleExternalTransactions(transactions.getExtrinsics(), stream.remotePeerId());
         }
     }
 
@@ -130,7 +125,6 @@ public class TransactionEngine {
      */
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
         byte[] handshake = new byte[]{};
-
         log.log(Level.INFO, "Sending transactions handshake to " + peerId);
         stream.writeAndFlush(handshake);
     }
@@ -138,22 +132,12 @@ public class TransactionEngine {
     /**
      * Send our Transactions message from {@link WarpSyncState} on a given <b>responder</b> stream.
      *
-     * @param stream <b>responder</b> stream to write the message to
-     * @param peerId peer to send to
+     * @param stream                    <b>responder</b> stream to write the message to
+     * @param encodedTransactionMessage scale encoded transaction message
      */
-    public void writeTransactionsMessage(Stream stream, PeerId peerId) {
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        //TODO Replace empty transaction messages once we have validation working.
-        try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new TransactionWriter(), new ExtrinsicArray(new Extrinsic[]{
-                    new Extrinsic(new byte[]{}), new Extrinsic(new byte[]{})
-            }));
-        } catch (IOException e) {
-            throw new ScaleEncodingException(e);
-        }
-
-        log.log(Level.INFO, "Sending transaction message to peer " + peerId);
-        //TODO send transaction message containing non repetitive transactions for peer.
+    public void writeTransactionsMessage(Stream stream, byte[] encodedTransactionMessage) {
+        log.log(Level.INFO, "Sending transaction message to peer " + stream.remotePeerId());
+        stream.writeAndFlush(encodedTransactionMessage);
     }
 
     private boolean isHandshake(byte[] message) {

@@ -2,6 +2,7 @@ package com.limechain.transaction;
 
 import com.limechain.exception.misc.RuntimeApiVersionException;
 import com.limechain.exception.transaction.TransactionValidationException;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
@@ -29,10 +30,12 @@ import java.util.stream.Collectors;
 public class TransactionProcessor {
 
     private final TransactionState transactionState;
+    private final PeerMessageCoordinator messageCoordinator;
     private final BlockState blockState;
 
-    public TransactionProcessor(TransactionState transactionState) {
+    public TransactionProcessor(TransactionState transactionState, PeerMessageCoordinator messageCoordinator) {
         this.transactionState = transactionState;
+        this.messageCoordinator = messageCoordinator;
         this.blockState = BlockState.getInstance();
     }
 
@@ -71,7 +74,7 @@ public class TransactionProcessor {
 
             TransactionValidationResponse response;
             try {
-                response = validateExternalTransaction(extrinsic, Boolean.FALSE);
+                response = validateExternalTransaction(extrinsic, null, Boolean.FALSE);
 
                 if (!Objects.isNull(response.getValidityError())) {
                     // A validity error does not always indicate that the extrinsic should be dropped from the pool.
@@ -99,7 +102,7 @@ public class TransactionProcessor {
     }
 
     private byte[] processTransaction(Extrinsic extrinsic, PeerId peerId) {
-        TransactionValidationResponse response = validateExternalTransaction(extrinsic, Boolean.TRUE);
+        TransactionValidationResponse response = validateExternalTransaction(extrinsic, peerId, Boolean.TRUE);
 
         ValidTransaction validTransaction = new ValidTransaction(
                 extrinsic,
@@ -107,7 +110,7 @@ public class TransactionProcessor {
         );
 
         if (peerId != null) {
-            validTransaction.getIgnore().add(peerId);
+            validTransaction.addPeerToIgnore(peerId);
         }
 
         if (Objects.nonNull(response.getValidityError())) {
@@ -118,12 +121,22 @@ public class TransactionProcessor {
             return transactionState.addToPool(validTransaction);
         }
 
-        return transactionState.shouldAddToQueue(validTransaction)
+        var extrinsicHash = transactionState.shouldAddToQueue(validTransaction)
                 ? transactionState.pushTransaction(validTransaction)
                 : transactionState.addToPool(validTransaction);
+
+        if (response.getValidity() != null && response.getValidity().getPropagate()) {
+            messageCoordinator.sendTransactionMessageExcludingPeer(
+                    validTransaction.getExtrinsic(),
+                    validTransaction.getPeersToIgnore()
+            );
+        }
+
+        return extrinsicHash;
     }
 
     private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic,
+                                                                      PeerId peerId,
                                                                       boolean validateExistenceInState) {
 
         if (!transactionState.isInitialized()) {
@@ -132,6 +145,11 @@ public class TransactionProcessor {
 
         if (validateExistenceInState &&
                 (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic))) {
+
+            if (peerId != null) {
+                transactionState.addPeerToIgnore(extrinsic, peerId);
+            }
+
             throw new TransactionValidationException("Transaction already validated.");
         }
 

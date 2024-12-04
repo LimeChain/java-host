@@ -144,7 +144,6 @@ public class FullSyncMachine {
         epochState.initialize(runtime.getBabeApiConfiguration());
         epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
 
-
         slotCoordinator.start(List.of(
                 AppBean.getBean(BabeService.class)
         ));

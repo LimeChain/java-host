@@ -1,14 +1,19 @@
 package com.limechain.network;
 
 import com.limechain.network.kad.KademliaService;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
+import com.limechain.network.protocol.transaction.scale.TransactionWriter;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ExtrinsicArray;
 import com.limechain.utils.async.AsyncExecutor;
 import com.limechain.utils.scale.ScaleUtils;
 import io.libp2p.core.PeerId;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -28,8 +33,11 @@ public class PeerMessageCoordinator {
         sendMessageToActivePeers(peerId -> {
             asyncExecutor.executeAndForget(() ->
                     network.getGrandpaService().sendHandshake(network.getHost(), peerId));
-            asyncExecutor.executeAndForget(() ->
-                    network.getTransactionsService().sendHandshake(network.getHost(), peerId));
+
+            if (network.getNodeRole().equals(NodeRole.AUTHORING)) {
+                asyncExecutor.executeAndForget(() ->
+                        network.getTransactionsService().sendHandshake(network.getHost(), peerId));
+            }
         });
     }
 
@@ -38,8 +46,6 @@ public class PeerMessageCoordinator {
         sendMessageToActivePeers(peerId -> {
             asyncExecutor.executeAndForget(() ->
                     network.getGrandpaService().sendNeighbourMessage(network.getHost(), peerId));
-            asyncExecutor.executeAndForget(() ->
-                    network.getTransactionsService().sendTransactionsMessage(network.getHost(), peerId));
         });
     }
 
@@ -53,6 +59,28 @@ public class PeerMessageCoordinator {
                             network.getHost(), p, scaleMessage));
                 }
         );
+    }
+
+    /**
+     * Scale encodes the provided extrinsic and sends it to all connected peers, excluding
+     * those specified in the provided set. The excluded peers are typically the ones that
+     * originally sent the transaction to our node.
+     *
+     * @param extrinsic    the transaction data to encode and propagate to peers.
+     * @param peersToIgnore a set of peer IDs that should not receive the transaction
+     */
+    public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> peersToIgnore) {
+        ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
+        byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
+
+        sendMessageToActivePeers(p -> {
+            if (peersToIgnore.contains(p)) {
+                return;
+            }
+            asyncExecutor.executeAndForget(() -> network.getTransactionsService().sendTransactionsMessage(
+                    network.getHost(), p, scaleMessage
+            ));
+        });
     }
 
     private void sendMessageToActivePeers(Consumer<PeerId> messageAction) {

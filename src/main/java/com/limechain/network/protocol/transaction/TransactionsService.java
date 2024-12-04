@@ -4,7 +4,6 @@ import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.NetworkService;
 import io.libp2p.core.Host;
 import io.libp2p.core.PeerId;
-import io.libp2p.core.Stream;
 import lombok.extern.java.Log;
 
 import java.util.Optional;
@@ -24,19 +23,13 @@ public class TransactionsService extends NetworkService<TransactionMessages> {
      * @param us     our host object
      * @param peerId message receiver
      */
-    public void sendTransactionsMessage(Host us, PeerId peerId) {
-        //TODO Network improvements: Keep track of peers that we've notified about each transaction
-        //TODO Yordan: we should take care of handshakes separately.
+    public void sendTransactionsMessage(Host us, PeerId peerId, byte[] encodedTransactionMessage) {
         Optional.ofNullable(connectionManager.getPeerInfo(peerId))
                 .map(p -> p.getTransactionsStreams().getInitiator())
                 .ifPresentOrElse(
-                        this::sendTransactions,
+                        stream -> new TransactionController(stream).sendTransactionsMessage(encodedTransactionMessage),
                         () -> sendHandshake(us, peerId)
                 );
-    }
-
-    private void sendTransactions(Stream stream) {
-        //TODO Send transaction messages
     }
 
     public void sendHandshake(Host us, PeerId peerId) {
