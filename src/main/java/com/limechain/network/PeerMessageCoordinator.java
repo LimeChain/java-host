@@ -67,14 +67,14 @@ public class PeerMessageCoordinator {
      * originally sent the transaction to our node.
      *
      * @param extrinsic    the transaction data to encode and propagate to peers.
-     * @param excludingSet a set of peer IDs that should not receive the encoded transaction
+     * @param peersToIgnore a set of peer IDs that should not receive the transaction
      */
-    public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> excludingSet) {
+    public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> peersToIgnore) {
         ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
         byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
 
         sendMessageToActivePeers(p -> {
-            if (excludingSet.contains(p)) {
+            if (peersToIgnore.contains(p)) {
                 return;
             }
             asyncExecutor.executeAndForget(() -> network.getTransactionsService().sendTransactionsMessage(

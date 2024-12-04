@@ -20,6 +20,14 @@ public class ValidTransaction implements Comparable<ValidTransaction> {
 
     HashSet<PeerId> ignore = new HashSet<>();
 
+    public void addPeerToIgnore(PeerId peerId) {
+        this.ignore.add(peerId);
+    }
+
+    public HashSet<PeerId> getPeersToIgnore() {
+        return this.ignore;
+    }
+
     public int compareTo(@NotNull ValidTransaction transaction) {
         return transaction.transactionValidity.getPriority()
                 .compareTo(this.transactionValidity.getPriority());

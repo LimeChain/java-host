@@ -110,7 +110,7 @@ public class TransactionProcessor {
         );
 
         if (peerId != null) {
-            validTransaction.getIgnore().add(peerId);
+            validTransaction.addPeerToIgnore(peerId);
         }
 
         if (Objects.nonNull(response.getValidityError())) {
@@ -126,7 +126,10 @@ public class TransactionProcessor {
                 : transactionState.addToPool(validTransaction);
 
         if (response.getValidity() != null && response.getValidity().getPropagate()) {
-            messageCoordinator.sendTransactionMessageExcludingPeer(validTransaction.getExtrinsic(), validTransaction.getIgnore());
+            messageCoordinator.sendTransactionMessageExcludingPeer(
+                    validTransaction.getExtrinsic(),
+                    validTransaction.getPeersToIgnore()
+            );
         }
 
         return result;

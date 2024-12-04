@@ -131,11 +131,11 @@ public class TransactionState {
         if (existsInQueue(extrinsic)) {
             for (ValidTransaction validTransaction : transactionQueue) {
                 if (validTransaction.getExtrinsic().equals(extrinsic)) {
-                    validTransaction.getIgnore().add(peerId);
+                    validTransaction.addPeerToIgnore(peerId);
                 }
             }
         } else if (existsInPool(extrinsic)) {
-            transactionPool.get(extrinsic).getIgnore().add(peerId);
+            transactionPool.get(extrinsic).addPeerToIgnore(peerId);
         }
     }
 }
