@@ -121,7 +121,7 @@ public class TransactionProcessor {
             return transactionState.addToPool(validTransaction);
         }
 
-        var result = transactionState.shouldAddToQueue(validTransaction)
+        var extrinsicHash = transactionState.shouldAddToQueue(validTransaction)
                 ? transactionState.pushTransaction(validTransaction)
                 : transactionState.addToPool(validTransaction);
 
@@ -132,7 +132,7 @@ public class TransactionProcessor {
             );
         }
 
-        return result;
+        return extrinsicHash;
     }
 
     private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic,
