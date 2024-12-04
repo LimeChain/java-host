@@ -127,7 +127,7 @@ public class TransactionState {
         return transactionPool.insert(validTransaction);
     }
 
-    public void addAndReturnIgnoredPeers(Extrinsic extrinsic, PeerId peerId) {
+    public void addPeerToIgnore(Extrinsic extrinsic, PeerId peerId) {
         if (existsInQueue(extrinsic)) {
             for (ValidTransaction validTransaction : transactionQueue) {
                 if (validTransaction.getExtrinsic().equals(extrinsic)) {

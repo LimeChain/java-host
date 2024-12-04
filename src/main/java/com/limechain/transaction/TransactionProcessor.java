@@ -147,7 +147,7 @@ public class TransactionProcessor {
                 (transactionState.existsInQueue(extrinsic) || transactionState.existsInPool(extrinsic))) {
 
             if (peerId != null) {
-                transactionState.addAndReturnIgnoredPeers(extrinsic, peerId);
+                transactionState.addPeerToIgnore(extrinsic, peerId);
             }
 
             throw new TransactionValidationException("Transaction already validated.");
