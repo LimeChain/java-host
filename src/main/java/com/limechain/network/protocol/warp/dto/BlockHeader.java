@@ -34,11 +34,14 @@ public class BlockHeader {
     }
 
     public Hash256 getHash() {
-        return new Hash256(getHashBytes());
+        return new Hash256(getBlake2bHash(true));
     }
 
-    public byte[] getHashBytes() {
-        byte[] scaleEncoded = ScaleUtils.Encode.encode(BlockHeaderScaleWriter.getInstance(), this);
+    public byte[] getBlake2bHash(boolean sealed) {
+        byte[] scaleEncoded = ScaleUtils.Encode.encode(sealed
+                        ? BlockHeaderScaleWriter.getInstance()
+                        : BlockHeaderScaleWriter.getInstance()::writeUnsealed,
+                this);
         return HashUtils.hashWithBlake2b(scaleEncoded);
     }
 }
