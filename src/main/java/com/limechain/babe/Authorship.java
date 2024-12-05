@@ -179,9 +179,9 @@ public class Authorship {
         );
     }
 
-    private static Integer getSecondarySlotAuthor(byte[] randomness,
-                                                  BigInteger slotNumber,
-                                                  List<Authority> authorities) {
+    public static Integer getSecondarySlotAuthor(byte[] randomness,
+                                                 BigInteger slotNumber,
+                                                 List<Authority> authorities) {
         if (authorities.isEmpty()) return null;
 
         byte[] concat = ByteArrayUtils.concatenate(randomness, slotNumber.toByteArray());

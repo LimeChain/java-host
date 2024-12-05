@@ -1,9 +1,11 @@
 package com.limechain.babe;
 
 import com.limechain.babe.predigest.BabePreDigest;
+import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.babe.state.EpochData;
 import com.limechain.babe.state.EpochDescriptor;
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.exception.misc.AuthorshipVerificationException;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -24,8 +26,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -57,7 +58,6 @@ class BlockProductionVerifierTest {
     private final byte[] randomness = new byte[]{0x01, 0x02, 0x03};
     private final byte[] vrfOutput = new byte[]{0x06};
     private final byte[] vrfProof = new byte[]{0x07};
-    private final BigInteger slotNumber = BigInteger.TEN;
 
     @BeforeEach
     void setUp() {
@@ -65,7 +65,7 @@ class BlockProductionVerifierTest {
     }
 
     @Test
-    void testVerifyAuthorship_ValidCase() {
+    void testIsAuthorship_Valid_ValidCase() {
         try (MockedStatic<DigestHelper> mockedDigestHelper = mockStatic(DigestHelper.class);
              MockedStatic<Sr25519Utils> mockedSr25519 = mockStatic(Sr25519Utils.class);
              MockedStatic<Schnorrkel> mockedSchnorrkel = mockStatic(Schnorrkel.class);
@@ -81,7 +81,7 @@ class BlockProductionVerifierTest {
 
             HeaderDigest[] headerDigests = new HeaderDigest[]{sealDigest};
             when(blockHeader.getDigest()).thenReturn(headerDigests);
-            when(blockHeader.getHashBytes()).thenReturn(new byte[]{0x01, 0x02, 0x03});
+            when(blockHeader.getBlake2bHash(true)).thenReturn(new byte[]{0x01, 0x02, 0x03});
 
             when(sealDigest.getType()).thenReturn(DigestType.SEAL);
             when(sealDigest.getMessage()).thenReturn(new byte[]{0x04, 0x05});
@@ -89,6 +89,9 @@ class BlockProductionVerifierTest {
             mockedDigestHelper.when(() -> DigestHelper.getBabePreRuntimeDigest(headerDigests))
                     .thenReturn(Optional.of(babePreDigest));
 
+
+            when(babePreDigest.getType()).thenReturn(PreDigestType.BABE_PRIMARY);
+            when(babePreDigest.getSlotNumber()).thenReturn(BigInteger.TEN);
             when(babePreDigest.getAuthorityIndex()).thenReturn(0L);
             when(babePreDigest.getVrfOutput()).thenReturn(vrfOutput);
             when(babePreDigest.getVrfProof()).thenReturn(vrfProof);
@@ -106,7 +109,7 @@ class BlockProductionVerifierTest {
 
             mockedSr25519.when(() -> Sr25519Utils.verifySignature(any())).thenReturn(true);
 
-            boolean result = verifierSpy.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, epochIndex, slotNumber);
+            boolean result = verifierSpy.isAuthorshipValid(blockHeader, currentEpochData, epochDescriptor, epochIndex);
 
             assertTrue(result);
 
@@ -117,7 +120,7 @@ class BlockProductionVerifierTest {
     }
 
     @Test
-    void testVerifyAuthorship_NotSlotWinner() {
+    void testIsAuthorship_Valid_NotSlotWinner() {
         try (MockedStatic<DigestHelper> mockedDigestHelper = mockStatic(DigestHelper.class);
              MockedStatic<Sr25519Utils> mockedSr25519 = mockStatic(Sr25519Utils.class);
              MockedStatic<Schnorrkel> mockedSchnorrkel = mockStatic(Schnorrkel.class);
@@ -133,7 +136,7 @@ class BlockProductionVerifierTest {
 
             HeaderDigest[] headerDigests = new HeaderDigest[]{sealDigest};
             when(blockHeader.getDigest()).thenReturn(headerDigests);
-            when(blockHeader.getHashBytes()).thenReturn(new byte[]{0x01, 0x02, 0x03});
+            when(blockHeader.getBlake2bHash(false)).thenReturn(new byte[]{0x01, 0x02, 0x03});
 
             when(sealDigest.getType()).thenReturn(DigestType.SEAL);
             when(sealDigest.getMessage()).thenReturn(new byte[]{0x04, 0x05});
@@ -141,6 +144,8 @@ class BlockProductionVerifierTest {
             mockedDigestHelper.when(() -> DigestHelper.getBabePreRuntimeDigest(headerDigests))
                     .thenReturn(Optional.of(babePreDigest));
 
+            when(babePreDigest.getType()).thenReturn(PreDigestType.BABE_PRIMARY);
+            when(babePreDigest.getSlotNumber()).thenReturn(BigInteger.TEN);
             when(babePreDigest.getAuthorityIndex()).thenReturn(0L);
             when(babePreDigest.getVrfOutput()).thenReturn(vrfOutput);
             when(babePreDigest.getVrfProof()).thenReturn(vrfProof);
@@ -158,11 +163,10 @@ class BlockProductionVerifierTest {
 
             mockedSr25519.when(() -> Sr25519Utils.verifySignature(any())).thenReturn(true);
 
-            boolean result = verifierSpy.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, epochIndex, slotNumber);
+            boolean result = verifierSpy.isAuthorshipValid(blockHeader, currentEpochData, epochDescriptor, epochIndex);
 
             assertFalse(result);
 
-            mockedSr25519.verify(() -> Sr25519Utils.verifySignature(any()), times(1));
             mockedDigestHelper.verify(() -> DigestHelper.getBabePreRuntimeDigest(headerDigests), times(1));
             mockedVrfOutputAndProof.verify(() -> VrfOutputAndProof.wrap(vrfOutput, vrfProof), times(1));
         }
@@ -170,13 +174,16 @@ class BlockProductionVerifierTest {
 
 
     @Test
-    void testVerifyAuthorship_InvalidSealDigest() {
+    void testIsAuthorship_Valid_InvalidDigest() {
         HeaderDigest[] headerDigests = new HeaderDigest[]{sealDigest};
         when(blockHeader.getDigest()).thenReturn(headerDigests);
         when(sealDigest.getType()).thenReturn(DigestType.PRE_RUNTIME);
 
-        boolean result = blockProductionVerifier.verifyAuthorship(blockHeader, currentEpochData, epochDescriptor, BigInteger.ONE, BigInteger.TEN);
-        assertFalse(result);
+        assertThrows(AuthorshipVerificationException.class, () -> blockProductionVerifier.isAuthorshipValid(blockHeader,
+                currentEpochData,
+                epochDescriptor,
+                BigInteger.ONE)
+        );
     }
 }
 

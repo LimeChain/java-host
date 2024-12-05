@@ -1,14 +1,15 @@
 package com.limechain.sync.fullsync;
 
 import com.google.protobuf.ByteString;
-import com.limechain.babe.state.EpochState;
 import com.limechain.babe.BabeService;
 import com.limechain.babe.coordinator.SlotCoordinator;
+import com.limechain.babe.state.EpochState;
 import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.Network;
 import com.limechain.network.PeerMessageCoordinator;
+import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
@@ -16,7 +17,6 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.network.PeerRequester;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;

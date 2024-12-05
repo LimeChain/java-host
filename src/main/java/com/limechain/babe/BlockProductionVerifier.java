@@ -4,6 +4,7 @@ import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.state.EpochData;
 import com.limechain.babe.state.EpochDescriptor;
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.exception.misc.AuthorshipVerificationException;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -16,65 +17,158 @@ import io.emeraldpay.polkaj.merlin.TranscriptData;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
 import lombok.extern.java.Log;
+import org.javatuples.Pair;
 
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Level;
 
 @Log
 public class BlockProductionVerifier {
 
-    public boolean verifyAuthorship(BlockHeader blockHeader, EpochData currentEpochData, EpochDescriptor descriptor, BigInteger currentEpochIndex, BigInteger currentSlotNumber) {
+    public boolean isAuthorshipValid(BlockHeader blockHeader,
+                                     EpochData currentEpochData,
+                                     EpochDescriptor descriptor,
+                                     BigInteger currentEpochIndex) {
         HeaderDigest[] headerDigests = blockHeader.getDigest();
-        Optional<BabePreDigest> babePreDigest = DigestHelper.getBabePreRuntimeDigest(headerDigests);
+
+        Optional<BabePreDigest> preDigestOptional = DigestHelper.getBabePreRuntimeDigest(headerDigests);
+        if (preDigestOptional.isEmpty()) {
+            throw new AuthorshipVerificationException("Invalid pre runtime digest.");
+        }
+        // Seal is always last.
         HeaderDigest sealDigest = headerDigests[headerDigests.length - 1];
-        if (babePreDigest.isEmpty() || !DigestType.SEAL.equals(sealDigest.getType())) {
+        if (!DigestType.SEAL.equals(sealDigest.getType())) {
+            throw new AuthorshipVerificationException("Invalid seal digest in header.");
+        }
+
+        BabePreDigest preDigest = preDigestOptional.get();
+        List<Authority> authorities = currentEpochData.getAuthorities();
+        byte[] randomness = currentEpochData.getRandomness();
+
+        if (!isSlotWinnerValid(preDigest, currentEpochIndex, authorities, randomness, descriptor.getConstant())) {
+            log.warning(String.format("Author of block No: %s with hash %s is not a valid winner of %s for slot %s",
+                    blockHeader.getBlockNumber(),
+                    blockHeader.getHash(),
+                    preDigest.getType(),
+                    preDigest.getSlotNumber()));
             return false;
         }
 
-        List<Authority> authorities = currentEpochData.getAuthorities();
-        byte[] randomness = currentEpochData.getRandomness();
+        // TODO Key should be available before the start of the method so that we avoid duplicate code.
+        byte[] authorityPublicKey = getAuthority(authorities, (int) preDigest.getAuthorityIndex())
+                .getPublicKey();
         byte[] signatureData = sealDigest.getMessage();
-        int authorityIndex = babePreDigest.map(BabePreDigest::getAuthorityIndex).map(Math::toIntExact).get();
-        Authority verifyingAuthority = authorities.get(authorityIndex);
-
-        VrfOutputAndProof vrfOutputAndProof = VrfOutputAndProof.wrap(
-                babePreDigest.get().getVrfOutput(), babePreDigest.get().getVrfProof());
         VerifySignature signature = new VerifySignature(
-                signatureData, blockHeader.getHashBytes(), verifyingAuthority.getPublicKey(), Key.SR25519);
+                signatureData, blockHeader.getBlake2bHash(false), authorityPublicKey, Key.SR25519);
 
-        return Sr25519Utils.verifySignature(signature) &&
-                verifySlotWinner(authorityIndex,
-                        authorities,
-                        currentEpochIndex,
-                        randomness,
-                        descriptor,
-                        currentSlotNumber,
-                        vrfOutputAndProof);
+        if (!Sr25519Utils.verifySignature(signature)) {
+            log.warning(String.format("Signature of block No: %s with hash %s is not valid",
+                    blockHeader.getBlockNumber(),
+                    blockHeader.getHash()));
+            return false;
+        }
+
+        return true;
     }
 
-    private boolean verifySlotWinner(int authorityIndex,
-                                     List<Authority> authorities,
-                                     BigInteger epochIndex,
-                                     byte[] randomness,
-                                     EpochDescriptor descriptor,
-                                     BigInteger slotNumber,
-                                     VrfOutputAndProof vrfOutputAndProof) {
-        Authority verifyingAuthority = authorities.get(authorityIndex);
-        Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(verifyingAuthority.getPublicKey());
+    private boolean isSlotWinnerValid(BabePreDigest preDigest,
+                                      BigInteger currentEpochIndex,
+                                      List<Authority> authorities,
+                                      byte[] randomness,
+                                      Pair<BigInteger, BigInteger> constant) {
+        switch (preDigest.getType()) {
+            case BABE_PRIMARY -> {
+                VrfOutputAndProof vrfOutputAndProof = VrfOutputAndProof.wrap(
+                        preDigest.getVrfOutput(), preDigest.getVrfProof());
+                return isPrimarySlotWinnerValid((int) preDigest.getAuthorityIndex(),
+                        preDigest.getSlotNumber(),
+                        authorities,
+                        randomness,
+                        currentEpochIndex,
+                        constant,
+                        vrfOutputAndProof);
+            }
+            case BABE_SECONDARY_VRF -> {
+                VrfOutputAndProof vrfOutputAndProof = VrfOutputAndProof.wrap(
+                        preDigest.getVrfOutput(), preDigest.getVrfProof());
+                return isSecondaryVrfSlotWinnerValid((int) preDigest.getAuthorityIndex(),
+                        preDigest.getSlotNumber(),
+                        authorities,
+                        randomness,
+                        currentEpochIndex,
+                        vrfOutputAndProof);
+            }
+            case BABE_SECONDARY_PLAIN -> {
+                return isSecondaryPlainSlotWinnerValid((int) preDigest.getAuthorityIndex(),
+                        preDigest.getSlotNumber(),
+                        authorities,
+                        randomness);
+            }
+            default -> throw new AuthorshipVerificationException("Unexpected pre-digest type: " + preDigest.getType());
+        }
+    }
 
+    private boolean isPrimarySlotWinnerValid(int authorityIndex,
+                                             BigInteger slotNumber,
+                                             List<Authority> authorities,
+                                             byte[] randomness,
+                                             BigInteger epochIndex,
+                                             Pair<BigInteger, BigInteger> constant,
+                                             VrfOutputAndProof vrfOutputAndProof) {
+        Authority verifyingAuthority = getAuthority(authorities, authorityIndex);
+        Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(verifyingAuthority.getPublicKey());
         TranscriptData transcript = Authorship.makeTranscript(randomness, slotNumber, epochIndex);
 
         BigInteger threshold = Authorship.calculatePrimaryThreshold(
-                descriptor.getConstant(),
+                constant,
                 authorities,
                 authorityIndex);
 
-        var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(Schnorrkel.getInstance().makeBytes(publicKey, transcript, vrfOutputAndProof)).compareTo(threshold) < 0;
+        var isBelowThreshold = LittleEndianUtils.fromLittleEndianByteArray(
+                        Schnorrkel.getInstance().makeBytes(publicKey, transcript, vrfOutputAndProof))
+                .compareTo(threshold) < 0;
         if (!isBelowThreshold) {
-            log.log(Level.WARNING, "Block producer is not a winner of the slot");
+            return false;
         }
-        return Schnorrkel.getInstance().vrfVerify(publicKey, transcript, vrfOutputAndProof) && isBelowThreshold;
+
+        return Schnorrkel.getInstance().vrfVerify(publicKey, transcript, vrfOutputAndProof);
+    }
+
+    private boolean isSecondaryPlainSlotWinnerValid(int authorityIndex,
+                                                    BigInteger slotNumber,
+                                                    List<Authority> authorities,
+                                                    byte[] randomness) {
+        Integer expected = Authorship.getSecondarySlotAuthor(randomness, slotNumber, authorities);
+        if (expected == null) {
+            throw new AuthorshipVerificationException("Something went wrong while getting expected slot author.");
+        }
+
+        return expected.compareTo(authorityIndex) == 0;
+    }
+
+    private boolean isSecondaryVrfSlotWinnerValid(int authorityIndex,
+                                                  BigInteger slotNumber,
+                                                  List<Authority> authorities,
+                                                  byte[] randomness,
+                                                  BigInteger epochIndex,
+                                                  VrfOutputAndProof vrfOutputAndProof) {
+        Integer expected = Authorship.getSecondarySlotAuthor(randomness, slotNumber, authorities);
+        if (expected == null) {
+            throw new AuthorshipVerificationException("Something went wrong while getting expected slot author.");
+        }
+
+        Authority verifyingAuthority = getAuthority(authorities, authorityIndex);
+        Schnorrkel.PublicKey publicKey = new Schnorrkel.PublicKey(verifyingAuthority.getPublicKey());
+        TranscriptData transcript = Authorship.makeTranscript(randomness, slotNumber, epochIndex);
+
+        return Schnorrkel.getInstance().vrfVerify(publicKey, transcript, vrfOutputAndProof);
+    }
+
+    private Authority getAuthority(List<Authority> authorities, int index) {
+        if (index < 0 || index >= authorities.size()) {
+            throw new AuthorshipVerificationException("Invalid authority index: " + index);
+        }
+        return authorities.get(index);
     }
 }

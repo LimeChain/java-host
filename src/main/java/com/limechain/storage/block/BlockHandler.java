@@ -53,13 +53,10 @@ public class BlockHandler {
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
         try {
-            if (epochState.isInitialized() && !verifier.verifyAuthorship(header,
+            if (epochState.isInitialized() && !verifier.isAuthorshipValid(header,
                     epochState.getCurrentEpochData(),
                     epochState.getCurrentEpochDescriptor(),
-                    epochState.getCurrentEpochIndex(),
-                    epochState.getCurrentSlotNumber())) {
-                log.fine("Block No: " + header.getBlockNumber() + " with hash: " + header.getHash()
-                        + " cannot be verified.");
+                    epochState.getCurrentEpochIndex())) {
                 return;
             }
 
@@ -94,7 +91,7 @@ public class BlockHandler {
                             block.getHeader(), block.getHeader().getHash().equals(blockState.bestBlockHash())),
                     excluding);
         } catch (Exception e) {
-            log.warning("Error while importing announced block: " + e.getMessage());
+            log.warning("Error while importing announced block: " + e);
         }
     }
 
