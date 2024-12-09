@@ -91,8 +91,9 @@ public class FullSyncMachine {
         //  unless explicitly set via some of the "update..." methods
         this.networkService.updateCurrentSelectedPeerWithNextBootnode();
 
-        Hash256 stateRoot = syncState.getStateRoot();
-        Hash256 lastFinalizedBlockHash = syncState.getLastFinalizedBlockHash();
+        var pair = syncState.getPair();
+        Hash256 lastFinalizedBlockHash = pair.getValue0();
+        Hash256 stateRoot = pair.getValue1();
 
         DiskTrieAccessor trieAccessor = new DiskTrieAccessor(trieStorage, stateRoot.getBytes());
 
@@ -154,7 +155,6 @@ public class FullSyncMachine {
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {
         log.info("Loading state at block from peer");
         Map<ByteString, ByteString> kvps = makeStateRequest(lastFinalizedBlockHash);
-
         TrieStructure<NodeData> trieStructure = TrieStructureFactory.buildFromKVPs(kvps);
         trieStorage.insertTrieStorage(trieStructure);
         log.info("State at block loaded from peer");

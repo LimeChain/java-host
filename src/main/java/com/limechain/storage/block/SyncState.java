@@ -13,6 +13,7 @@ import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
+import org.javatuples.Pair;
 
 import java.math.BigInteger;
 import java.util.logging.Level;
@@ -68,6 +69,10 @@ public class SyncState {
         this.lastFinalizedBlockNumber = header.getBlockNumber();
         this.lastFinalizedBlockHash = header.getHash();
         this.stateRoot = header.getStateRoot();
+    }
+
+    public Pair<Hash256, Hash256> getPair() {
+        return new Pair<>(lastFinalizedBlockHash, stateRoot);
     }
 
     public void finalizedCommitMessage(CommitMessage commitMessage) {

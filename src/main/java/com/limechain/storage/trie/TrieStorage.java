@@ -359,12 +359,16 @@ public class TrieStorage {
      * @param insertTrieNodes The list of trie nodes to be inserted.
      */
     private void saveTrieNodes(final List<InsertTrieNode> insertTrieNodes) {
+        var a = insertTrieNodes.stream().count();
+        var counter = 0;
         try {
             for (InsertTrieNode trieNode : insertTrieNodes) {
+                counter ++;
                 insertTrieNodeStorage(trieNode);
             }
         } catch (Exception e) {
-            log.log(Level.SEVERE, "Failed to insert trie structure to db storage", e);
+            System.out.println("All: " + a + ", completed: " + counter);
+            System.out.println("Failed to insert trie structure to db storage");
         }
     }
 

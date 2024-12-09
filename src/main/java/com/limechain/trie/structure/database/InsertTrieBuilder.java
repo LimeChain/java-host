@@ -62,20 +62,34 @@ public class InsertTrieBuilder {
      *                               indicates an invalid state for the trie nodes.
      */
     public static List<InsertTrieNode> build(TrieStructure<NodeData> trieStructure, List<TrieNodeIndex> trieNodes) {
-        return trieNodes
-            .stream()
-            .map((TrieNodeIndex trieIndex) -> prepareForInsert(trieStructure, trieIndex))
-            .filter(Objects::nonNull).toList();
+        List<InsertTrieNode> list = new ArrayList<>();
+        for (TrieNodeIndex trieIndex : trieNodes) {
+            var a = prepareForInsert(trieStructure, trieIndex);
+            if (Objects.nonNull(a)) {
+                list.add(a);
+            }
+        }
+        return list;
+//        return trieNodes
+//            .stream()
+//            .map((TrieNodeIndex trieIndex) -> prepareForInsert(trieStructure, trieIndex))
+//            .filter(Objects::nonNull).toList();
     }
 
     private static InsertTrieNode prepareForInsert(TrieStructure<NodeData> trieStructure, TrieNodeIndex nodeIndex) {
+        if (nodeIndex.getValue() == 502422) {
+            System.out.println(":code exists");
+        }
+
         NodeData userData = trieStructure.getUserDataAtIndex(nodeIndex);
         if (userData == null || userData.getMerkleValue() == null) {
+            System.out.println("Trying to save node without merkle value");
             throw new TrieBuildException("Trying to save node without merkle value");
         }
 
         NodeHandle<NodeData> nodeHandle = trieStructure.nodeHandleAtIndex(nodeIndex);
         if (nodeHandle == null) {
+            System.out.println("Failed to build trie");
             throw new TrieBuildException("Failed to build trie.");
         }
 

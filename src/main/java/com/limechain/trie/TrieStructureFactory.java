@@ -20,6 +20,7 @@ import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
@@ -34,9 +35,13 @@ public class TrieStructureFactory {
      * @return - a TrieStructure with calculated merkle values
      */
     public TrieStructure<NodeData> buildFromKVPs(Map<ByteString, ByteString> entries) {
+        //Works
         StateVersion stateVersion = getRuntimeStateVersion(entries);
 
+        //Probably doesn't work
         TrieStructure<NodeData> trie = buildTrieStructure(entries, stateVersion);
+
+        //Works
         calculateMerkleValues(trie, HashUtils::hashWithBlake2b);
         return trie;
     }
@@ -61,14 +66,22 @@ public class TrieStructureFactory {
      * @return A TrieStructure containing the inserted key-value pairs.
      */
     public TrieStructure<NodeData> buildTrieStructure(Map<ByteString, ByteString> mainStorage, StateVersion version) {
-        TrieStructure<NodeData> trie = new TrieStructure<>();
+        TrieStructure<NodeData> trie = new TrieStructure<>(mainStorage.size());
 
         for (var entry : mainStorage.entrySet()) {
+            //key
             Nibbles key = Nibbles.fromBytes(entry.getKey().toByteArray());
+            //value
             byte[] value = entry.getValue().toByteArray();
+
             trie.insertNode(key, new NodeData(value), version);
+            if (Arrays.equals(entry.getKey().toByteArray(), (":code".getBytes()))) {
+                System.out.println(true);
+                System.out.println(entry.getValue().size());
+            }
         }
 
+        //trie.node(Nibbles.fromBytes(":code".getBytes())).trieStructure.getNodeAtIndexInner(501245)
         return trie;
     }
 
