@@ -7,8 +7,8 @@ import java.math.BigInteger;
 
 @Data
 public class BlockEquivocationProof {
-    byte[] publicKey;
-    BigInteger slotNumber;
-    BlockHeader firstBlockHeader;
-    BlockHeader secondBlockHeader;
+    private byte[] publicKey;
+    private BigInteger slotNumber;
+    private BlockHeader firstBlockHeader;
+    private BlockHeader secondBlockHeader;
 }

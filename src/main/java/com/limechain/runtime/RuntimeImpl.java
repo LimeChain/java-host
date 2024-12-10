@@ -74,7 +74,6 @@ public class RuntimeImpl implements Runtime {
     @Override
     public void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof,
                                                           byte[] keyOwnershipProof) {
-        // Key ownership needs to be encoded as a list (have its length encoded) as it is of varying size.
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
              ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
             new BlockEquivocationProofWriter().write(scaleCodecWriter, blockEquivocationProof);

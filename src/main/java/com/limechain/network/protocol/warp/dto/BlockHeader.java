@@ -9,7 +9,6 @@ import lombok.Setter;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.Objects;
 
 @Setter
 @Getter
@@ -44,17 +43,5 @@ public class BlockHeader {
                         : BlockHeaderScaleWriter.getInstance()::writeUnsealed,
                 this);
         return HashUtils.hashWithBlake2b(scaleEncoded);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof BlockHeader that)) return false;
-        return Objects.equals(parentHash, that.parentHash) && Objects.equals(blockNumber, that.blockNumber) && Objects.equals(stateRoot, that.stateRoot) && Objects.equals(extrinsicsRoot, that.extrinsicsRoot) && Objects.deepEquals(digest, that.digest);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(parentHash, blockNumber, stateRoot, extrinsicsRoot, Arrays.hashCode(digest));
     }
 }

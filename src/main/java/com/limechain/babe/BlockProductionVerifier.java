@@ -18,7 +18,6 @@ import com.limechain.runtime.hostapi.dto.Key;
 import com.limechain.runtime.hostapi.dto.VerifySignature;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.Sr25519Utils;
-import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.merlin.TranscriptData;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
@@ -69,11 +68,6 @@ public class BlockProductionVerifier implements SlotChangeListener {
         // TODO Key should be available before the start of the method so that we avoid duplicate code.
         byte[] authorityPublicKey = getAuthority(authorities, (int) preDigest.getAuthorityIndex())
                 .getPublicKey();
-
-        if (isBlockEquivocationExist(authorityPublicKey, blockHeader, runtime, preDigest.getSlotNumber())) {
-            return false;
-        }
-
         byte[] signatureData = sealDigest.getMessage();
         VerifySignature signature = new VerifySignature(
                 signatureData, blockHeader.getBlake2bHash(false), authorityPublicKey, Key.SR25519);
@@ -82,6 +76,10 @@ public class BlockProductionVerifier implements SlotChangeListener {
             log.warning(String.format("Signature of block No: %s with hash %s is not valid",
                     blockHeader.getBlockNumber(),
                     blockHeader.getHash()));
+            return false;
+        }
+
+        if (isBlockEquivocationExist(authorityPublicKey, blockHeader, runtime, preDigest.getSlotNumber())) {
             return false;
         }
 
@@ -196,17 +194,20 @@ public class BlockProductionVerifier implements SlotChangeListener {
         String hexPublicKey = HexUtils.toHexString(authorityPublicKey);
         if (currentSlotAuthorBlockMap.containsKey(hexPublicKey)) {
             BlockHeader firstBlockHeader = currentSlotAuthorBlockMap.get(hexPublicKey);
-            if (!firstBlockHeader.equals(blockHeader)) {
+            if (!firstBlockHeader.getHash().equals(blockHeader.getHash())) {
                 BlockEquivocationProof blockEquivocationProof = new BlockEquivocationProof();
                 blockEquivocationProof.setPublicKey(authorityPublicKey);
                 blockEquivocationProof.setSlotNumber(currentSlotNumber);
                 blockEquivocationProof.setFirstBlockHeader(firstBlockHeader);
                 blockEquivocationProof.setSecondBlockHeader(blockHeader);
 
-                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateKeyOwnershipProof(currentSlotNumber, authorityPublicKey);
+                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateKeyOwnershipProof(
+                        currentSlotNumber, authorityPublicKey);
                 opaqueKeyOwnershipProof.ifPresentOrElse(
                         key -> runtime.submitReportEquivocationUnsignedExtrinsic(blockEquivocationProof, key.getProof()),
-                        () -> log.warning(String.format("Unable to generate Opaque Key Ownership Proof for authority: %s", hexPublicKey)));
+                        () -> log.warning(String.format(
+                                "Failure to report equivocation for authority: %s. Authorship verification marked as failure.",
+                                hexPublicKey)));
                 return true;
             }
         }
