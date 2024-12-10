@@ -1,5 +1,9 @@
 package com.limechain.babe;
 
+import com.limechain.babe.api.BlockEquivocationProof;
+import com.limechain.babe.api.OpaqueKeyOwnershipProof;
+import com.limechain.babe.coordinator.SlotChangeEvent;
+import com.limechain.babe.coordinator.SlotChangeListener;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.state.EpochData;
 import com.limechain.babe.state.EpochDescriptor;
@@ -9,6 +13,7 @@ import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.runtime.Runtime;
 import com.limechain.runtime.hostapi.dto.Key;
 import com.limechain.runtime.hostapi.dto.VerifySignature;
 import com.limechain.utils.LittleEndianUtils;
@@ -17,16 +22,21 @@ import io.emeraldpay.polkaj.merlin.TranscriptData;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof;
 import lombok.extern.java.Log;
+import org.apache.tomcat.util.buf.HexUtils;
 import org.javatuples.Pair;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Log
-public class BlockProductionVerifier {
+public class BlockProductionVerifier implements SlotChangeListener {
+    private final Map<String, BlockHeader> currentSlotAuthorBlockMap = new ConcurrentHashMap<>();
 
-    public boolean isAuthorshipValid(BlockHeader blockHeader,
+    public boolean isAuthorshipValid(Runtime runtime,
+                                     BlockHeader blockHeader,
                                      EpochData currentEpochData,
                                      EpochDescriptor descriptor,
                                      BigInteger currentEpochIndex) {
@@ -69,6 +79,11 @@ public class BlockProductionVerifier {
             return false;
         }
 
+        if (isBlockEquivocationExist(authorityPublicKey, blockHeader, runtime, preDigest.getSlotNumber())) {
+            return false;
+        }
+
+        currentSlotAuthorBlockMap.put(HexUtils.toHexString(authorityPublicKey), blockHeader);
         return true;
     }
 
@@ -170,5 +185,37 @@ public class BlockProductionVerifier {
             throw new AuthorshipVerificationException("Invalid authority index: " + index);
         }
         return authorities.get(index);
+    }
+
+    private boolean isBlockEquivocationExist(byte[] authorityPublicKey,
+                                           BlockHeader blockHeader,
+                                           Runtime runtime,
+                                           BigInteger currentSlotNumber) {
+        String hexPublicKey = HexUtils.toHexString(authorityPublicKey);
+        if (currentSlotAuthorBlockMap.containsKey(hexPublicKey)) {
+            BlockHeader firstBlockHeader = currentSlotAuthorBlockMap.get(hexPublicKey);
+            if (!firstBlockHeader.getHash().equals(blockHeader.getHash())) {
+                BlockEquivocationProof blockEquivocationProof = new BlockEquivocationProof();
+                blockEquivocationProof.setPublicKey(authorityPublicKey);
+                blockEquivocationProof.setSlotNumber(currentSlotNumber);
+                blockEquivocationProof.setFirstBlockHeader(firstBlockHeader);
+                blockEquivocationProof.setSecondBlockHeader(blockHeader);
+
+                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateKeyOwnershipProof(
+                        currentSlotNumber, authorityPublicKey);
+                opaqueKeyOwnershipProof.ifPresentOrElse(
+                        key -> runtime.submitReportEquivocationUnsignedExtrinsic(blockEquivocationProof, key.getProof()),
+                        () -> log.warning(String.format(
+                                "Failure to report equivocation for authority: %s. Authorship verification marked as failure.",
+                                hexPublicKey)));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void slotChanged(SlotChangeEvent event) {
+        currentSlotAuthorBlockMap.clear();
     }
 }

@@ -1,6 +1,8 @@
 package com.limechain.runtime;
 
 import com.limechain.babe.api.BabeApiConfiguration;
+import com.limechain.babe.api.BlockEquivocationProof;
+import com.limechain.babe.api.OpaqueKeyOwnershipProof;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
@@ -14,10 +16,15 @@ import com.limechain.transaction.dto.TransactionValidationResponse;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 
 public interface Runtime {
 
     BabeApiConfiguration getBabeApiConfiguration();
+
+    Optional<OpaqueKeyOwnershipProof> generateKeyOwnershipProof(BigInteger slotNumber, byte[] authorityPublicKey);
+
+    void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof, byte[] keyOwnershipProof);
 
     List<DecodedKey> decodeSessionKeys(String sessionKeys);
 

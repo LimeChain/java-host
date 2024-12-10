@@ -1,7 +1,12 @@
 package com.limechain.runtime;
 
 import com.limechain.babe.api.BabeApiConfiguration;
+import com.limechain.babe.api.BlockEquivocationProof;
+import com.limechain.babe.api.OpaqueKeyOwnershipProof;
 import com.limechain.babe.api.scale.BabeApiConfigurationReader;
+import com.limechain.babe.api.scale.BlockEquivocationProofWriter;
+import com.limechain.babe.api.scale.OpaqueKeyOwnershipProofReader;
+import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.network.protocol.warp.dto.Block;
@@ -15,11 +20,7 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.runtime.version.scale.RuntimeVersionReader;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
-import com.limechain.transaction.dto.ApplyExtrinsicResult;
-import com.limechain.transaction.dto.Extrinsic;
-import com.limechain.transaction.dto.ExtrinsicArray;
-import com.limechain.transaction.dto.TransactionValidationRequest;
-import com.limechain.transaction.dto.TransactionValidationResponse;
+import com.limechain.transaction.dto.*;
 import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
@@ -29,7 +30,9 @@ import com.limechain.utils.scale.readers.ApplyExtrinsicResultReader;
 import com.limechain.utils.scale.readers.TransactionValidationReader;
 import com.limechain.utils.scale.writers.BlockInherentsWriter;
 import com.limechain.utils.scale.writers.TransactionValidationWriter;
+import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
+import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
@@ -39,6 +42,8 @@ import org.jetbrains.annotations.Nullable;
 import org.wasmer.Instance;
 import org.wasmer.Module;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +60,28 @@ public class RuntimeImpl implements Runtime {
     @Override
     public BabeApiConfiguration getBabeApiConfiguration() {
         return ScaleUtils.Decode.decode(call(RuntimeEndpoint.BABE_API_CONFIGURATION), new BabeApiConfigurationReader());
+    }
+
+    @Override
+    public Optional<OpaqueKeyOwnershipProof> generateKeyOwnershipProof(BigInteger slotNumber,
+                                                                       byte[] authorityPublicKey) {
+        byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(
+                new UInt64Writer(), slotNumber), authorityPublicKey);
+        byte[] encodedResponse = call(RuntimeEndpoint.BABE_API_GENERATE_KEY_OWNERSHIP_PROOF, encodedProof);
+        return new ScaleCodecReader(encodedResponse).readOptional(new OpaqueKeyOwnershipProofReader());
+    }
+
+    @Override
+    public void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof,
+                                                          byte[] keyOwnershipProof) {
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+             ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
+            new BlockEquivocationProofWriter().write(scaleCodecWriter, blockEquivocationProof);
+            scaleCodecWriter.writeAsList(keyOwnershipProof);
+            call(RuntimeEndpoint.BABE_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, buffer.toByteArray());
+        } catch (IOException e) {
+            throw new ScaleEncodingException("Unexpected exception while encoding.");
+        }
     }
 
     @Override
