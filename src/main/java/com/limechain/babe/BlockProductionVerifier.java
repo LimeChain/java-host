@@ -31,13 +31,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
 
 @Log
 public class BlockProductionVerifier implements SlotChangeListener {
     private final Map<String, BlockHeader> currentSlotAuthorBlockMap = new ConcurrentHashMap<>();
 
-    public boolean isAuthorshipValid(BlockHeader blockHeader,
+    public boolean isAuthorshipValid(Runtime runtime,
+                                     BlockHeader blockHeader,
                                      EpochData currentEpochData,
                                      EpochDescriptor descriptor,
                                      BigInteger currentEpochIndex) {
@@ -69,6 +69,11 @@ public class BlockProductionVerifier implements SlotChangeListener {
         // TODO Key should be available before the start of the method so that we avoid duplicate code.
         byte[] authorityPublicKey = getAuthority(authorities, (int) preDigest.getAuthorityIndex())
                 .getPublicKey();
+
+        if (isBlockEquivocationExist(authorityPublicKey, blockHeader, runtime, preDigest.getSlotNumber())) {
+            return false;
+        }
+
         byte[] signatureData = sealDigest.getMessage();
         VerifySignature signature = new VerifySignature(
                 signatureData, blockHeader.getBlake2bHash(false), authorityPublicKey, Key.SR25519);
@@ -80,6 +85,7 @@ public class BlockProductionVerifier implements SlotChangeListener {
             return false;
         }
 
+        currentSlotAuthorBlockMap.put(HexUtils.toHexString(authorityPublicKey), blockHeader);
         return true;
     }
 
@@ -183,28 +189,28 @@ public class BlockProductionVerifier implements SlotChangeListener {
         return authorities.get(index);
     }
 
-    private boolean checkBlockEquivocation(Authority authority,
+    private boolean isBlockEquivocationExist(byte[] authorityPublicKey,
                                            BlockHeader blockHeader,
                                            Runtime runtime,
                                            BigInteger currentSlotNumber) {
-        String hexPublicKey = HexUtils.toHexString(authority.getPublicKey());
+        String hexPublicKey = HexUtils.toHexString(authorityPublicKey);
         if (currentSlotAuthorBlockMap.containsKey(hexPublicKey)) {
             BlockHeader firstBlockHeader = currentSlotAuthorBlockMap.get(hexPublicKey);
             if (!firstBlockHeader.equals(blockHeader)) {
                 BlockEquivocationProof blockEquivocationProof = new BlockEquivocationProof();
-                blockEquivocationProof.setPublicKey(authority.getPublicKey());
+                blockEquivocationProof.setPublicKey(authorityPublicKey);
                 blockEquivocationProof.setSlotNumber(currentSlotNumber);
                 blockEquivocationProof.setFirstBlockHeader(firstBlockHeader);
                 blockEquivocationProof.setSecondBlockHeader(blockHeader);
 
-                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateKeyOwnershipProof(currentSlotNumber, authority.getPublicKey());
+                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateKeyOwnershipProof(currentSlotNumber, authorityPublicKey);
                 opaqueKeyOwnershipProof.ifPresentOrElse(
                         key -> runtime.submitReportEquivocationUnsignedExtrinsic(blockEquivocationProof, key.getProof()),
                         () -> log.warning(String.format("Unable to generate Opaque Key Ownership Proof for authority: %s", hexPublicKey)));
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     @Override

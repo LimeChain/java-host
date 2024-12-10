@@ -6,6 +6,7 @@ import com.limechain.babe.api.OpaqueKeyOwnershipProof;
 import com.limechain.babe.api.scale.BabeApiConfigurationReader;
 import com.limechain.babe.api.scale.BlockEquivocationProofWriter;
 import com.limechain.babe.api.scale.OpaqueKeyOwnershipProofReader;
+import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.network.protocol.warp.dto.Block;
@@ -41,6 +42,8 @@ import org.jetbrains.annotations.Nullable;
 import org.wasmer.Instance;
 import org.wasmer.Module;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
@@ -60,16 +63,26 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
-    public Optional<OpaqueKeyOwnershipProof> generateKeyOwnershipProof(BigInteger slotNumber, byte[] authorityPublicKey) {
-        byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(new UInt64Writer(), slotNumber), authorityPublicKey);
+    public Optional<OpaqueKeyOwnershipProof> generateKeyOwnershipProof(BigInteger slotNumber,
+                                                                       byte[] authorityPublicKey) {
+        byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(
+                new UInt64Writer(), slotNumber), authorityPublicKey);
         byte[] encodedResponse = call(RuntimeEndpoint.BABE_API_GENERATE_KEY_OWNERSHIP_PROOF, encodedProof);
         return new ScaleCodecReader(encodedResponse).readOptional(new OpaqueKeyOwnershipProofReader());
     }
 
     @Override
-    public void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof, byte[] keyOwnershipProof) {
-        byte[] encodedEquivocation = ArrayUtils.addAll(ScaleUtils.Encode.encode(new BlockEquivocationProofWriter(), blockEquivocationProof), keyOwnershipProof);
-        call(RuntimeEndpoint.BABE_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, encodedEquivocation);
+    public void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof,
+                                                          byte[] keyOwnershipProof) {
+        // Key ownership needs to be encoded as a list (have its length encoded) as it is of varying size.
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+             ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
+            new BlockEquivocationProofWriter().write(scaleCodecWriter, blockEquivocationProof);
+            scaleCodecWriter.writeAsList(keyOwnershipProof);
+            call(RuntimeEndpoint.BABE_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, buffer.toByteArray());
+        } catch (IOException e) {
+            throw new ScaleEncodingException("Unexpected exception while encoding.");
+        }
     }
 
     @Override
