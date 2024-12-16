@@ -28,4 +28,9 @@ public class GrandpaState {
         return THRESHOLD_NUMERATOR.multiply(votersCount)
                 .divide(THRESHOLD_DENOMINATOR);
     }
+
+    public BigInteger derivePrimary() {
+        var votersCount = BigInteger.valueOf(voters.size());
+        return roundNumber.remainder(votersCount);
+    }
 }
