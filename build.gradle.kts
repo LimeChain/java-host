@@ -43,7 +43,7 @@ dependencies {
     // Websockets
     implementation("org.springframework.boot:spring-boot-starter-websocket")
 
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.javatuples:javatuples:1.2")
 
     implementation("com.github.luben:zstd-jni:1.5.6-8")
