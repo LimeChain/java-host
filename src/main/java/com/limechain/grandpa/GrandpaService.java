@@ -1,8 +1,10 @@
 package com.limechain.grandpa;
 
+import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaState;
 import com.limechain.grandpa.state.Subround;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.extern.java.Log;
@@ -28,7 +30,7 @@ public class GrandpaService {
     }
 
     //TODO: Implement further
-    private void getGrandpaGhost(BigInteger roundNumber){
+    private void getGrandpaGhost(BigInteger roundNumber) {
         var threshold = grandpaState.getThreshold();
 
     }
@@ -50,12 +52,54 @@ public class GrandpaService {
 
         List<Vote> allVotes = getVotes(subround);
         for (Vote vote : votes.keySet()) {
-            //TODO: Implement further
-//            blocks = getPossibleSelectedAncestors(allVotes, v.getHash(), blocks, stage, threshold);
+            blocks = getPossibleSelectedAncestors(allVotes, vote.getBlockHash(), blocks, subround, threshold);
         }
 
         return blocks;
     }
+
+    public HashMap<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
+                                                                     Hash256 curr,
+                                                                     HashMap<Hash256, BigInteger> selected,
+                                                                     Subround subround,
+                                                                     long threshold) {
+
+        for (Vote vote : votes) {
+            if (vote.getBlockHash().equals(curr)) {
+                continue;
+            }
+
+            Hash256 pred;
+            try {
+                pred = blockState.lowestCommonAncestor(vote.getBlockHash(), curr);
+            } catch (IllegalArgumentException | BlockStorageGenericException e) {
+                //TODO: Refactor
+                continue;
+            }
+
+            if (pred.equals(curr)) {
+                return selected;
+            }
+
+            long totalVotes = getTotalVotesForBlock(pred, subround);
+
+            if (totalVotes > threshold) {
+
+                BlockHeader header = blockState.getHeader(pred);
+                if (header == null) {
+                    //TODO: Refactor
+                    throw new IllegalStateException("Header not found for block: " + pred);
+                }
+
+                selected.put(pred, header.getBlockNumber());
+            } else {
+                selected = getPossibleSelectedAncestors(votes, pred, selected, subround, threshold);
+            }
+        }
+
+        return selected;
+    }
+
 
     private long getTotalVotesForBlock(Hash256 blockHash, Subround subround) {
         long votesForBlock = getVotesForBlock(blockHash, subround);
