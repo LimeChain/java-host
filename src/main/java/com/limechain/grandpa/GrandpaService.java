@@ -29,13 +29,60 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
-    //TODO: Implement further
-    private void getGrandpaGhost(BigInteger roundNumber) {
+    /**
+     * Finds and returns the block with the most votes in the GRANDPA prevote stage.
+     * If there are multiple blocks with the same number of votes, selects the block with the highest number.
+     * If no block meets the criteria, throws an exception indicating no valid GHOST candidate.
+     */
+    public Vote getGrandpaGHOST() {
         var threshold = grandpaState.getThreshold();
+        Map<Hash256, BigInteger> blocks;
 
+        // Reduce threshold iteratively until valid blocks are found or threshold reaches zero
+        while (true) {
+            blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_VOTE);
+            if (!blocks.isEmpty() || threshold == 0) {
+                break;
+            }
+            threshold--;
+        }
+
+        if (blocks.isEmpty()) throw new IllegalStateException("GHOST not found.");
+
+        return selectBlockWithMostVotes(blocks);
     }
 
-    private HashMap<Hash256, BigInteger> getPossibleSelectedBlocks(Long threshold, Subround subround) {
+    /**
+     * Selects the block with the most votes from the provided map of blocks.
+     * If multiple blocks have the same number of votes, it returns the one with the highest block number.
+     * Starts with the last finalized block as the initial candidate.
+     */
+    private Vote selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks) {
+        var lastFinalizedBlockHeader = blockState.getHighestFinalizedHeader();
+
+        Vote highest = new Vote(
+                lastFinalizedBlockHeader.getHash(),
+                lastFinalizedBlockHeader.getBlockNumber()
+        );
+
+        for (Map.Entry<Hash256, BigInteger> entry : blocks.entrySet()) {
+            Hash256 hash = entry.getKey();
+            BigInteger number = entry.getValue();
+
+            if (number.compareTo(highest.getBlockNumber()) > 0) {
+                highest = new Vote(hash, number);
+            }
+        }
+
+        return highest;
+    }
+
+    /**
+     * Returns blocks with total votes over the threshold in a map of block hash to block number.
+     * If no blocks meet the threshold directly, recursively searches their ancestors for blocks with enough votes.
+     * Ancestors are included if their combined votes (including votes for their descendants) exceed the threshold.
+     */
+    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(Long threshold, Subround subround) {
         var votes = getDirectVotes(subround);
         var blocks = new HashMap<Hash256, BigInteger>();
 
@@ -52,17 +99,23 @@ public class GrandpaService {
 
         List<Vote> allVotes = getVotes(subround);
         for (Vote vote : votes.keySet()) {
-            blocks = getPossibleSelectedAncestors(allVotes, vote.getBlockHash(), blocks, subround, threshold);
+            blocks = new HashMap<>(
+                    getPossibleSelectedAncestors(allVotes, vote.getBlockHash(), blocks, subround, threshold)
+            );
         }
 
         return blocks;
     }
 
-    public HashMap<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
-                                                                     Hash256 curr,
-                                                                     HashMap<Hash256, BigInteger> selected,
-                                                                     Subround subround,
-                                                                     long threshold) {
+    /**
+     * Returns a map of block hash to block number for ancestors meeting the threshold condition.
+     * Recursively searches for ancestors with more than 2/3 votes.
+     */
+    public Map<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
+                                                                 Hash256 curr,
+                                                                 Map<Hash256, BigInteger> selected,
+                                                                 Subround subround,
+                                                                 long threshold) {
 
         for (Vote vote : votes) {
             if (vote.getBlockHash().equals(curr)) {
@@ -101,8 +154,12 @@ public class GrandpaService {
     }
 
 
+    /**
+     * Calculates the total votes for a block, including observed votes and equivocations,
+     * in the specified subround.
+     */
     private long getTotalVotesForBlock(Hash256 blockHash, Subround subround) {
-        long votesForBlock = getVotesForBlock(blockHash, subround);
+        long votesForBlock = getObservedVotesForBlock(blockHash, subround);
 
         if (votesForBlock == 0L) {
             return 0L;
@@ -118,21 +175,23 @@ public class GrandpaService {
         return votesForBlock + equivocationCount;
     }
 
-    private long getVotesForBlock(Hash256 blockHash, Subround subround) {
+    /**
+     * Calculates the total observed votes for a block, including direct votes and votes from
+     * its descendants, in the specified subround.
+     */
+    private long getObservedVotesForBlock(Hash256 blockHash, Subround subround) {
         var votes = getDirectVotes(subround);
-        long votesForBlock = 0L;
+        var votesForBlock = 0L;
 
         for (Map.Entry<Vote, Long> entry : votes.entrySet()) {
-            Vote v = entry.getKey();
-            long count = entry.getValue();
+            var vote = entry.getKey();
+            var count = entry.getValue();
 
             try {
-                // Check if the current block is a descendant of the given block
-                boolean isDescendant = blockState.isDescendantOf(blockHash, v.getBlockHash());
+                var isDescendant = blockState.isDescendantOf(blockHash, vote.getBlockHash());
                 if (isDescendant) {
                     votesForBlock += count;
                 }
-
             } catch (Exception e) {
                 //TODO: adjust the exception type
                 return 0L;
@@ -142,19 +201,21 @@ public class GrandpaService {
         return votesForBlock;
     }
 
-    // returns a map of votes to direct vote count
-    private ConcurrentHashMap<Vote, Long> getDirectVotes(Subround subround) {
-        var votes = new ConcurrentHashMap<Ed25519, Vote>();
-        var voteCountMap = new ConcurrentHashMap<Vote, Long>();
+    /**
+     * Aggregates direct (explicit) votes for a given subround into a map of Vote to their count
+     */
+    private HashMap<Vote, Long> getDirectVotes(Subround subround) {
+        var votes = new HashMap<Ed25519, Vote>();
+        var voteCounts = new HashMap<Vote, Long>();
 
         switch (subround) {
             case Subround.PRE_VOTE -> votes.putAll(grandpaState.getPrevotes());
             case Subround.PRE_COMMIT -> votes.putAll(grandpaState.getPrecommits());
         }
 
-        votes.values().forEach(vote -> voteCountMap.merge(vote, 1L, Long::sum));
+        votes.values().forEach(vote -> voteCounts.merge(vote, 1L, Long::sum));
 
-        return voteCountMap;
+        return voteCounts;
     }
 
     private List<Vote> getVotes(Subround subround) {
