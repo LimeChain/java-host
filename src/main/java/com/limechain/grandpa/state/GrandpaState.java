@@ -21,8 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class GrandpaState {
 
-    private static final long THRESHOLD_NUMERATOR = 2L;
-    private static final long THRESHOLD_DENOMINATOR = 3L;
+    private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
 
     private List<Authority> voters;
     private BigInteger setId;
@@ -34,8 +33,22 @@ public class GrandpaState {
     private Map<Ed25519, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
     private Map<Ed25519, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
-    public long getThreshold() {
-        return (THRESHOLD_NUMERATOR * voters.size()) / THRESHOLD_DENOMINATOR;
+    /**
+     * The threshold is determined as the total weight of authorities
+     * divided by the weight of potentially faulty authorities (one-third of the total weight minus one).
+     *
+     * @return threshold for achieving a super-majority vote
+     */
+    public BigInteger getThreshold() {
+        var totalWeight = getAuthoritiesTotalWeight();
+        var faulty = (totalWeight.subtract(BigInteger.ONE)).divide(THRESHOLD_DENOMINATOR);
+        return totalWeight.divide(faulty);
+    }
+
+    public BigInteger getAuthoritiesTotalWeight() {
+        return voters.stream()
+                .map(Authority::getWeight)
+                .reduce(BigInteger.ZERO, BigInteger::add);
     }
 
     public BigInteger derivePrimary() {

@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Log
 @Component
@@ -38,16 +37,11 @@ public class GrandpaService {
         var threshold = grandpaState.getThreshold();
         Map<Hash256, BigInteger> blocks;
 
-        // Reduce threshold iteratively until valid blocks are found or threshold reaches zero
-        while (true) {
-            blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_VOTE);
-            if (!blocks.isEmpty() || threshold == 0) {
-                break;
-            }
-            threshold--;
-        }
+        blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_COMMIT);
 
-        if (blocks.isEmpty()) throw new IllegalStateException("GHOST not found.");
+        if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
+            throw new IllegalStateException("GHOST not found.");
+        }
 
         return selectBlockWithMostVotes(blocks);
     }
@@ -82,13 +76,14 @@ public class GrandpaService {
      * If no blocks meet the threshold directly, recursively searches their ancestors for blocks with enough votes.
      * Ancestors are included if their combined votes (including votes for their descendants) exceed the threshold.
      */
-    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(Long threshold, Subround subround) {
+    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(BigInteger threshold, Subround subround) {
         var votes = getDirectVotes(subround);
         var blocks = new HashMap<Hash256, BigInteger>();
 
         for (Vote vote : votes.keySet()) {
             long totalVotes = getTotalVotesForBlock(vote.getBlockHash(), subround);
-            if (totalVotes > threshold) {
+
+            if (BigInteger.valueOf(totalVotes).compareTo(threshold) >= 0) {
                 blocks.put(vote.getBlockHash(), vote.getBlockNumber());
             }
         }
@@ -115,7 +110,7 @@ public class GrandpaService {
                                                                  Hash256 curr,
                                                                  Map<Hash256, BigInteger> selected,
                                                                  Subround subround,
-                                                                 long threshold) {
+                                                                 BigInteger threshold) {
 
         for (Vote vote : votes) {
             if (vote.getBlockHash().equals(curr)) {
@@ -136,7 +131,7 @@ public class GrandpaService {
 
             long totalVotes = getTotalVotesForBlock(pred, subround);
 
-            if (totalVotes > threshold) {
+            if (BigInteger.valueOf(totalVotes).compareTo(threshold) >= 0) {
 
                 BlockHeader header = blockState.getHeader(pred);
                 if (header == null) {
