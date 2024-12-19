@@ -2,6 +2,7 @@ package com.limechain.network.protocol.warp;
 
 import com.limechain.babe.consensus.BabeConsensusMessageFormat;
 import com.limechain.babe.predigest.PreDigestType;
+import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessageFormat;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -49,6 +50,34 @@ class DigestHelperTest {
     @Test
     void getBabeConsensusMessageWithoutSuchDigestInHeadersTest() {
         var optResult = DigestHelper.getBabeConsensusMessage(new HeaderDigest[0]);
+        assertTrue(optResult.isEmpty());
+    }
+
+    @Test
+    void getGrandpaConsensusMessageTest() {
+        HeaderDigest consensusDigest = new HeaderDigest();
+        consensusDigest.setId(ConsensusEngine.GRANDPA);
+        consensusDigest.setType(DigestType.CONSENSUS_MESSAGE);
+
+        // Create a consensus message with type GRANDPA_ON_DISABLED(3) and value equal to 0
+        var message = new byte[33];
+        message[0] = 3;
+        consensusDigest.setMessage(message);
+
+        HeaderDigest[] headerDigests = new HeaderDigest[] {consensusDigest};
+        var optResult = DigestHelper.getGrandpaConsensusMessage(headerDigests);
+
+        assertTrue(optResult.isPresent());
+
+        var result = optResult.get();
+        assertEquals(GrandpaConsensusMessageFormat.GRANDPA_ON_DISABLED, result.getFormat());
+        assertEquals(BigInteger.ZERO, result.getDisabledAuthority());
+        assertNull(result.getAuthorities());
+    }
+
+    @Test
+    void getGrandpaConsensusMessageWithoutSuchDigestInHeadersTest() {
+        var optResult = DigestHelper.getGrandpaConsensusMessage(new HeaderDigest[0]);
         assertTrue(optResult.isEmpty());
     }
 
