@@ -33,6 +33,7 @@ import org.peergos.protocol.IdentifyBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -157,7 +158,7 @@ public class Network {
         }
 
         this.host = hostBuilder.build();
-        IdentifyBuilder.addIdentifyProtocol(this.host);
+        IdentifyBuilder.addIdentifyProtocol(this.host, Collections.emptyList());
         kademliaService.setHost(host);
     }
 
