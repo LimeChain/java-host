@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 
 @Log
 @Component
@@ -38,12 +37,11 @@ public class GrandpaService {
      */
     public Vote getGrandpaGHOST() {
         var threshold = grandpaState.getThreshold();
-        Map<Hash256, BigInteger> blocks;
 
-        blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_COMMIT);
+        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_COMMIT);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
-            log.log(Level.WARNING, "GHOST not found");
+            log.warning("GHOST not found");
             return null;
         }
 
@@ -134,31 +132,32 @@ public class GrandpaService {
                 continue;
             }
 
-            Hash256 pred;
+            Hash256 ancestorBlockHash;
             try {
-                pred = blockState.lowestCommonAncestor(vote.getBlockHash(), currentBlockHash);
+                ancestorBlockHash = blockState.lowestCommonAncestor(vote.getBlockHash(), currentBlockHash);
             } catch (IllegalArgumentException | BlockStorageGenericException e) {
-                //TODO: Refactor
+                log.warning("Error finding the lowest common ancestor: " + e.getMessage());
                 continue;
             }
 
-            if (pred.equals(currentBlockHash)) {
+            // Happens when currentBlock is ancestor of the block in the vote
+            if (ancestorBlockHash.equals(currentBlockHash)) {
                 return selected;
             }
 
-            long totalVotes = getTotalVotesForBlock(pred, subround);
+            long totalVotes = getTotalVotesForBlock(ancestorBlockHash, subround);
 
             if (BigInteger.valueOf(totalVotes).compareTo(threshold) >= 0) {
 
-                BlockHeader header = blockState.getHeader(pred);
+                BlockHeader header = blockState.getHeader(ancestorBlockHash);
                 if (header == null) {
-                    //TODO: Refactor
-                    throw new IllegalStateException("Header not found for block: " + pred);
+                    throw new IllegalStateException("Header not found for block: " + ancestorBlockHash);
                 }
 
-                selected.put(pred, header.getBlockNumber());
+                selected.put(ancestorBlockHash, header.getBlockNumber());
             } else {
-                selected = getPossibleSelectedAncestors(votes, pred, selected, subround, threshold);
+                // Recursively process ancestors
+                selected = getPossibleSelectedAncestors(votes, ancestorBlockHash, selected, subround, threshold);
             }
         }
 
@@ -180,12 +179,11 @@ public class GrandpaService {
             return 0L;
         }
 
-        int equivocationCount = 0;
-
-        switch (subround) {
-            case Subround.PRE_VOTE -> equivocationCount = grandpaState.getPvEquivocations().size();
-            case Subround.PRE_COMMIT -> equivocationCount = grandpaState.getPcEquivocations().size();
-        }
+        int equivocationCount = switch (subround) {
+            case Subround.PRE_VOTE -> grandpaState.getPvEquivocations().size();
+            case Subround.PRE_COMMIT -> grandpaState.getPcEquivocations().size();
+            default -> 0;
+        };
 
         return votesForBlock + equivocationCount;
     }
@@ -207,13 +205,14 @@ public class GrandpaService {
             var count = entry.getValue();
 
             try {
-                var isDescendant = blockState.isDescendantOf(blockHash, vote.getBlockHash());
-                if (isDescendant) {
+                if (blockState.isDescendantOf(blockHash, vote.getBlockHash())) {
                     votesForBlock += count;
                 }
+            } catch (BlockStorageGenericException e) {
+                log.warning(e.getMessage());
+                return 0L; // Default to zero votes in case of block state error
             } catch (Exception e) {
-                //TODO: adjust the exception type
-                return 0L;
+                log.warning("An error occurred while checking block ancestry: " + e.getMessage());
             }
         }
 
@@ -227,13 +226,13 @@ public class GrandpaService {
      * @return map of direct votes
      */
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
-        var votes = new HashMap<Ed25519, Vote>();
         var voteCounts = new HashMap<Vote, Long>();
 
-        switch (subround) {
-            case Subround.PRE_VOTE -> votes.putAll(grandpaState.getPrevotes());
-            case Subround.PRE_COMMIT -> votes.putAll(grandpaState.getPrecommits());
-        }
+        Map<Ed25519, Vote> votes = switch (subround) {
+            case Subround.PRE_VOTE -> grandpaState.getPrevotes();
+            case Subround.PRE_COMMIT -> grandpaState.getPrecommits();
+            default -> new HashMap<>();
+        };
 
         votes.values().forEach(vote -> voteCounts.merge(vote, 1L, Long::sum));
 
