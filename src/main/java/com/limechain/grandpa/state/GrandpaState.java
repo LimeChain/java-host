@@ -3,6 +3,8 @@ package com.limechain.grandpa.state;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import io.libp2p.core.crypto.PubKey;
+import io.libp2p.crypto.keys.Ed25519PublicKey;
 import lombok.Getter;
 import org.bouncycastle.math.ec.rfc8032.Ed25519;
 import org.springframework.stereotype.Component;
@@ -28,10 +30,10 @@ public class GrandpaState {
     private BigInteger roundNumber;
 
     //TODO: This may not be the best place for those maps
-    private Map<Ed25519, Vote> precommits = new ConcurrentHashMap<>();
-    private Map<Ed25519, Vote> prevotes = new ConcurrentHashMap<>();
-    private Map<Ed25519, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
-    private Map<Ed25519, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
+    private Map<PubKey, Vote> precommits = new ConcurrentHashMap<>();
+    private Map<PubKey, Vote> prevotes = new ConcurrentHashMap<>();
+    private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
+    private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
     /**
      * The threshold is determined as the total weight of authorities

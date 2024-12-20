@@ -7,8 +7,8 @@ import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
+import io.libp2p.core.crypto.PubKey;
 import lombok.extern.java.Log;
-import org.bouncycastle.math.ec.rfc8032.Ed25519;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
@@ -38,7 +38,7 @@ public class GrandpaService {
     public Vote getGrandpaGHOST() {
         var threshold = grandpaState.getThreshold();
 
-        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_COMMIT);
+        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_VOTE);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
             log.warning("GHOST not found");
@@ -121,7 +121,7 @@ public class GrandpaService {
      * @param threshold        minimum votes required for a block to qualify.
      * @return map of block hash to block number for ancestors meeting the threshold condition.
      */
-    public Map<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
+    private Map<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
                                                                  Hash256 currentBlockHash,
                                                                  Map<Hash256, BigInteger> selected,
                                                                  Subround subround,
@@ -228,7 +228,7 @@ public class GrandpaService {
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
 
-        Map<Ed25519, Vote> votes = switch (subround) {
+        Map<PubKey, Vote> votes = switch (subround) {
             case Subround.PRE_VOTE -> grandpaState.getPrevotes();
             case Subround.PRE_COMMIT -> grandpaState.getPrecommits();
             default -> new HashMap<>();
