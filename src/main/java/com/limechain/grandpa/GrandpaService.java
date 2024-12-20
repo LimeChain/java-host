@@ -116,11 +116,11 @@ public class GrandpaService {
     /**
      * Recursively searches for ancestors with more than 2/3 votes.
      *
-     * @param votes voters list
+     * @param votes            voters list
      * @param currentBlockHash the hash of the current block
-     * @param selected currently selected block hashes that exceed the required vote threshold
-     * @param subround  stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
-     * @param threshold minimum votes required for a block to qualify.
+     * @param selected         currently selected block hashes that exceed the required vote threshold
+     * @param subround         stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param threshold        minimum votes required for a block to qualify.
      * @return map of block hash to block number for ancestors meeting the threshold condition.
      */
     public Map<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
@@ -223,7 +223,7 @@ public class GrandpaService {
     /**
      * Aggregates direct (explicit) votes for a given subround into a map of Vote to their count
      *
-     * @param subround  stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param subround stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
      * @return map of direct votes
      */
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
