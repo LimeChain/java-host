@@ -62,7 +62,7 @@ dependencies {
 
     // Nabu
 //    implementation("com.github.LimeChain:nabu:master-SNAPSHOT") // Uncomment for "most-recent on the master branch"
-    implementation("com.github.LimeChain:nabu:0.7.9")
+    implementation("com.github.LimeChain:nabu:0.8.0")
 
     //JSON-RPC
     implementation("com.github.LimeChain:jsonrpc4j:1.7.0")
