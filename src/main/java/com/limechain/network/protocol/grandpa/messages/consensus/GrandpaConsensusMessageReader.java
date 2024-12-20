@@ -7,6 +7,7 @@ import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
 
+import java.math.BigInteger;
 import java.util.List;
 
 public class GrandpaConsensusMessageReader implements ScaleReader<GrandpaConsensusMessage> {
@@ -24,10 +25,10 @@ public class GrandpaConsensusMessageReader implements ScaleReader<GrandpaConsens
                 grandpaConsensusMessage.setDelay(delay);
             }
             case GRANDPA_FORCED_CHANGE -> {
-                long bestFinalizedBlock = reader.readUint32();
+                long delayStartBlockNumber = reader.readUint32();
                 List<Authority> authorities = reader.read(new ListReader<>(new AuthorityReader()));
                 long delay = reader.readUint32();
-                grandpaConsensusMessage.setBestFinalizedBlock(bestFinalizedBlock);
+                grandpaConsensusMessage.setDelayStartBlockNumber(BigInteger.valueOf(delayStartBlockNumber));
                 grandpaConsensusMessage.setAuthorities(authorities);
                 grandpaConsensusMessage.setDelay(delay);
             }
