@@ -1,5 +1,6 @@
 package com.limechain.grandpa;
 
+import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.grandpa.state.GrandpaState;
 import com.limechain.grandpa.state.Subround;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
@@ -24,6 +25,7 @@ import java.util.Map;
 import static com.limechain.utils.TestUtils.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -54,9 +56,7 @@ class GrandpaServiceTest {
     void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
         when(grandpaState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(grandpaState.getPrevotes()).thenReturn(Map.of());
-
-        var result = grandpaService.getGrandpaGHOST();
-        assertNull(result);
+        assertThrows(ExecutionFailedException.class, () -> grandpaService.getGrandpaGHOST());
     }
 
     @Test

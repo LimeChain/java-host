@@ -1,5 +1,6 @@
 package com.limechain.grandpa;
 
+import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaState;
 import com.limechain.grandpa.state.Subround;
@@ -41,8 +42,7 @@ public class GrandpaService {
         Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_VOTE);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
-            log.warning("GHOST not found");
-            return null;
+            throw new ExecutionFailedException("GHOST not found");
         }
 
         return selectBlockWithMostVotes(blocks);
