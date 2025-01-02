@@ -96,17 +96,7 @@ public class KademliaService extends NetworkService<Kademlia> {
      * Populates Kademlia dht with peers closest in distance to a random id then makes connections with our node
      */
     public void findNewPeers() {
-        protocol.findClosestPeers(randomPeerId(), REPLICATION, host);
-        final var peers =
-                protocol.findClosestPeers(Multihash.deserialize(host.getPeerId().getBytes()), REPLICATION, host);
-
-        peers.stream().parallel().forEach(p -> {
-            boolean isConnected = protocol.connectTo(host, p);
-
-            if (!isConnected) {
-                protocol.connectTo(host, p);
-            }
-        });
+        protocol.bootstrap(host);
     }
 
     private Multihash randomPeerId() {

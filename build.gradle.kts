@@ -43,15 +43,15 @@ dependencies {
     // Websockets
     implementation("org.springframework.boot:spring-boot-starter-websocket")
 
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.javatuples:javatuples:1.2")
 
     implementation("com.github.luben:zstd-jni:1.5.6-8")
 
     // Prometheus
-    implementation("io.prometheus:prometheus-metrics-core:1.3.4")
-    implementation("io.prometheus:prometheus-metrics-instrumentation-jvm:1.3.4")
-    implementation("io.prometheus:prometheus-metrics-exporter-httpserver:1.3.4")
+    implementation("io.prometheus:prometheus-metrics-core:1.3.5")
+    implementation("io.prometheus:prometheus-metrics-instrumentation-jvm:1.3.5")
+    implementation("io.prometheus:prometheus-metrics-exporter-httpserver:1.3.5")
 
     // NOTE:
     //  We implicitly rely on Nabu's transitive dependency on Netty's public interfaces.
@@ -62,7 +62,7 @@ dependencies {
 
     // Nabu
 //    implementation("com.github.LimeChain:nabu:master-SNAPSHOT") // Uncomment for "most-recent on the master branch"
-    implementation("com.github.LimeChain:nabu:0.7.9")
+    implementation("com.github.LimeChain:nabu:0.8.0")
 
     //JSON-RPC
     implementation("com.github.LimeChain:jsonrpc4j:1.7.0")
