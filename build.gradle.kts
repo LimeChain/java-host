@@ -26,7 +26,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.36")
     implementation("org.projectlombok:lombok:1.18.36")
     implementation("org.web3j:crypto:4.12.3")
-    implementation("com.dylibso.chicory:wasm:0.0.12")
+    implementation("com.dylibso.chicory:wasm:1.0.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
     testImplementation("org.mockito:mockito-core:5.14.2")
