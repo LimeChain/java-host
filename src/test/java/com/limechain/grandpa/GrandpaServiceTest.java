@@ -2,6 +2,7 @@ package com.limechain.grandpa;
 
 import com.limechain.grandpa.state.GrandpaState;
 import com.limechain.grandpa.state.Subround;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
@@ -24,6 +25,7 @@ import static com.limechain.utils.TestUtils.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +36,8 @@ class GrandpaServiceTest {
             new byte[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     private static final byte[] TWOS_ARRAY =
             new byte[]{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+    private static final byte[] THREES_ARRAY =
+            new byte[]{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 
     private GrandpaState grandpaState;
     private BlockState blockState;
@@ -172,6 +176,272 @@ class GrandpaServiceTest {
 
         assertTrue(result.contains(firstVote));
         assertTrue(result.contains(secondVote));
+    }
+
+    @Test
+    void testGetObservedVotesForBlockWhereVotesAreNotDescendantsOfProvidedBlockHash() throws Exception {
+        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
+        PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        Map<PubKey, Vote> prevotes = new HashMap<>();
+        prevotes.put(pubKey1, firstVote);
+        prevotes.put(pubKey2, secondVote);
+
+        when(grandpaState.getPrevotes()).thenReturn(prevotes);
+        when(blockState.isDescendantOf(any(), any())).thenReturn(false);
+
+        Method method = GrandpaService.class.getDeclaredMethod(
+                "getObservedVotesForBlock",
+                Hash256.class,
+                Subround.class
+        );
+
+        method.setAccessible(true);
+
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+
+        assertEquals(0L, result);
+    }
+
+    @Test
+    void testGetObservedVotesForBlockWhereVotesAreDescendantsOfProvidedBlockHash() throws Exception {
+        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
+        PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        Map<PubKey, Vote> prevotes = new HashMap<>();
+        prevotes.put(pubKey1, firstVote);
+        prevotes.put(pubKey2, secondVote);
+
+        when(grandpaState.getPrevotes()).thenReturn(prevotes);
+        when(blockState.isDescendantOf(any(), any())).thenReturn(true);
+
+        Method method = GrandpaService.class.getDeclaredMethod(
+                "getObservedVotesForBlock",
+                Hash256.class,
+                Subround.class
+        );
+
+        method.setAccessible(true);
+
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+
+        assertEquals(2L, result);
+    }
+
+    @Test
+    void testGetTotalVotesForBlockWithoutObservedVotes() throws Exception {
+        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
+        PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        Map<PubKey, Vote> prevotes = new HashMap<>();
+        prevotes.put(pubKey1, firstVote);
+        prevotes.put(pubKey2, secondVote);
+
+        PubKey pubKey3 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Map<PubKey, SignedVote> pvEquivocations = new HashMap<>();
+        pvEquivocations.put(pubKey3, new SignedVote());
+
+        when(grandpaState.getPrevotes()).thenReturn(prevotes);
+        when(grandpaState.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(blockState.isDescendantOf(any(), any())).thenReturn(false);
+
+        Method method = GrandpaService.class.getDeclaredMethod(
+                "getTotalVotesForBlock", Hash256.class, Subround.class);
+
+        method.setAccessible(true);
+
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+
+        // Observed votes: 0
+        // Equivocations: 1
+        // Total votes: 0
+        assertEquals(0, result);
+    }
+
+    @Test
+    void testGetTotalVotesForBlockWithObservedVotes() throws Exception {
+        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
+        PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        Map<PubKey, Vote> prevotes = new HashMap<>();
+        prevotes.put(pubKey1, firstVote);
+        prevotes.put(pubKey2, secondVote);
+
+        when(grandpaState.getPrevotes()).thenReturn(prevotes);
+        when(grandpaState.getPvEquivocations()).thenReturn(new HashMap<>());
+        when(blockState.isDescendantOf(any(), any())).thenReturn(true);
+
+        Method method = GrandpaService.class.getDeclaredMethod(
+                "getTotalVotesForBlock", Hash256.class, Subround.class);
+
+        method.setAccessible(true);
+
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+
+        // Observed votes: 2
+        // Equivocations: 0
+        // Total votes: 2
+        assertEquals(2, result);
+    }
+
+    @Test
+    void testGetTotalVotesForBlockWithObservedVotesAndEquivocations() throws Exception {
+        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
+        PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        Map<PubKey, Vote> prevotes = new HashMap<>();
+        prevotes.put(pubKey1, firstVote);
+        prevotes.put(pubKey2, secondVote);
+
+        PubKey pubKey3 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Map<PubKey, SignedVote> pvEquivocations = new HashMap<>();
+        pvEquivocations.put(pubKey3, new SignedVote());
+
+        when(grandpaState.getPrevotes()).thenReturn(prevotes);
+        when(grandpaState.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(blockState.isDescendantOf(any(), any())).thenReturn(true);
+
+        Method method = GrandpaService.class.getDeclaredMethod(
+                "getTotalVotesForBlock", Hash256.class, Subround.class);
+
+        method.setAccessible(true);
+
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+
+        // Observed votes: 2
+        // Equivocations: 1
+        // Total votes: 3
+        assertEquals(3, result);
+    }
+
+    @Test
+    void testGetPossibleSelectedAncestors() throws Exception {
+        // ZEROS_ARRAY Block is parent of ONES- and THREES_ARRAY Blocks
+        //
+        // ZEROS_ARRAY_BLOCK --> ONES_ARRAY_BLOCK (block from votes)
+        //  |
+        //  --> THREES_ARRAY_BLOCK (current block)
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        List<Vote> votes = List.of(firstVote);
+
+        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
+
+        Map<PubKey, Vote> prevotes = new HashMap<>();
+        prevotes.put(pubKey1, firstVote);
+
+        when(grandpaState.getPrevotes()).thenReturn(prevotes);
+        when(grandpaState.getPvEquivocations()).thenReturn(new HashMap<>());
+        when(blockState.isDescendantOf(any(), any())).thenReturn(true);
+
+        when(blockState.lowestCommonAncestor(new Hash256(ONES_ARRAY), new Hash256(THREES_ARRAY)))
+                .thenReturn(new Hash256(ZEROS_ARRAY));
+
+        when(blockState.getHeader(new Hash256(ZEROS_ARRAY)))
+                .thenReturn(createBlockHeader());
+
+        Method method = GrandpaService.class.getDeclaredMethod("getPossibleSelectedAncestors",
+                List.class,
+                Hash256.class,
+                Map.class,
+                Subround.class,
+                BigInteger.class
+        );
+
+        method.setAccessible(true);
+
+        Map<Hash256, BigInteger> selected = new HashMap<>();
+
+        Map<Hash256, BigInteger> result = (Map<Hash256, BigInteger>) method.invoke(
+                grandpaService,
+                votes,
+                new Hash256(THREES_ARRAY),
+                selected,
+                Subround.PRE_VOTE,
+                BigInteger.valueOf(1)
+        );
+
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey(new Hash256(ZEROS_ARRAY)));
+    }
+
+
+    @Test
+    void testGetPossibleSelectedBlocksThatAreOverThreshold() throws Exception {
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        when(grandpaState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), firstVote,
+                Ed25519Utils.generateKeyPair().publicKey(), secondVote
+        ));
+
+        when(blockState.isDescendantOf(any(), any())).thenReturn(true);
+        when(grandpaState.getThreshold()).thenReturn(BigInteger.valueOf(3));
+
+        Method method = GrandpaService.class.getDeclaredMethod(
+                "getPossibleSelectedBlocks", BigInteger.class, Subround.class);
+        method.setAccessible(true);
+
+        Map<Hash256, BigInteger> result = (Map<Hash256, BigInteger>) method.invoke(
+                grandpaService, BigInteger.valueOf(1), Subround.PRE_VOTE);
+
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey(new Hash256(ONES_ARRAY)));
+        assertTrue(result.containsKey(new Hash256(TWOS_ARRAY)));
+    }
+
+    @Test
+    void testSelectBlockWithMostVotes() throws Exception {
+        Map<Hash256, BigInteger> blocks = new HashMap<>();
+        blocks.put(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        blocks.put(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+
+        BlockHeader blockHeader = createBlockHeader();
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+
+        Method method = GrandpaService.class.getDeclaredMethod("selectBlockWithMostVotes", Map.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, blocks);
+
+        assertNotNull(result);
+        assertEquals(new Hash256(TWOS_ARRAY), result.getBlockHash());
+        assertEquals(BigInteger.valueOf(4), result.getBlockNumber());
+    }
+
+    @Test
+    void testSelectBlockWithMostVotesWhereLastFinalizedBlockIsWithGreaterBlockNumber() throws Exception {
+        Map<Hash256, BigInteger> blocks = new HashMap<>();
+        blocks.put(new Hash256(ONES_ARRAY), BigInteger.valueOf(0));
+
+        BlockHeader blockHeader = createBlockHeader();
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+
+        Method method = GrandpaService.class.getDeclaredMethod("selectBlockWithMostVotes", Map.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, blocks);
+
+        assertNotNull(result);
+        assertEquals(blockHeader.getHash(), result.getBlockHash());
+        assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
 
     private BlockHeader createBlockHeader() {
