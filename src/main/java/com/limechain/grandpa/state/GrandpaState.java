@@ -4,9 +4,8 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import io.libp2p.core.crypto.PubKey;
-import io.libp2p.crypto.keys.Ed25519PublicKey;
 import lombok.Getter;
-import org.bouncycastle.math.ec.rfc8032.Ed25519;
+import lombok.Setter;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
@@ -20,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Note: Intended for use only when the host is configured as an Authoring Node.
  */
 @Getter
+@Setter
 @Component
 public class GrandpaState {
 
@@ -37,17 +37,17 @@ public class GrandpaState {
 
     /**
      * The threshold is determined as the total weight of authorities
-     * divided by the weight of potentially faulty authorities (one-third of the total weight minus one).
+     * subtracted by the weight of potentially faulty authorities (one-third of the total weight minus one).
      *
      * @return threshold for achieving a super-majority vote
      */
     public BigInteger getThreshold() {
         var totalWeight = getAuthoritiesTotalWeight();
         var faulty = (totalWeight.subtract(BigInteger.ONE)).divide(THRESHOLD_DENOMINATOR);
-        return totalWeight.divide(faulty);
+        return totalWeight.subtract(faulty);
     }
 
-    public BigInteger getAuthoritiesTotalWeight() {
+    private BigInteger getAuthoritiesTotalWeight() {
         return voters.stream()
                 .map(Authority::getWeight)
                 .reduce(BigInteger.ZERO, BigInteger::add);
