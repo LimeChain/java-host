@@ -55,7 +55,7 @@ class GrandpaServiceTest {
     void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
         when(grandpaState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(grandpaState.getPrevotes()).thenReturn(Map.of());
-        assertThrows(ExecutionFailedException.class, () -> grandpaService.getGrandpaGHOST());
+        assertThrows(ExecutionFailedException.class, () -> grandpaService.getGrandpaGhost());
     }
 
     @Test
@@ -77,7 +77,7 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getGrandpaGHOST();
+        Vote result = grandpaService.getGrandpaGhost();
         assertNotNull(result);
         assertEquals(firstVote.getBlockHash(), result.getBlockHash());
     }

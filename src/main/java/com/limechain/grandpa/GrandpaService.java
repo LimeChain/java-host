@@ -1,6 +1,6 @@
 package com.limechain.grandpa;
 
-import com.limechain.exception.global.ExecutionFailedException;
+import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaState;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
@@ -21,6 +21,7 @@ import java.util.Map;
 @Log
 @Component
 public class GrandpaService {
+
     private final GrandpaState grandpaState;
     private final BlockState blockState;
 
@@ -36,13 +37,13 @@ public class GrandpaService {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    public Vote getGrandpaGHOST() {
+    public Vote getGrandpaGhost() {
         var threshold = grandpaState.getThreshold();
 
         Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PREVOTE);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
-            throw new ExecutionFailedException("GHOST not found");
+            throw new GhostExecutionException("GHOST not found");
         }
 
         return selectBlockWithMostVotes(blocks);
