@@ -3,8 +3,8 @@ package com.limechain.grandpa;
 import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaState;
-import com.limechain.grandpa.state.Subround;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
@@ -39,7 +39,7 @@ public class GrandpaService {
     public Vote getGrandpaGHOST() {
         var threshold = grandpaState.getThreshold();
 
-        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PRE_VOTE);
+        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PREVOTE);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
             throw new ExecutionFailedException("GHOST not found");
@@ -82,7 +82,7 @@ public class GrandpaService {
      * Ancestors are included if their combined votes (including votes for their descendants) exceed the threshold.
      *
      * @param threshold minimum votes required for a block to qualify.
-     * @param subround  stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return blocks that exceed the required vote threshold
      */
     private Map<Hash256, BigInteger> getPossibleSelectedBlocks(BigInteger threshold, Subround subround) {
@@ -117,7 +117,7 @@ public class GrandpaService {
      * @param votes            voters list
      * @param currentBlockHash the hash of the current block
      * @param selected         currently selected block hashes that exceed the required vote threshold
-     * @param subround         stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param subround         stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @param threshold        minimum votes required for a block to qualify.
      * @return map of block hash to block number for ancestors meeting the threshold condition.
      */
@@ -169,7 +169,7 @@ public class GrandpaService {
      * in the specified subround.
      *
      * @param blockHash hash of the block
-     * @param subround  stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @retyrn total votes for a specific block
      */
     private long getTotalVotesForBlock(Hash256 blockHash, Subround subround) {
@@ -180,8 +180,8 @@ public class GrandpaService {
         }
 
         int equivocationCount = switch (subround) {
-            case Subround.PRE_VOTE -> grandpaState.getPvEquivocations().size();
-            case Subround.PRE_COMMIT -> grandpaState.getPcEquivocations().size();
+            case Subround.PREVOTE -> grandpaState.getPvEquivocations().size();
+            case Subround.PRECOMMIT -> grandpaState.getPcEquivocations().size();
             default -> 0;
         };
 
@@ -193,7 +193,7 @@ public class GrandpaService {
      * its descendants, in the specified subround.
      *
      * @param blockHash hash of the block
-     * @param subround  stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return total observed votes
      */
     private long getObservedVotesForBlock(Hash256 blockHash, Subround subround) {
@@ -222,15 +222,15 @@ public class GrandpaService {
     /**
      * Aggregates direct (explicit) votes for a given subround into a map of Vote to their count
      *
-     * @param subround stage of the GRANDPA process, such as PRE_VOTE, PRE_COMMIT or PRIMARY_PROPOSAL.
+     * @param subround stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return map of direct votes
      */
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
 
         Map<PubKey, Vote> votes = switch (subround) {
-            case Subround.PRE_VOTE -> grandpaState.getPrevotes();
-            case Subround.PRE_COMMIT -> grandpaState.getPrecommits();
+            case Subround.PREVOTE -> grandpaState.getPrevotes();
+            case Subround.PRECOMMIT -> grandpaState.getPrecommits();
             default -> new HashMap<>();
         };
 

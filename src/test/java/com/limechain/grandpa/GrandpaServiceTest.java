@@ -2,9 +2,9 @@ package com.limechain.grandpa;
 
 import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.grandpa.state.GrandpaState;
-import com.limechain.grandpa.state.Subround;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -24,7 +24,6 @@ import java.util.Map;
 
 import static com.limechain.utils.TestUtils.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -102,7 +101,7 @@ class GrandpaServiceTest {
         Method method = GrandpaService.class.getDeclaredMethod("getDirectVotes", Subround.class);
         method.setAccessible(true);
 
-        Map<Vote, Long> result = (HashMap<Vote, Long>) method.invoke(grandpaService, Subround.PRE_VOTE);
+        Map<Vote, Long> result = (HashMap<Vote, Long>) method.invoke(grandpaService, Subround.PREVOTE);
 
         assertEquals(1L, result.get(firstVote));
         assertEquals(1L, result.get(secondVote));
@@ -127,7 +126,7 @@ class GrandpaServiceTest {
         Method method = GrandpaService.class.getDeclaredMethod("getDirectVotes", Subround.class);
         method.setAccessible(true);
 
-        Map<Vote, Long> result = (HashMap<Vote, Long>) method.invoke(grandpaService, Subround.PRE_VOTE);
+        Map<Vote, Long> result = (HashMap<Vote, Long>) method.invoke(grandpaService, Subround.PREVOTE);
 
         assertEquals(2L, result.get(firstVote));
     }
@@ -148,7 +147,7 @@ class GrandpaServiceTest {
         Method method = GrandpaService.class.getDeclaredMethod("getVotes", Subround.class);
         method.setAccessible(true);
 
-        List<Vote> result = (List<Vote>) method.invoke(grandpaService, Subround.PRE_VOTE);
+        List<Vote> result = (List<Vote>) method.invoke(grandpaService, Subround.PREVOTE);
 
         assertTrue(result.contains(firstVote));
     }
@@ -172,7 +171,7 @@ class GrandpaServiceTest {
         Method method = GrandpaService.class.getDeclaredMethod("getVotes", Subround.class);
         method.setAccessible(true);
 
-        List<Vote> result = (List<Vote>) method.invoke(grandpaService, Subround.PRE_VOTE);
+        List<Vote> result = (List<Vote>) method.invoke(grandpaService, Subround.PREVOTE);
 
         assertTrue(result.contains(firstVote));
         assertTrue(result.contains(secondVote));
@@ -201,7 +200,7 @@ class GrandpaServiceTest {
 
         method.setAccessible(true);
 
-        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PREVOTE);
 
         assertEquals(0L, result);
     }
@@ -229,7 +228,7 @@ class GrandpaServiceTest {
 
         method.setAccessible(true);
 
-        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PREVOTE);
 
         assertEquals(2L, result);
     }
@@ -260,7 +259,7 @@ class GrandpaServiceTest {
 
         method.setAccessible(true);
 
-        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PREVOTE);
 
         // Observed votes: 0
         // Equivocations: 1
@@ -289,7 +288,7 @@ class GrandpaServiceTest {
 
         method.setAccessible(true);
 
-        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PREVOTE);
 
         // Observed votes: 2
         // Equivocations: 0
@@ -323,7 +322,7 @@ class GrandpaServiceTest {
 
         method.setAccessible(true);
 
-        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PRE_VOTE);
+        long result = (long) method.invoke(grandpaService, new Hash256(ZEROS_ARRAY), Subround.PREVOTE);
 
         // Observed votes: 2
         // Equivocations: 1
@@ -373,7 +372,7 @@ class GrandpaServiceTest {
                 votes,
                 new Hash256(THREES_ARRAY),
                 selected,
-                Subround.PRE_VOTE,
+                Subround.PREVOTE,
                 BigInteger.valueOf(1)
         );
 
@@ -400,7 +399,7 @@ class GrandpaServiceTest {
         method.setAccessible(true);
 
         Map<Hash256, BigInteger> result = (Map<Hash256, BigInteger>) method.invoke(
-                grandpaService, BigInteger.valueOf(1), Subround.PRE_VOTE);
+                grandpaService, BigInteger.valueOf(1), Subround.PREVOTE);
 
         assertEquals(2, result.size());
         assertTrue(result.containsKey(new Hash256(ONES_ARRAY)));
