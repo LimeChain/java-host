@@ -52,4 +52,9 @@ public class GrandpaState {
                 .map(Authority::getWeight)
                 .reduce(BigInteger.ZERO, BigInteger::add);
     }
+
+    public BigInteger derivePrimary() {
+        var votersCount = BigInteger.valueOf(voters.size());
+        return roundNumber.remainder(votersCount);
+    }
 }
