@@ -1,6 +1,6 @@
 package com.limechain.grandpa;
 
-import com.limechain.exception.global.ExecutionFailedException;
+import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.grandpa.state.GrandpaState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
@@ -55,7 +55,7 @@ class GrandpaServiceTest {
     void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
         when(grandpaState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(grandpaState.getPrevotes()).thenReturn(Map.of());
-        assertThrows(ExecutionFailedException.class, () -> grandpaService.getGrandpaGhost());
+        assertThrows(GhostExecutionException.class, () -> grandpaService.getGrandpaGhost());
     }
 
     @Test
