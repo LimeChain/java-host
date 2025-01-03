@@ -1,8 +1,8 @@
 plugins {
     id("java")
     id("io.freefair.lombok") version "8.11"
-    id("org.springframework.boot") version "3.4.0"
-    id("io.spring.dependency-management") version "1.1.6"
+    id("org.springframework.boot") version "3.4.1"
+    id("io.spring.dependency-management") version "1.1.7"
     id("application")
 }
 
@@ -25,10 +25,10 @@ dependencies {
     implementation("org.rocksdb:rocksdbjni:9.7.3")
     compileOnly("org.projectlombok:lombok:1.18.36")
     implementation("org.projectlombok:lombok:1.18.36")
-    implementation("org.web3j:crypto:4.12.2")
+    implementation("org.web3j:crypto:4.12.3")
     implementation("com.dylibso.chicory:wasm:0.0.12")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
     testImplementation("org.mockito:mockito-core:5.14.2")
 
     // CLI
@@ -68,7 +68,7 @@ dependencies {
     implementation("com.github.LimeChain:jsonrpc4j:1.7.0")
 
     // Guava
-    implementation("com.google.guava:guava:33.3.1-jre")
+    implementation("com.google.guava:guava:33.4.0-jre")
 
     // Apache commons
     implementation("commons-io:commons-io:2.18.0")
