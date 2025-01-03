@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Note: Intended for use only when the host is configured as an Authoring Node.
  */
 @Getter
-@Setter
+@Setter //TODO: remove it when initialize() method is implemented
 @Component
 public class GrandpaState {
 
@@ -51,10 +51,5 @@ public class GrandpaState {
         return voters.stream()
                 .map(Authority::getWeight)
                 .reduce(BigInteger.ZERO, BigInteger::add);
-    }
-
-    public BigInteger derivePrimary() {
-        var votersCount = BigInteger.valueOf(voters.size());
-        return roundNumber.remainder(votersCount);
     }
 }
