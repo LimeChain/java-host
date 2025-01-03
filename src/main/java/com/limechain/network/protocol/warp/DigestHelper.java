@@ -4,6 +4,8 @@ import com.limechain.babe.consensus.BabeConsensusMessage;
 import com.limechain.babe.consensus.scale.BabeConsensusMessageReader;
 import com.limechain.babe.predigest.BabePreDigest;
 import com.limechain.babe.predigest.scale.PreDigestReader;
+import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
+import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessageReader;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -30,6 +32,15 @@ public class DigestHelper {
                 .findFirst()
                 .map(HeaderDigest::getMessage)
                 .map(message -> ScaleUtils.Decode.decode(message, new BabeConsensusMessageReader()));
+    }
+
+    public static Optional<GrandpaConsensusMessage> getGrandpaConsensusMessage(HeaderDigest[] headerDigests) {
+        return Arrays.stream(headerDigests)
+                .filter(headerDigest -> DigestType.CONSENSUS_MESSAGE.equals(headerDigest.getType()) &&
+                        ConsensusEngine.GRANDPA.equals(headerDigest.getId()))
+                .findFirst()
+                .map(HeaderDigest::getMessage)
+                .map(message -> ScaleUtils.Decode.decode(message, new GrandpaConsensusMessageReader()));
     }
 
     public static Optional<BabePreDigest> getBabePreRuntimeDigest(HeaderDigest[] headerDigests) {
