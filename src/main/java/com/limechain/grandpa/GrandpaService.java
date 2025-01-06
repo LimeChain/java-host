@@ -30,6 +30,14 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
+    /**
+     * Finds and returns the best final candidate block for the current round.
+     * The best final candidate is determined by analyzing blocks with more than 2/3 pre-commit votes,
+     * and selecting the block with the highest block number. If no such block exists, the pre-voted
+     * block is returned as the best candidate.
+     *
+     * @return the best final candidate block
+     */
     public Vote getBestFinalCandidate() {
 
         Vote preVoteCandidate = getGrandpaGhost();
