@@ -30,6 +30,52 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
+    public Vote getBestFinalCandidate() {
+
+        Vote preVoteCandidate = getGrandpaGhost();
+
+        var threshold = roundState.getThreshold();
+        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(threshold, Subround.PRECOMMIT);
+
+        if (possibleSelectedBlocks.isEmpty()) {
+            return preVoteCandidate;
+        }
+
+        var bestFinalCandidate = getLastFinalizedBlockAsVote();
+
+        for (Map.Entry<Hash256, BigInteger> block : possibleSelectedBlocks.entrySet()) {
+
+            var blockHash = block.getKey();
+            var blockNumber = block.getValue();
+
+            boolean isDescendant = blockState.isDescendantOf(blockHash, preVoteCandidate.getBlockHash());
+
+            if (!isDescendant) {
+
+                Hash256 lowestCommonAncestor;
+                try {
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, preVoteCandidate.getBlockHash());
+                } catch (IllegalArgumentException e) {
+                    log.warning("Error finding the lowest common ancestor: " + e.getMessage());
+                    continue;
+                }
+
+                BlockHeader header = blockState.getHeader(lowestCommonAncestor);
+                blockNumber = header.getBlockNumber();
+                blockHash = lowestCommonAncestor;
+            }
+
+            if (blockNumber.compareTo(bestFinalCandidate.getBlockNumber()) > 0) {
+                bestFinalCandidate = new Vote(
+                        blockHash,
+                        blockNumber
+                );
+            }
+        }
+
+        return bestFinalCandidate;
+    }
+
     /**
      * Finds and returns the block with the most votes in the GRANDPA prevote stage.
      * If there are multiple blocks with the same number of votes, selects the block with the highest number.
@@ -58,12 +104,7 @@ public class GrandpaService {
      * @return the block with the most votes from the provided map
      */
     private Vote selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks) {
-        var lastFinalizedBlockHeader = blockState.getHighestFinalizedHeader();
-
-        Vote highest = new Vote(
-                lastFinalizedBlockHeader.getHash(),
-                lastFinalizedBlockHeader.getBlockNumber()
-        );
+        Vote highest = getLastFinalizedBlockAsVote();
 
         for (Map.Entry<Hash256, BigInteger> entry : blocks.entrySet()) {
             Hash256 hash = entry.getKey();
@@ -123,10 +164,10 @@ public class GrandpaService {
      * @return map of block hash to block number for ancestors meeting the threshold condition.
      */
     private Map<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
-                                                                 Hash256 currentBlockHash,
-                                                                 Map<Hash256, BigInteger> selected,
-                                                                 Subround subround,
-                                                                 BigInteger threshold) {
+                                                                  Hash256 currentBlockHash,
+                                                                  Map<Hash256, BigInteger> selected,
+                                                                  Subround subround,
+                                                                  BigInteger threshold) {
 
         for (Vote vote : votes) {
             if (vote.getBlockHash().equals(currentBlockHash)) {
@@ -151,11 +192,8 @@ public class GrandpaService {
             if (BigInteger.valueOf(totalVotes).compareTo(threshold) >= 0) {
 
                 BlockHeader header = blockState.getHeader(ancestorBlockHash);
-                if (header == null) {
-                    throw new IllegalStateException("Header not found for block: " + ancestorBlockHash);
-                }
-
                 selected.put(ancestorBlockHash, header.getBlockNumber());
+
             } else {
                 // Recursively process ancestors
                 selected = getPossibleSelectedAncestors(votes, ancestorBlockHash, selected, subround, threshold);
@@ -171,7 +209,7 @@ public class GrandpaService {
      *
      * @param blockHash hash of the block
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
-     * @retyrn total votes for a specific block
+     * @return total votes for a specific block
      */
     private long getTotalVotesForBlock(Hash256 blockHash, Subround subround) {
         long votesForBlock = getObservedVotesForBlock(blockHash, subround);
@@ -205,15 +243,8 @@ public class GrandpaService {
             var vote = entry.getKey();
             var count = entry.getValue();
 
-            try {
-                if (blockState.isDescendantOf(blockHash, vote.getBlockHash())) {
-                    votesForBlock += count;
-                }
-            } catch (BlockStorageGenericException e) {
-                log.warning(e.getMessage());
-                return 0L; // Default to zero votes in case of block state error
-            } catch (Exception e) {
-                log.warning("An error occurred while checking block ancestry: " + e.getMessage());
+            if (blockState.isDescendantOf(blockHash, vote.getBlockHash())) {
+                votesForBlock += count;
             }
         }
 
@@ -243,5 +274,14 @@ public class GrandpaService {
     private List<Vote> getVotes(Subround subround) {
         var votes = getDirectVotes(subround);
         return new ArrayList<>(votes.keySet());
+    }
+
+    private Vote getLastFinalizedBlockAsVote() {
+        var lastFinalizedBlockHeader = blockState.getHighestFinalizedHeader();
+
+        return new Vote(
+                lastFinalizedBlockHeader.getHash(),
+                lastFinalizedBlockHeader.getBlockNumber()
+        );
     }
 }
