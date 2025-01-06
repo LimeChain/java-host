@@ -2,7 +2,7 @@ package com.limechain.grandpa;
 
 import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
-import com.limechain.grandpa.state.GrandpaState;
+import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
@@ -22,11 +22,11 @@ import java.util.Map;
 @Component
 public class GrandpaService {
 
-    private final GrandpaState grandpaState;
+    private final RoundState roundState;
     private final BlockState blockState;
 
-    public GrandpaService(GrandpaState grandpaState, BlockState blockState) {
-        this.grandpaState = grandpaState;
+    public GrandpaService(RoundState roundState, BlockState blockState) {
+        this.roundState = roundState;
         this.blockState = blockState;
     }
 
@@ -38,7 +38,7 @@ public class GrandpaService {
      * @return GRANDPA GHOST block as a vote
      */
     public Vote getGrandpaGhost() {
-        var threshold = grandpaState.getThreshold();
+        var threshold = roundState.getThreshold();
 
         Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PREVOTE);
 
@@ -181,8 +181,8 @@ public class GrandpaService {
         }
 
         int equivocationCount = switch (subround) {
-            case Subround.PREVOTE -> grandpaState.getPvEquivocations().size();
-            case Subround.PRECOMMIT -> grandpaState.getPcEquivocations().size();
+            case Subround.PREVOTE -> roundState.getPvEquivocations().size();
+            case Subround.PRECOMMIT -> roundState.getPcEquivocations().size();
             default -> 0;
         };
 
@@ -230,8 +230,8 @@ public class GrandpaService {
         var voteCounts = new HashMap<Vote, Long>();
 
         Map<PubKey, Vote> votes = switch (subround) {
-            case Subround.PREVOTE -> grandpaState.getPrevotes();
-            case Subround.PRECOMMIT -> grandpaState.getPrecommits();
+            case Subround.PREVOTE -> roundState.getPrevotes();
+            case Subround.PRECOMMIT -> roundState.getPrecommits();
             default -> new HashMap<>();
         };
 

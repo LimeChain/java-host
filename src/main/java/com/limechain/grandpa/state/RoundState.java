@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Getter
 @Setter //TODO: remove it when initialize() method is implemented
 @Component
-public class GrandpaState {
+public class RoundState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
 
