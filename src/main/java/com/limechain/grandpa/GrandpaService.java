@@ -40,13 +40,13 @@ public class GrandpaService {
      */
     public Vote getBestFinalCandidate() {
 
-        Vote preVoteCandidate = getGrandpaGhost();
+        Vote prevoteCandidate = getGrandpaGhost();
 
         var threshold = roundState.getThreshold();
         Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(threshold, Subround.PRECOMMIT);
 
         if (possibleSelectedBlocks.isEmpty()) {
-            return preVoteCandidate;
+            return prevoteCandidate;
         }
 
         var bestFinalCandidate = getLastFinalizedBlockAsVote();
@@ -56,13 +56,13 @@ public class GrandpaService {
             var blockHash = block.getKey();
             var blockNumber = block.getValue();
 
-            boolean isDescendant = blockState.isDescendantOf(blockHash, preVoteCandidate.getBlockHash());
+            boolean isDescendant = blockState.isDescendantOf(blockHash, prevoteCandidate.getBlockHash());
 
             if (!isDescendant) {
 
                 Hash256 lowestCommonAncestor;
                 try {
-                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, preVoteCandidate.getBlockHash());
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, prevoteCandidate.getBlockHash());
                 } catch (IllegalArgumentException e) {
                     log.warning("Error finding the lowest common ancestor: " + e.getMessage());
                     continue;

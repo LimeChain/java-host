@@ -52,6 +52,97 @@ class GrandpaServiceTest {
     }
 
     @Test
+    void testGetBestFinalCandidateWithoutPreCommits() {
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+
+        when(roundState.getPrecommits()).thenReturn(Map.of());
+        when(roundState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), firstVote,
+                Ed25519Utils.generateKeyPair().publicKey(), secondVote
+        ));
+
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
+
+        Vote result = grandpaService.getBestFinalCandidate();
+
+        assertNotNull(result);
+        assertEquals(firstVote.getBlockHash(), result.getBlockHash());
+    }
+
+    @Test
+    void testGetBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() {
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
+        Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
+
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+
+        when(roundState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), firstVote,
+                Ed25519Utils.generateKeyPair().publicKey(), secondVote
+        ));
+
+        when(roundState.getPrecommits()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), thirdVote
+        ));
+
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
+
+        Vote result = grandpaService.getBestFinalCandidate();
+
+        assertNotNull(result);
+        assertEquals(thirdVote.getBlockHash(), result.getBlockHash());
+    }
+
+    @Test
+    void testGetBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() {
+        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
+        Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
+
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(6));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+
+        when(roundState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), firstVote,
+                Ed25519Utils.generateKeyPair().publicKey(), secondVote
+        ));
+
+        when(roundState.getPrecommits()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), thirdVote
+        ));
+
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getBlockHash(), blockHeader.getHash())).thenReturn(true);
+
+        Vote result = grandpaService.getBestFinalCandidate();
+
+        assertNotNull(result);
+        assertEquals(blockHeader.getHash(), result.getBlockHash());
+    }
+
+    @Test
     void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(roundState.getPrevotes()).thenReturn(Map.of());
@@ -60,20 +151,19 @@ class GrandpaServiceTest {
 
     @Test
     void testGetGrandpaGHOSTWithBlockPassingThreshold() {
-        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
-
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
 
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getPrevotes()).thenReturn(Map.of(
                 Ed25519Utils.generateKeyPair().publicKey(), firstVote,
                 Ed25519Utils.generateKeyPair().publicKey(), secondVote
         ));
 
-        BlockHeader blockHeader = createBlockHeader();
-        blockHeader.setBlockNumber(BigInteger.valueOf(1));
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
-
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
