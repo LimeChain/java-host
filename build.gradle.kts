@@ -46,7 +46,7 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.javatuples:javatuples:1.2")
 
-    implementation("com.github.luben:zstd-jni:1.5.6-8")
+    implementation("com.github.luben:zstd-jni:1.5.6-9")
 
     // Prometheus
     implementation("io.prometheus:prometheus-metrics-core:1.3.5")
