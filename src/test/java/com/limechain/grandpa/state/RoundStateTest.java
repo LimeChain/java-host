@@ -13,10 +13,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
-class GrandpaStateTest {
+class RoundStateTest {
 
     @InjectMocks
-    private GrandpaState grandpaState;
+    private RoundState roundState;
 
     @Test
     void testGetThreshold() {
@@ -31,7 +31,7 @@ class GrandpaStateTest {
         Authority authority9 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority10 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaState.setVoters(
+        roundState.setVoters(
                 List.of(
                         authority1, authority2, authority3, authority4, authority5,
                         authority6, authority7, authority8, authority9, authority10
@@ -41,7 +41,7 @@ class GrandpaStateTest {
         // Total weight: 10
         // Faulty: (10 - 1) / 3 = 3
         // Threshold: 10 - faulty = 7
-        assertEquals(BigInteger.valueOf(7), grandpaState.getThreshold());
+        assertEquals(BigInteger.valueOf(7), roundState.getThreshold());
     }
 
     @Test
@@ -50,20 +50,20 @@ class GrandpaStateTest {
         Authority authority2 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority3 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaState.setVoters(List.of(
+        roundState.setVoters(List.of(
                 authority1, authority2, authority3
         ));
 
         // 4 % voters.size = 1
-        grandpaState.setRoundNumber(BigInteger.valueOf(4));
-        assertEquals(BigInteger.ONE, grandpaState.derivePrimary());
+        roundState.setRoundNumber(BigInteger.valueOf(4));
+        assertEquals(BigInteger.ONE, roundState.derivePrimary());
 
         // 5 % voters.size = 2
-        grandpaState.setRoundNumber(BigInteger.valueOf(5));
-        assertEquals(BigInteger.TWO, grandpaState.derivePrimary());
+        roundState.setRoundNumber(BigInteger.valueOf(5));
+        assertEquals(BigInteger.TWO, roundState.derivePrimary());
 
         // 6 % voters.size = 0
-        grandpaState.setRoundNumber(BigInteger.valueOf(6));
-        assertEquals(BigInteger.ZERO, grandpaState.derivePrimary());
+        roundState.setRoundNumber(BigInteger.valueOf(6));
+        assertEquals(BigInteger.ZERO, roundState.derivePrimary());
     }
 }
