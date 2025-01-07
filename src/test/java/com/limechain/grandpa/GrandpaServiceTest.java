@@ -60,6 +60,7 @@ class GrandpaServiceTest {
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
 
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
         when(roundState.getPrecommits()).thenReturn(Map.of());
         when(roundState.getPrevotes()).thenReturn(Map.of(
@@ -87,6 +88,7 @@ class GrandpaServiceTest {
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
 
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
         when(roundState.getPrevotes()).thenReturn(Map.of(
                 Ed25519Utils.generateKeyPair().publicKey(), firstVote,
@@ -119,6 +121,7 @@ class GrandpaServiceTest {
         blockHeader.setBlockNumber(BigInteger.valueOf(6));
 
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
         when(roundState.getPrevotes()).thenReturn(Map.of(
                 Ed25519Utils.generateKeyPair().publicKey(), firstVote,
@@ -143,10 +146,35 @@ class GrandpaServiceTest {
     }
 
     @Test
+    void testGetBestFinalCandidateWhereRoundNumberIsZero() {
+        BlockHeader blockHeader = createBlockHeader();
+
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+
+        var result = grandpaService.getBestFinalCandidate();
+        assertEquals(blockHeader.getHash(), result.getBlockHash());
+        assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
+    }
+
+    @Test
     void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(10));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getPrevotes()).thenReturn(Map.of());
         assertThrows(GhostExecutionException.class, () -> grandpaService.getGrandpaGhost());
+    }
+
+    @Test
+    void testGetGrandpaGHOSTWhereRoundNumberIsZero() {
+        BlockHeader blockHeader = createBlockHeader();
+
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+
+        var result = grandpaService.getGrandpaGhost();
+        assertEquals(blockHeader.getHash(), result.getBlockHash());
+        assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
 
     @Test
@@ -158,6 +186,8 @@ class GrandpaServiceTest {
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
 
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
+
         when(roundState.getPrevotes()).thenReturn(Map.of(
                 Ed25519Utils.generateKeyPair().publicKey(), firstVote,
                 Ed25519Utils.generateKeyPair().publicKey(), secondVote

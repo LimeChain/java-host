@@ -42,6 +42,10 @@ public class GrandpaService {
 
         Vote prevoteCandidate = getGrandpaGhost();
 
+        if (roundState.getRoundNumber().equals(BigInteger.ZERO)) {
+            return prevoteCandidate;
+        }
+
         var threshold = roundState.getThreshold();
         Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(threshold, Subround.PRECOMMIT);
 
@@ -93,6 +97,10 @@ public class GrandpaService {
      */
     public Vote getGrandpaGhost() {
         var threshold = roundState.getThreshold();
+
+        if (roundState.getRoundNumber().equals(BigInteger.ZERO)) {
+            return getLastFinalizedBlockAsVote();
+        }
 
         Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PREVOTE);
 
