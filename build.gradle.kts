@@ -29,7 +29,7 @@ dependencies {
     implementation("com.dylibso.chicory:wasm:0.0.12")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
-    testImplementation("org.mockito:mockito-core:5.14.2")
+    testImplementation("org.mockito:mockito-core:5.15.2")
 
     // CLI
     implementation("commons-cli:commons-cli:1.9.0")
@@ -46,7 +46,7 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.javatuples:javatuples:1.2")
 
-    implementation("com.github.luben:zstd-jni:1.5.6-8")
+    implementation("com.github.luben:zstd-jni:1.5.6-9")
 
     // Prometheus
     implementation("io.prometheus:prometheus-metrics-core:1.3.5")
