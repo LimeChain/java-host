@@ -1,8 +1,10 @@
 package com.limechain.grandpa;
 
 import com.limechain.exception.grandpa.GhostExecutionException;
+import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.RoundState;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
@@ -28,6 +30,57 @@ public class GrandpaService {
     public GrandpaService(RoundState roundState, BlockState blockState) {
         this.roundState = roundState;
         this.blockState = blockState;
+    }
+
+    //TODO
+    private boolean finalisable() {
+        Vote bestFinalCandidate = getBestFinalCandidate();
+
+        Vote preVotedBlock = getPreVotedBlock();
+
+        var roundNumber = roundState.getRoundNumber();
+        roundState.addPreVotedBlockToArchive(roundNumber, preVotedBlock);
+        roundState.addBestFinalCandidateToArchive(roundNumber, bestFinalCandidate);
+
+        return true;
+    }
+
+    private Vote getPreVotedBlock() {
+        return null;
+    }
+
+    private List<SignedVote> createJustification(Hash256 bestFinalCandidateHash, Subround subround) {
+        Map<PubKey, SignedVote> votes;
+        Map<PubKey, List<SignedVote>> equivocations;
+
+        switch (subround) {
+            case PREVOTE -> {
+                votes = roundState.getPrevotes();
+                equivocations = roundState.getPvEquivocations();
+            }
+            case PRECOMMIT -> {
+                votes = roundState.getPrecommits();
+                equivocations = roundState.getPcEquivocations();
+            }
+            default -> throw new GrandpaGenericException("Unsupported subround: " + subround);
+        }
+
+        List<SignedVote> justifications = new ArrayList<>();
+
+        votes.values().forEach((vote) -> {
+            try {
+                boolean isDescendant = blockState.isDescendantOf(bestFinalCandidateHash, vote.getVote().getBlockHash());
+                if (isDescendant) {
+                    justifications.add(vote);
+                }
+            } catch (Exception e) {
+                log.warning("Error checking descendant relationship: " + e.getMessage());
+            }
+        });
+
+        equivocations.values().forEach(justifications::addAll);
+
+        return justifications;
     }
 
     /**
@@ -276,13 +329,13 @@ public class GrandpaService {
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
 
-        Map<PubKey, Vote> votes = switch (subround) {
+        Map<PubKey, SignedVote> signedVotes = switch (subround) {
             case Subround.PREVOTE -> roundState.getPrevotes();
             case Subround.PRECOMMIT -> roundState.getPrecommits();
             default -> new HashMap<>();
         };
 
-        votes.values().forEach(vote -> voteCounts.merge(vote, 1L, Long::sum));
+        signedVotes.values().forEach(sv -> voteCounts.merge(sv.getVote(), 1L, Long::sum));
 
         return voteCounts;
     }

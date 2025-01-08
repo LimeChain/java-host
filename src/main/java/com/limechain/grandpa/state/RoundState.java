@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,11 +30,15 @@ public class RoundState {
     private BigInteger setId;
     private BigInteger roundNumber;
 
-    //TODO: This may not be the best place for those maps
-    private Map<PubKey, Vote> precommits = new ConcurrentHashMap<>();
-    private Map<PubKey, Vote> prevotes = new ConcurrentHashMap<>();
-    private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
-    private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
+    private Map<PubKey, SignedVote> precommits = new ConcurrentHashMap<>();
+    private Map<PubKey, SignedVote> prevotes = new ConcurrentHashMap<>();
+
+    private Map<PubKey, List<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
+    private Map<PubKey, List<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
+
+    //TODO: Refactor if these maps are accessed/modified concurrently
+    private Map<BigInteger, Vote> preVotedBlocksArchive= new HashMap<>();
+    private Map<BigInteger, Vote> bestFinalCandidateArchive = new HashMap<>();
 
     /**
      * The threshold is determined as the total weight of authorities
@@ -56,5 +61,13 @@ public class RoundState {
     public BigInteger derivePrimary() {
         var votersCount = BigInteger.valueOf(voters.size());
         return roundNumber.remainder(votersCount);
+    }
+
+    public void addPreVotedBlockToArchive(BigInteger roundNumber, Vote vote) {
+        this.preVotedBlocksArchive.put(roundNumber, vote);
+    }
+
+    public void addBestFinalCandidateToArchive(BigInteger roundNumber, Vote vote) {
+        this.bestFinalCandidateArchive.put(roundNumber, vote);
     }
 }
