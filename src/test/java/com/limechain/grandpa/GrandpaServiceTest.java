@@ -53,8 +53,8 @@ class GrandpaServiceTest {
 
     @Test
     void testGetBestFinalCandidateWithoutPreCommits() {
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
 
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
@@ -69,20 +69,22 @@ class GrandpaServiceTest {
         ));
 
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
-        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(firstVote.getVote().getBlockHash(),
+                firstVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getVote().getBlockHash(),
+                secondVote.getVote().getBlockHash())).thenReturn(true);
 
         Vote result = grandpaService.getBestFinalCandidate();
 
         assertNotNull(result);
-        assertEquals(firstVote.getBlockHash(), result.getBlockHash());
+        assertEquals(firstVote.getVote().getBlockHash(), result.getBlockHash());
     }
 
     @Test
     void testGetBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() {
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
-        Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4)));
+        SignedVote thirdVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5)));
 
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
@@ -100,22 +102,26 @@ class GrandpaServiceTest {
         ));
 
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
-        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(firstVote.getVote().getBlockHash(),
+                firstVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getVote().getBlockHash(),
+                secondVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getVote().getBlockHash(),
+                thirdVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getVote().getBlockHash(),
+                firstVote.getVote().getBlockHash())).thenReturn(true);
 
         Vote result = grandpaService.getBestFinalCandidate();
 
         assertNotNull(result);
-        assertEquals(thirdVote.getBlockHash(), result.getBlockHash());
+        assertEquals(thirdVote.getVote().getBlockHash(), result.getBlockHash());
     }
 
     @Test
     void testGetBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() {
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
-        Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4)));
+        SignedVote thirdVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5)));
 
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(6));
@@ -133,11 +139,11 @@ class GrandpaServiceTest {
         ));
 
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
-        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(thirdVote.getBlockHash(), blockHeader.getHash())).thenReturn(true);
+        when(blockState.isDescendantOf(firstVote.getVote().getBlockHash(), firstVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getVote().getBlockHash(), secondVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getVote().getBlockHash(), thirdVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getVote().getBlockHash(), firstVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(thirdVote.getVote().getBlockHash(), blockHeader.getHash())).thenReturn(true);
 
         Vote result = grandpaService.getBestFinalCandidate();
 
@@ -179,8 +185,8 @@ class GrandpaServiceTest {
 
     @Test
     void testGetGrandpaGHOSTWithBlockPassingThreshold() {
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
 
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
@@ -194,12 +200,12 @@ class GrandpaServiceTest {
         ));
 
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
-        when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(firstVote.getVote().getBlockHash(), firstVote.getVote().getBlockHash())).thenReturn(true);
+        when(blockState.isDescendantOf(secondVote.getVote().getBlockHash(), secondVote.getVote().getBlockHash())).thenReturn(true);
 
         Vote result = grandpaService.getGrandpaGhost();
         assertNotNull(result);
-        assertEquals(firstVote.getBlockHash(), result.getBlockHash());
+        assertEquals(firstVote.getVote().getBlockHash(), result.getBlockHash());
     }
 
     @Test
@@ -208,10 +214,10 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
@@ -223,8 +229,8 @@ class GrandpaServiceTest {
 
         Map<Vote, Long> result = (HashMap<Vote, Long>) method.invoke(grandpaService, Subround.PREVOTE);
 
-        assertEquals(1L, result.get(firstVote));
-        assertEquals(1L, result.get(secondVote));
+        assertEquals(1L, result.get(firstVote.getVote()));
+        assertEquals(1L, result.get(secondVote.getVote()));
     }
 
     @Test
@@ -233,10 +239,10 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
@@ -248,7 +254,7 @@ class GrandpaServiceTest {
 
         Map<Vote, Long> result = (HashMap<Vote, Long>) method.invoke(grandpaService, Subround.PREVOTE);
 
-        assertEquals(2L, result.get(firstVote));
+        assertEquals(2L, result.get(firstVote.getVote()));
     }
 
     @Test
@@ -256,9 +262,9 @@ class GrandpaServiceTest {
         // Prepare mock data
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
 
         when(roundState.getPrevotes()).thenReturn(prevotes);
@@ -269,7 +275,7 @@ class GrandpaServiceTest {
 
         List<Vote> result = (List<Vote>) method.invoke(grandpaService, Subround.PREVOTE);
 
-        assertTrue(result.contains(firstVote));
+        assertTrue(result.contains(firstVote.getVote()));
     }
 
     @Test
@@ -278,10 +284,10 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
@@ -293,8 +299,8 @@ class GrandpaServiceTest {
 
         List<Vote> result = (List<Vote>) method.invoke(grandpaService, Subround.PREVOTE);
 
-        assertTrue(result.contains(firstVote));
-        assertTrue(result.contains(secondVote));
+        assertTrue(result.contains(firstVote.getVote()));
+        assertTrue(result.contains(secondVote.getVote()));
     }
 
     @Test
@@ -302,10 +308,10 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
@@ -330,10 +336,10 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
@@ -358,17 +364,17 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
         PubKey pubKey3 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Map<PubKey, SignedVote> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(pubKey3, new SignedVote());
+        Map<PubKey, List<SignedVote>> pvEquivocations = new HashMap<>();
+        pvEquivocations.put(pubKey3, List.of(new SignedVote()));
 
         when(roundState.getPrevotes()).thenReturn(prevotes);
         when(roundState.getPvEquivocations()).thenReturn(pvEquivocations);
@@ -392,10 +398,10 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
@@ -421,17 +427,17 @@ class GrandpaServiceTest {
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
         PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
         PubKey pubKey3 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Map<PubKey, SignedVote> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(pubKey3, new SignedVote());
+        Map<PubKey, List<SignedVote>> pvEquivocations = new HashMap<>();
+        pvEquivocations.put(pubKey3, List.of(new SignedVote()));
 
         when(roundState.getPrevotes()).thenReturn(prevotes);
         when(roundState.getPvEquivocations()).thenReturn(pvEquivocations);
@@ -457,12 +463,12 @@ class GrandpaServiceTest {
         // ZEROS_ARRAY_BLOCK --> ONES_ARRAY_BLOCK (block from votes)
         //  |
         //  --> THREES_ARRAY_BLOCK (current block)
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        List<Vote> votes = List.of(firstVote);
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        List<Vote> votes = List.of(firstVote.getVote());
 
         PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
 
-        Map<PubKey, Vote> prevotes = new HashMap<>();
+        Map<PubKey, SignedVote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
 
         when(roundState.getPrevotes()).thenReturn(prevotes);
@@ -500,11 +506,10 @@ class GrandpaServiceTest {
         assertTrue(result.containsKey(new Hash256(ZEROS_ARRAY)));
     }
 
-
     @Test
     void testGetPossibleSelectedBlocksThatAreOverThreshold() throws Exception {
-        Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
-        Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        SignedVote firstVote = createSignedVote(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3)));
+        SignedVote secondVote = createSignedVote(new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4)));
 
         when(roundState.getPrevotes()).thenReturn(Map.of(
                 Ed25519Utils.generateKeyPair().publicKey(), firstVote,
@@ -577,5 +582,11 @@ class GrandpaServiceTest {
         blockHeader.setExtrinsicsRoot(new Hash256(ZEROS_ARRAY));
 
         return blockHeader;
+    }
+
+    private SignedVote createSignedVote(Vote vote) {
+        SignedVote signedVote = new SignedVote();
+        signedVote.setVote(vote);
+        return signedVote;
     }
 }
