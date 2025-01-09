@@ -4,7 +4,9 @@ import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
@@ -109,6 +111,27 @@ public class GrandpaService {
         }
 
         return selectBlockWithMostVotes(blocks);
+    }
+
+    /**
+     * Determines what block is our pre-voted block for the current round
+     * if we receive a vote message from the network with a
+     * block that's greater than or equal to the current pre-voted block
+     * and greater than the best final candidate from the last round, we choose that.
+     * otherwise, we simply choose the head of our chain.
+     *
+     * @return the best pre-voted block
+     */
+    public Vote getBestPreVoteCandidate() {
+        Vote currentVote = getGrandpaGhost();
+        VoteMessage voteMessage = roundState.getVoteMessage();
+        SignedMessage signedMessage = voteMessage.getMessage();
+
+        if (signedMessage != null && signedMessage.getBlockNumber().compareTo(currentVote.getBlockNumber()) > 0) {
+            return new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber());
+        }
+
+        return currentVote;
     }
 
     /**

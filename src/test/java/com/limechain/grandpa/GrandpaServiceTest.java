@@ -4,7 +4,9 @@ import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -49,6 +51,7 @@ class GrandpaServiceTest {
         roundState = mock(RoundState.class);
         blockState = mock(BlockState.class);
         grandpaService = new GrandpaService(roundState, blockState);
+
     }
 
     @Test
@@ -155,6 +158,96 @@ class GrandpaServiceTest {
         var result = grandpaService.getBestFinalCandidate();
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
+    }
+
+    @Test
+    void testGetBestPreVoteCandidate_WithSignedMessage() {
+        Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        VoteMessage voteMessage = mock(VoteMessage.class);
+        SignedMessage signedMessage = mock(SignedMessage.class);
+
+        when(roundState.getVoteMessage()).thenReturn(voteMessage);
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
+
+        when(roundState.getPrecommits()).thenReturn(Map.of());
+        when(roundState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), currentVote
+        ));
+
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
+        when(voteMessage.getMessage()).thenReturn(signedMessage);
+        when(signedMessage.getBlockNumber()).thenReturn(BigInteger.valueOf(4));
+        when(signedMessage.getBlockHash()).thenReturn(new Hash256(TWOS_ARRAY));
+
+        Vote result = grandpaService.getBestPreVoteCandidate();
+
+
+        assertNotNull(result);
+        assertEquals(new Hash256(TWOS_ARRAY), result.getBlockHash());
+        assertEquals(BigInteger.valueOf(4), result.getBlockNumber());
+    }
+
+    @Test
+    void testGetBestPreVoteCandidate_WithoutSignedMessage() {
+        Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        VoteMessage voteMessage = mock(VoteMessage.class);
+
+        when(roundState.getVoteMessage()).thenReturn(voteMessage);
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
+
+        when(roundState.getPrecommits()).thenReturn(Map.of());
+        when(roundState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), currentVote
+        ));
+
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
+
+        Vote result = grandpaService.getBestPreVoteCandidate();
+
+        assertNotNull(result);
+        assertEquals(currentVote.getBlockHash(), result.getBlockHash());
+        assertEquals(currentVote.getBlockNumber(), result.getBlockNumber());
+    }
+
+    @Test
+    void testGetBestPreVoteCandidate_WithSignedMessageAndBlockNumberLessThanCurrentVote() {
+        Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
+        VoteMessage voteMessage = mock(VoteMessage.class);
+        SignedMessage signedMessage = mock(SignedMessage.class);
+
+        when(roundState.getVoteMessage()).thenReturn(voteMessage);
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
+
+        when(roundState.getPrecommits()).thenReturn(Map.of());
+        when(roundState.getPrevotes()).thenReturn(Map.of(
+                Ed25519Utils.generateKeyPair().publicKey(), currentVote
+        ));
+
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
+        when(voteMessage.getMessage()).thenReturn(signedMessage);
+        when(signedMessage.getBlockNumber()).thenReturn(BigInteger.valueOf(3));
+        when(signedMessage.getBlockHash()).thenReturn(new Hash256(TWOS_ARRAY));
+
+        Vote result = grandpaService.getBestPreVoteCandidate();
+
+        assertNotNull(result);
+        assertEquals(currentVote.getBlockHash(), result.getBlockHash());
+        assertEquals(currentVote.getBlockNumber(), result.getBlockNumber());
     }
 
     @Test
