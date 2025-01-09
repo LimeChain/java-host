@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Log
 @Component
@@ -31,13 +32,13 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
-    private boolean finalizable(BigInteger roundNumber) {
-        if (!isCompletable(roundNumber)) {
+    private boolean isFinalizable(BigInteger roundNumber) {
+        Vote preVoteCandidate = getGrandpaGhost();
+        if (preVoteCandidate == null) {
             return false;
         }
 
-        Vote ghostVote = getGrandpaGhost();
-        if (ghostVote == null) {
+        if (!isCompletable(preVoteCandidate)) {
             return false;
         }
 
@@ -53,11 +54,36 @@ public class GrandpaService {
 
         return previousBestFinalCandidate != null
                 && previousBestFinalCandidate.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) <= 0
-                && bestFinalCandidate.getBlockNumber().compareTo(ghostVote.getBlockNumber()) <= 0;
+                && bestFinalCandidate.getBlockNumber().compareTo(preVoteCandidate.getBlockNumber()) <= 0;
     }
 
-    private boolean isCompletable(BigInteger round) {
-        return false;
+    private boolean isCompletable(Vote preVoteCandidate) {
+
+        var votes = getDirectVotes(Subround.PRECOMMIT);
+        long votesCount = votes.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+
+        long equivocationsCount = roundState.getPcEquivocations().size();
+        long totalVoters = roundState.getVoters().size();
+        long threshold = (2 * totalVoters) / 3;
+
+        if (votesCount + equivocationsCount <= threshold) {
+            return false;
+        }
+
+        List<Vote> ghostDescendents = getBlockDescendents(preVoteCandidate, new ArrayList<>(votes.keySet()));
+
+        for (Vote vote : ghostDescendents) {
+            var currentBlockHash = vote.getBlockHash();
+            var observedVotesForCurrentBlock = getObservedVotesForBlock(currentBlockHash, Subround.PRECOMMIT);
+
+            if (votesCount - equivocationsCount - observedVotesForCurrentBlock <= threshold) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -66,21 +92,24 @@ public class GrandpaService {
      * and selecting the block with the highest block number. If no such block exists, the pre-voted
      * block is returned as the best candidate.
      *
+     * @param preVoteCandidate - can be null, added just for optimization
      * @return the best final candidate block
      */
-    public Vote getBestFinalCandidate() {
+    public Vote getBestFinalCandidate(Vote preVoteCandidate) {
 
-        Vote prevoteCandidate = getGrandpaGhost();
+        if (preVoteCandidate == null) {
+            preVoteCandidate = getGrandpaGhost();
+        }
 
         if (roundState.getRoundNumber().equals(BigInteger.ZERO)) {
-            return prevoteCandidate;
+            return preVoteCandidate;
         }
 
         var threshold = roundState.getThreshold();
         Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(threshold, Subround.PRECOMMIT);
 
         if (possibleSelectedBlocks.isEmpty()) {
-            return prevoteCandidate;
+            return preVoteCandidate;
         }
 
         var bestFinalCandidate = getLastFinalizedBlockAsVote();
@@ -90,13 +119,13 @@ public class GrandpaService {
             var blockHash = block.getKey();
             var blockNumber = block.getValue();
 
-            boolean isDescendant = blockState.isDescendantOf(blockHash, prevoteCandidate.getBlockHash());
+            boolean isDescendant = blockState.isDescendantOf(blockHash, preVoteCandidate.getBlockHash());
 
             if (!isDescendant) {
 
                 Hash256 lowestCommonAncestor;
                 try {
-                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, prevoteCandidate.getBlockHash());
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, preVoteCandidate.getBlockHash());
                 } catch (IllegalArgumentException e) {
                     log.warning("Error finding the lowest common ancestor: " + e.getMessage());
                     continue;
@@ -116,6 +145,10 @@ public class GrandpaService {
         }
 
         return bestFinalCandidate;
+    }
+
+    public Vote getBestFinalCandidate() {
+        return this.getBestFinalCandidate(null);
     }
 
     /**
@@ -320,6 +353,12 @@ public class GrandpaService {
     private List<Vote> getVotes(Subround subround) {
         var votes = getDirectVotes(subround);
         return new ArrayList<>(votes.keySet());
+    }
+
+    private List<Vote> getBlockDescendents(Vote vote, List<Vote> votes) {
+        return votes.stream()
+                .filter(v -> v.getBlockNumber().compareTo(vote.getBlockNumber()) > 0)
+                .collect(Collectors.toList());
     }
 
     private Vote getLastFinalizedBlockAsVote() {
