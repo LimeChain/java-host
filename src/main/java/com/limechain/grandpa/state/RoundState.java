@@ -70,4 +70,8 @@ public class RoundState {
     public void addBestFinalCandidateToArchive(BigInteger roundNumber, Vote vote) {
         this.bestFinalCandidateArchive.put(roundNumber, vote);
     }
+
+    public Vote getBestFinalCandidateForRound(BigInteger roundNumber) {
+        return this.bestFinalCandidateArchive.get(roundNumber);
+    }
 }

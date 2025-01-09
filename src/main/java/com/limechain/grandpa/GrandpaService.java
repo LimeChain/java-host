@@ -1,7 +1,6 @@
 package com.limechain.grandpa;
 
 import com.limechain.exception.grandpa.GhostExecutionException;
-import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
@@ -32,55 +31,33 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
-    //TODO
-    private boolean finalisable() {
-        Vote bestFinalCandidate = getBestFinalCandidate();
-
-        Vote preVotedBlock = getPreVotedBlock();
-
-        var roundNumber = roundState.getRoundNumber();
-        roundState.addPreVotedBlockToArchive(roundNumber, preVotedBlock);
-        roundState.addBestFinalCandidateToArchive(roundNumber, bestFinalCandidate);
-
-        return true;
-    }
-
-    private Vote getPreVotedBlock() {
-        return null;
-    }
-
-    private List<SignedVote> createJustification(Hash256 bestFinalCandidateHash, Subround subround) {
-        Map<PubKey, SignedVote> votes;
-        Map<PubKey, List<SignedVote>> equivocations;
-
-        switch (subround) {
-            case PREVOTE -> {
-                votes = roundState.getPrevotes();
-                equivocations = roundState.getPvEquivocations();
-            }
-            case PRECOMMIT -> {
-                votes = roundState.getPrecommits();
-                equivocations = roundState.getPcEquivocations();
-            }
-            default -> throw new GrandpaGenericException("Unsupported subround: " + subround);
+    private boolean finalizable(BigInteger roundNumber) {
+        if (!isCompletable(roundNumber)) {
+            return false;
         }
 
-        List<SignedVote> justifications = new ArrayList<>();
+        Vote ghostVote = getGrandpaGhost();
+        if (ghostVote == null) {
+            return false;
+        }
 
-        votes.values().forEach((vote) -> {
-            try {
-                boolean isDescendant = blockState.isDescendantOf(bestFinalCandidateHash, vote.getVote().getBlockHash());
-                if (isDescendant) {
-                    justifications.add(vote);
-                }
-            } catch (Exception e) {
-                log.warning("Error checking descendant relationship: " + e.getMessage());
-            }
-        });
+        Vote bestFinalCandidate = getBestFinalCandidate();
+        if (bestFinalCandidate == null) {
+            return false;
+        }
 
-        equivocations.values().forEach(justifications::addAll);
+        roundState.addBestFinalCandidateToArchive(roundNumber, bestFinalCandidate);
 
-        return justifications;
+        var prevRoundNumber = roundNumber.subtract(BigInteger.ONE);
+        Vote previousBestFinalCandidate = roundState.getBestFinalCandidateForRound(prevRoundNumber);
+
+        return previousBestFinalCandidate != null
+                && previousBestFinalCandidate.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) <= 0
+                && bestFinalCandidate.getBlockNumber().compareTo(ghostVote.getBlockNumber()) <= 0;
+    }
+
+    private boolean isCompletable(BigInteger round) {
+        return false;
     }
 
     /**
