@@ -37,7 +37,7 @@ public class RoundState {
     private Map<PubKey, List<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
 
     //TODO: Refactor if these maps are accessed/modified concurrently
-    private Map<BigInteger, Vote> preVotedBlocksArchive= new HashMap<>();
+    private Map<BigInteger, Vote> preVotedBlocksArchive = new HashMap<>();
     private Map<BigInteger, Vote> bestFinalCandidateArchive = new HashMap<>();
 
     /**
@@ -73,5 +73,17 @@ public class RoundState {
 
     public Vote getBestFinalCandidateForRound(BigInteger roundNumber) {
         return this.bestFinalCandidateArchive.get(roundNumber);
+    }
+
+    public long getPvEquivocationsCount() {
+        return this.pvEquivocations.values().stream()
+                .mapToLong(List::size)
+                .sum();
+    }
+
+    public long getPcEquivocationsCount() {
+        return this.pcEquivocations.values().stream()
+                .mapToInt(List::size)
+                .sum();
     }
 }

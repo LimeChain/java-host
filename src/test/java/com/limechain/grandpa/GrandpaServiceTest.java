@@ -371,13 +371,8 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
-        PubKey pubKey3 = Ed25519Utils.generateKeyPair().publicKey();
-
-        Map<PubKey, List<SignedVote>> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(pubKey3, List.of(new SignedVote()));
-
         when(roundState.getPrevotes()).thenReturn(prevotes);
-        when(roundState.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(roundState.getPvEquivocationsCount()).thenReturn(1L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -406,7 +401,7 @@ class GrandpaServiceTest {
         prevotes.put(pubKey2, secondVote);
 
         when(roundState.getPrevotes()).thenReturn(prevotes);
-        when(roundState.getPvEquivocations()).thenReturn(new HashMap<>());
+        when(roundState.getPvEquivocationsCount()).thenReturn(0L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -434,13 +429,8 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
-        PubKey pubKey3 = Ed25519Utils.generateKeyPair().publicKey();
-
-        Map<PubKey, List<SignedVote>> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(pubKey3, List.of(new SignedVote()));
-
         when(roundState.getPrevotes()).thenReturn(prevotes);
-        when(roundState.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(roundState.getPvEquivocationsCount()).thenReturn(1L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -472,7 +462,7 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
 
         when(roundState.getPrevotes()).thenReturn(prevotes);
-        when(roundState.getPvEquivocations()).thenReturn(new HashMap<>());
+        when(roundState.getPvEquivocationsCount()).thenReturn(0L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         when(blockState.lowestCommonAncestor(new Hash256(ONES_ARRAY), new Hash256(THREES_ARRAY)))

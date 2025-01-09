@@ -64,7 +64,7 @@ public class GrandpaService {
                 .mapToLong(Long::longValue)
                 .sum();
 
-        long equivocationsCount = roundState.getPcEquivocations().size();
+        long equivocationsCount = roundState.getPcEquivocationsCount();
         long totalVoters = roundState.getVoters().size();
         long threshold = (2 * totalVoters) / 3;
 
@@ -297,9 +297,9 @@ public class GrandpaService {
             return 0L;
         }
 
-        int equivocationCount = switch (subround) {
-            case Subround.PREVOTE -> roundState.getPvEquivocations().size();
-            case Subround.PRECOMMIT -> roundState.getPcEquivocations().size();
+        long equivocationCount = switch (subround) {
+            case Subround.PREVOTE -> roundState.getPvEquivocationsCount();
+            case Subround.PRECOMMIT -> roundState.getPcEquivocationsCount();
             default -> 0;
         };
 
@@ -358,7 +358,7 @@ public class GrandpaService {
     private List<Vote> getBlockDescendents(Vote vote, List<Vote> votes) {
         return votes.stream()
                 .filter(v -> v.getBlockNumber().compareTo(vote.getBlockNumber()) > 0)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private Vote getLastFinalizedBlockAsVote() {
