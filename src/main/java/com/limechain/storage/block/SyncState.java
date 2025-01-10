@@ -43,16 +43,15 @@ public class SyncState {
     }
 
     private void loadPersistedState() {
-        this.lastFinalizedBlockNumber =
-                (BigInteger) repository.find(DBConstants.LAST_FINALIZED_BLOCK_NUMBER).orElse(BigInteger.ZERO);
+        this.lastFinalizedBlockNumber = repository.find(DBConstants.LAST_FINALIZED_BLOCK_NUMBER, BigInteger.ZERO);
         this.lastFinalizedBlockHash = new Hash256(
-                (byte[]) repository.find(DBConstants.LAST_FINALIZED_BLOCK_HASH).orElse(genesisBlockHash.getBytes()));
-        this.authoritySet = (Authority[]) repository.find(DBConstants.AUTHORITY_SET).orElse(new Authority[0]);
-        this.latestRound = (BigInteger) repository.find(DBConstants.LATEST_ROUND).orElse(BigInteger.ONE);
-        byte[] stateRootBytes = (byte[]) repository.find(DBConstants.STATE_ROOT).orElse(null);
+                repository.find(DBConstants.LAST_FINALIZED_BLOCK_HASH, genesisBlockHash.getBytes()));
+ //       this.authoritySet = (Authority[]) repository.find(DBConstants.AUTHORITY_SET).orElse(new Authority[0]);
+ //       this.latestRound = (BigInteger) repository.find(DBConstants.LATEST_ROUND).orElse(BigInteger.ONE);
+        byte[] stateRootBytes = repository.find(DBConstants.STATE_ROOT, null);
         this.stateRoot = stateRootBytes != null ? new Hash256(stateRootBytes) : genesisBlockHashCalculator
                 .getGenesisBlockHeader().getStateRoot();
-        this.setId = (BigInteger) repository.find(DBConstants.SET_ID).orElse(BigInteger.ZERO);
+ //       this.setId = (BigInteger) repository.find(DBConstants.SET_ID).orElse(BigInteger.ZERO);
     }
 
     public void persistState() {
