@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Log
 @Component
@@ -32,6 +31,15 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
+    /**
+     * Determines if the specified round can be finalized.
+     * 1) Checks for a valid preVote candidate and ensures it's completable.
+     * 2) Retrieves the best final candidate for the current round, archives it,
+     * and compares it to the previous round’s candidate.
+     *
+     * @param roundNumber
+     * @return if given round is finalizable
+     */
     private boolean isFinalizable(BigInteger roundNumber) {
         Vote preVoteCandidate = getGrandpaGhost();
         if (preVoteCandidate == null) {
@@ -348,6 +356,7 @@ public class GrandpaService {
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
 
+        //TODO: Check in gossamer what happens when the prevote is primary proposal
         Map<PubKey, SignedVote> signedVotes = switch (subround) {
             case Subround.PREVOTE -> roundState.getPrevotes();
             case Subround.PRECOMMIT -> roundState.getPrecommits();
