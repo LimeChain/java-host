@@ -73,7 +73,6 @@ public class RoundState {
         return roundNumber.remainder(authoritiesCount);
     }
 
-
     public void saveGrandpaAuthorities() {
         repository.save(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), authorities);
     }
@@ -131,7 +130,6 @@ public class RoundState {
         savePrecommits();
         savePrevotes();
     }
-
 
     public BigInteger incrementAuthoritiesSetId() {
         this.setId = setId.add(BigInteger.ONE);
