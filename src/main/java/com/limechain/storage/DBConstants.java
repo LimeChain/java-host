@@ -6,8 +6,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DBConstants {
     /**
-    * Key for storing the privateKey for nabu
-    *  */
+     * Key for storing the privateKey for nabu
+     */
     public static final String PEER_ID = "nodePeerId";
     /**
      * Key under which the genesis chain spec is stored
@@ -29,12 +29,16 @@ public class DBConstants {
      */
     public static final String HIGHEST_ROUND_AND_SET_ID_KEY = "hrs";
 
+
     // SyncState keys
     public static final String LAST_FINALIZED_BLOCK_NUMBER = "ss::lastFinalizedBlockNumber";
     public static final String LAST_FINALIZED_BLOCK_HASH = "ss::lastFinalizedBlockHash";
-    public static final String AUTHORITY_SET = "ss::authoritySet";
-    public static final String LATEST_ROUND = "ss::latestRound";
     public static final String STATE_ROOT = "ss::stateRoot";
-    public static final String SET_ID = "ss::setId";
-    // SyncState keys
+
+    // GrandpaState keys
+    public static final String AUTHORITY_SET = "gs::authoritySet";
+    public static final String LATEST_ROUND = "gs::latestRound";
+    public static final String SET_ID = "gs::setId";
+    public static final String GRANDPA_PREVOTES = "gs:grandpaPrevotes";
+    public static final String GRANDPA_PRECOMMITS = "gs:grandpaPrecommits";
 }

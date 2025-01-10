@@ -35,6 +35,17 @@ public interface KVRepository<K, V> {
      */
     Optional<V> find(K key);
 
+
+    /**
+     * Generic method to fetch a value from the repository with a default fallback if no result is being found.
+     *
+     * @param key          The key to fetch from the repository.
+     * @param defaultValue The default value to return if the key is not found.
+     * @param <T>          The type of the value being fetched.
+     * @return The fetched value or the default if not present.
+     */
+    <T> T find(String key, T defaultValue);
+
     /**
      * Deletes a key-value pair from the DB
      *
