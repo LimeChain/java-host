@@ -85,7 +85,8 @@ public class WarpSyncState {
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder,
                          PeerRequester requester,
-                         PeerMessageCoordinator messageCoordinator, RoundState roundState) {
+                         PeerMessageCoordinator messageCoordinator,
+                         RoundState roundState) {
         this(syncState, roundState,
                 db,
                 runtimeBuilder,

@@ -29,7 +29,6 @@ import static com.limechain.storage.StateUtil.*;
  */
 @Getter
 @Setter //TODO: remove it when initialize() method is implemented
-@Component
 @RequiredArgsConstructor
 public class RoundState {
 

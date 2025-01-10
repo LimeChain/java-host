@@ -18,11 +18,7 @@ import lombok.extern.java.Log;
 import org.javatuples.Pair;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -44,7 +40,11 @@ public class WarpSyncMachine {
     private final RoundState roundState;
     private final List<Runnable> onFinishCallbacks;
 
-    public WarpSyncMachine(Network network, ChainService chainService, SyncState syncState, WarpSyncState warpSyncState, RoundState roundState) {
+    public WarpSyncMachine(Network network,
+                           ChainService chainService,
+                           SyncState syncState,
+                           WarpSyncState warpSyncState,
+                           RoundState roundState) {
         this.networkService = network;
         this.chainService = chainService;
         this.syncState = syncState;
@@ -72,7 +72,7 @@ public class WarpSyncMachine {
         if (this.chainService.getChainSpec().getLightSyncState() != null) {
             LightSyncState initState = LightSyncState.decode(this.chainService.getChainSpec().getLightSyncState());
             if (this.syncState.getLastFinalizedBlockNumber()
-                        .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
+                    .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
                 this.syncState.setLightSyncState(initState);
                 this.roundState.setLightSyncState(initState);
             }

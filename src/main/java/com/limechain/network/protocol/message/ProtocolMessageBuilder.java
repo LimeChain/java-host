@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.message;
 
+import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
@@ -13,11 +14,12 @@ public class ProtocolMessageBuilder {
 
     public NeighbourMessage buildNeighbourMessage() {
         SyncState syncState = AppBean.getBean(SyncState.class);
+        RoundState roundState = AppBean.getBean(RoundState.class);
 
         return new NeighbourMessage(
                 NEIGHBOUR_MESSAGE_VERSION,
-                syncState.getLatestRound(),
-                syncState.getSetId(),
+                roundState.getRoundNumber(),
+                roundState.getSetId(),
                 syncState.getLastFinalizedBlockNumber()
         );
     }
