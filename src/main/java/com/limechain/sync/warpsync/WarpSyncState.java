@@ -3,6 +3,7 @@ package com.limechain.sync.warpsync;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
+import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
@@ -57,6 +58,7 @@ import java.util.logging.Level;
 public class WarpSyncState {
 
     private final SyncState syncState;
+    private final RoundState roundState;
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
     private final KVRepository<String, Object> db;
@@ -83,8 +85,8 @@ public class WarpSyncState {
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder,
                          PeerRequester requester,
-                         PeerMessageCoordinator messageCoordinator) {
-        this(syncState,
+                         PeerMessageCoordinator messageCoordinator, RoundState roundState) {
+        this(syncState, roundState,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
@@ -93,13 +95,14 @@ public class WarpSyncState {
                 messageCoordinator);
     }
 
-    public WarpSyncState(SyncState syncState,
+    public WarpSyncState(SyncState syncState, RoundState roundState,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
                          PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges,
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator) {
         this.syncState = syncState;
+        this.roundState = roundState;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
@@ -270,7 +273,7 @@ public class WarpSyncState {
      */
     public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
         messageCoordinator.sendNeighbourMessageToPeer(peerId);
-        if (warpSyncFinished && neighbourMessage.getSetId().compareTo(syncState.getSetId()) > 0) {
+        if (warpSyncFinished && neighbourMessage.getSetId().compareTo(roundState.getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
     }
@@ -304,20 +307,20 @@ public class WarpSyncState {
      */
     public void handleScheduledEvents() {
         Pair<BigInteger, Authority[]> data = scheduledAuthorityChanges.peek();
-        BigInteger setId = syncState.getSetId();
+        BigInteger authoritiesSetId = roundState.getSetId();
         boolean updated = false;
         while (data != null) {
             if (data.getValue0().compareTo(syncState.getLastFinalizedBlockNumber()) < 1) {
-                setId = syncState.incrementSetId();
-                syncState.resetRound();
-                syncState.setAuthoritySet(data.getValue1());
+                authoritiesSetId = roundState.incrementAuthoritiesSetId();
+                roundState.resetRound();
+                roundState.setAuthorities(Arrays.asList(data.getValue1()));
                 scheduledAuthorityChanges.poll();
                 updated = true;
             } else break;
             data = scheduledAuthorityChanges.peek();
         }
         if (warpSyncFinished && updated) {
-            log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
+            log.log(Level.INFO, "Successfully transitioned to authority set id: " + authoritiesSetId);
             new Thread(messageCoordinator::sendMessagesToPeers).start();
         }
     }

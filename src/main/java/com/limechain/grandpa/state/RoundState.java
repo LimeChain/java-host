@@ -1,17 +1,20 @@
 package com.limechain.grandpa.state;
 
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import io.libp2p.core.crypto.PubKey;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +36,7 @@ public class RoundState {
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
     private final KVRepository<String, Object> repository;
 
-    private List<Authority> voters;
+    private List<Authority> authorities;
     private BigInteger setId;
     private BigInteger roundNumber;
 
@@ -42,6 +45,12 @@ public class RoundState {
     private Map<PubKey, Vote> prevotes = new ConcurrentHashMap<>();
     private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
     private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
+
+
+    @PostConstruct
+    public void initialize() {
+        loadPersistedState();
+    }
 
     /**
      * The threshold is determined as the total weight of authorities
@@ -56,17 +65,17 @@ public class RoundState {
     }
 
     private BigInteger getAuthoritiesTotalWeight() {
-        return voters.stream().map(Authority::getWeight).reduce(BigInteger.ZERO, BigInteger::add);
+        return authorities.stream().map(Authority::getWeight).reduce(BigInteger.ZERO, BigInteger::add);
     }
 
     public BigInteger derivePrimary() {
-        var votersCount = BigInteger.valueOf(voters.size());
-        return roundNumber.remainder(votersCount);
+        var authoritiesCount = BigInteger.valueOf(authorities.size());
+        return roundNumber.remainder(authoritiesCount);
     }
 
 
-    public void saveGrandpaVoters() {
-        repository.save(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), voters);
+    public void saveGrandpaAuthorities() {
+        repository.save(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), authorities);
     }
 
     public Authority[] fetchGrandpaVoters() {
@@ -85,7 +94,7 @@ public class RoundState {
         repository.save(DBConstants.LATEST_ROUND, roundNumber);
     }
 
-    public BigInteger fetchLatestRound() {
+    public BigInteger fetchLatestRoundNumber() {
         return repository.find(DBConstants.LATEST_ROUND, BigInteger.ONE);
     }
 
@@ -93,18 +102,48 @@ public class RoundState {
         repository.save(generatePrevotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId), prevotes);
     }
 
-    public List<Map<PubKey, Vote>> fetchPrevotes() {
+    public Map<PubKey, Vote> fetchPrevotes() {
         return repository.find(generatePrevotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId),
-                Collections.emptyList());
+                Collections.emptyMap());
     }
 
     public void savePrecommits() {
         repository.save(generatePrecommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId), precommits);
     }
 
-    public List<Map<PubKey, Vote>> fetchPrecommits() {
+    public Map<PubKey, Vote> fetchPrecommits() {
         return repository.find(generatePrecommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId),
-                Collections.emptyList());
+                Collections.emptyMap());
     }
 
+    private void loadPersistedState() {
+        this.authorities = Arrays.asList(fetchGrandpaVoters());
+        this.setId = fetchAuthoritiesSetId();
+        this.roundNumber = fetchLatestRoundNumber();
+        this.precommits = fetchPrecommits();
+        this.prevotes = fetchPrevotes();
+    }
+
+    public void persistState() {
+        saveGrandpaAuthorities();
+        saveAuthoritySetId();
+        saveLatestRound();
+        savePrecommits();
+        savePrevotes();
+    }
+
+
+    public BigInteger incrementAuthoritiesSetId() {
+        this.setId = setId.add(BigInteger.ONE);
+        return setId;
+    }
+
+    public void resetRound() {
+        this.roundNumber = BigInteger.ONE;
+    }
+
+    public void setLightSyncState(LightSyncState initState) {
+        this.setId = initState.getGrandpaAuthoritySet().getSetId();
+        this.authorities = Arrays.asList(initState.getGrandpaAuthoritySet().getCurrentAuthorities());
+    }
 }

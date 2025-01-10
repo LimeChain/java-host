@@ -27,11 +27,7 @@ public class SyncState {
     private final BigInteger startingBlock;
     private final Hash256 genesisBlockHash;
     private Hash256 lastFinalizedBlockHash;
-    @Setter
-    private Authority[] authoritySet;
-    private BigInteger latestRound;
     private Hash256 stateRoot;
-    private BigInteger setId;
 
     public SyncState(GenesisBlockHash genesisBlockHashCalculator, KVRepository<String, Object> repository) {
         this.genesisBlockHashCalculator = genesisBlockHashCalculator;
@@ -46,21 +42,15 @@ public class SyncState {
         this.lastFinalizedBlockNumber = repository.find(DBConstants.LAST_FINALIZED_BLOCK_NUMBER, BigInteger.ZERO);
         this.lastFinalizedBlockHash = new Hash256(
                 repository.find(DBConstants.LAST_FINALIZED_BLOCK_HASH, genesisBlockHash.getBytes()));
- //       this.authoritySet = (Authority[]) repository.find(DBConstants.AUTHORITY_SET).orElse(new Authority[0]);
- //       this.latestRound = (BigInteger) repository.find(DBConstants.LATEST_ROUND).orElse(BigInteger.ONE);
         byte[] stateRootBytes = repository.find(DBConstants.STATE_ROOT, null);
         this.stateRoot = stateRootBytes != null ? new Hash256(stateRootBytes) : genesisBlockHashCalculator
                 .getGenesisBlockHeader().getStateRoot();
- //       this.setId = (BigInteger) repository.find(DBConstants.SET_ID).orElse(BigInteger.ZERO);
     }
 
     public void persistState() {
         repository.save(DBConstants.LAST_FINALIZED_BLOCK_NUMBER, lastFinalizedBlockNumber);
         repository.save(DBConstants.LAST_FINALIZED_BLOCK_HASH, lastFinalizedBlockHash.getBytes());
-        repository.save(DBConstants.AUTHORITY_SET, authoritySet);
-        repository.save(DBConstants.LATEST_ROUND, latestRound);
         repository.save(DBConstants.STATE_ROOT, stateRoot.getBytes());
-        repository.save(DBConstants.SET_ID, setId);
     }
 
     public void finalizeHeader(BlockHeader header) {
@@ -97,18 +87,7 @@ public class SyncState {
         return true;
     }
 
-    public BigInteger incrementSetId() {
-        this.setId = this.setId.add(BigInteger.ONE);
-        return setId;
-    }
-
-    public void resetRound() {
-        this.latestRound = BigInteger.ONE;
-    }
-
     public void setLightSyncState(LightSyncState initState) {
-        this.setId = initState.getGrandpaAuthoritySet().getSetId();
-        setAuthoritySet(initState.getGrandpaAuthoritySet().getCurrentAuthorities());
         finalizeHeader(initState.getFinalizedBlockHeader());
     }
 
