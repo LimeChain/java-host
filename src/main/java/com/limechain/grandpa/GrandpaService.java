@@ -57,9 +57,18 @@ public class GrandpaService {
                 && bestFinalCandidate.getBlockNumber().compareTo(preVoteCandidate.getBlockNumber()) <= 0;
     }
 
+    /**
+     * To decide if a round is completable, we need two calculations
+     * 1. [TotalPcVotes + TotalPcEquivocations > 2/3 * totalValidators]
+     * 2. [TotalPcVotes - TotalPcEquivocations - (Votes where B` > Ghost) > 2/3 * totalValidators]
+     * Second calculation should be done for all Ghost descendants
+     *
+     * @param preVoteCandidate Ghost Vote
+     * @return if the current round is completable
+     */
     private boolean isCompletable(Vote preVoteCandidate) {
 
-        var votes = getDirectVotes(Subround.PRECOMMIT);
+        Map<Vote, Long> votes = getDirectVotes(Subround.PRECOMMIT);
         long votesCount = votes.values().stream()
                 .mapToLong(Long::longValue)
                 .sum();
