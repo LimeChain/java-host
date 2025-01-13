@@ -127,6 +127,12 @@ public class DBRepository implements KVRepository<String, Object> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public <T> T find(String key, T defaultValue) {
+        return (T) find(key).orElse(defaultValue);
+    }
+
+    @Override
     public synchronized List<byte[]> findKeysByPrefix(String prefixSeek, int limit) {
         return findByPrefix(prefixSeek, (long) limit)
             .stream()

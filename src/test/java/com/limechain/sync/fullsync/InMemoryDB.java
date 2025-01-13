@@ -31,6 +31,12 @@ class InMemoryDB implements KVRepository<String, Object> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public <T> T find(String key, T defaultValue) {
+        return (T) find(key).orElse(defaultValue);
+    }
+
+    @Override
     public boolean delete(String key) {
         storage.remove(key);
         return true;

@@ -31,7 +31,7 @@ class RoundStateTest {
         Authority authority9 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority10 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        roundState.setVoters(
+        roundState.setAuthorities(
                 List.of(
                         authority1, authority2, authority3, authority4, authority5,
                         authority6, authority7, authority8, authority9, authority10
@@ -50,7 +50,7 @@ class RoundStateTest {
         Authority authority2 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority3 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        roundState.setVoters(List.of(
+        roundState.setAuthorities(List.of(
                 authority1, authority2, authority3
         ));
 
