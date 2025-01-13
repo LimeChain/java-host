@@ -87,7 +87,8 @@ public class WarpSyncState {
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator,
                          RoundState roundState) {
-        this(syncState, roundState,
+        this(syncState,
+                roundState,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
@@ -312,7 +313,7 @@ public class WarpSyncState {
         boolean updated = false;
         while (data != null) {
             if (data.getValue0().compareTo(syncState.getLastFinalizedBlockNumber()) < 1) {
-                authoritiesSetId = roundState.incrementAuthoritiesSetId();
+                authoritiesSetId = roundState.incrementSetId();
                 roundState.resetRound();
                 roundState.setAuthorities(Arrays.asList(data.getValue1()));
                 scheduledAuthorityChanges.poll();

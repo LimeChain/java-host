@@ -1,11 +1,11 @@
 package com.limechain.storage;
 
-import lombok.NoArgsConstructor;
+import lombok.experimental.UtilityClass;
 
 import java.math.BigInteger;
 
-@NoArgsConstructor
-public final class StateUtil {
+@UtilityClass
+public class StateUtil {
 
     /**
      * Prepares a concatenated key by appending all suffixes to the base key.

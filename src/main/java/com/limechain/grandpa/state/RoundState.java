@@ -11,7 +11,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -20,7 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.limechain.storage.StateUtil.*;
+import static com.limechain.storage.StateUtil.generateAuthorityKey;
+import static com.limechain.storage.StateUtil.generatePrecommitsKey;
+import static com.limechain.storage.StateUtil.generatePrevotesKey;
 
 /**
  * Represents the state information for the current round and authorities that are needed
@@ -64,7 +65,9 @@ public class RoundState {
     }
 
     private BigInteger getAuthoritiesTotalWeight() {
-        return authorities.stream().map(Authority::getWeight).reduce(BigInteger.ZERO, BigInteger::add);
+        return authorities.stream()
+                .map(Authority::getWeight)
+                .reduce(BigInteger.ZERO, BigInteger::add);
     }
 
     public BigInteger derivePrimary() {
@@ -76,7 +79,7 @@ public class RoundState {
         repository.save(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), authorities);
     }
 
-    public Authority[] fetchGrandpaVoters() {
+    public Authority[] fetchGrandpaAuthorities() {
         return repository.find(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), new Authority[0]);
     }
 
@@ -92,7 +95,7 @@ public class RoundState {
         repository.save(DBConstants.LATEST_ROUND, roundNumber);
     }
 
-    public BigInteger fetchLatestRoundNumber() {
+    public BigInteger fetchLatestRound() {
         return repository.find(DBConstants.LATEST_ROUND, BigInteger.ONE);
     }
 
@@ -115,9 +118,9 @@ public class RoundState {
     }
 
     private void loadPersistedState() {
-        this.authorities = Arrays.asList(fetchGrandpaVoters());
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.setId = fetchAuthoritiesSetId();
-        this.roundNumber = fetchLatestRoundNumber();
+        this.roundNumber = fetchLatestRound();
         this.precommits = fetchPrecommits();
         this.prevotes = fetchPrevotes();
     }
@@ -130,7 +133,7 @@ public class RoundState {
         savePrevotes();
     }
 
-    public BigInteger incrementAuthoritiesSetId() {
+    public BigInteger incrementSetId() {
         this.setId = setId.add(BigInteger.ONE);
         return setId;
     }

@@ -29,7 +29,6 @@ public class DBConstants {
      */
     public static final String HIGHEST_ROUND_AND_SET_ID_KEY = "hrs";
 
-
     // SyncState keys
     public static final String LAST_FINALIZED_BLOCK_NUMBER = "ss::lastFinalizedBlockNumber";
     public static final String LAST_FINALIZED_BLOCK_HASH = "ss::lastFinalizedBlockHash";
