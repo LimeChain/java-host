@@ -6,6 +6,7 @@ import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
+import com.limechain.storage.StateUtil;
 import io.libp2p.core.crypto.PubKey;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
@@ -18,10 +19,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.limechain.storage.StateUtil.generateAuthorityKey;
-import static com.limechain.storage.StateUtil.generatePrecommitsKey;
-import static com.limechain.storage.StateUtil.generatePrevotesKey;
 
 /**
  * Represents the state information for the current round and authorities that are needed
@@ -76,11 +73,11 @@ public class RoundState {
     }
 
     public void saveGrandpaAuthorities() {
-        repository.save(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), authorities);
+        repository.save(StateUtil.generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), authorities);
     }
 
     public Authority[] fetchGrandpaAuthorities() {
-        return repository.find(generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), new Authority[0]);
+        return repository.find(StateUtil.generateAuthorityKey(DBConstants.AUTHORITY_SET, setId), new Authority[0]);
     }
 
     public void saveAuthoritySetId() {
@@ -100,20 +97,20 @@ public class RoundState {
     }
 
     public void savePrevotes() {
-        repository.save(generatePrevotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId), prevotes);
+        repository.save(StateUtil.generatePrevotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId), prevotes);
     }
 
     public Map<PubKey, Vote> fetchPrevotes() {
-        return repository.find(generatePrevotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId),
+        return repository.find(StateUtil.generatePrevotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId),
                 Collections.emptyMap());
     }
 
     public void savePrecommits() {
-        repository.save(generatePrecommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId), precommits);
+        repository.save(StateUtil.generatePrecommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId), precommits);
     }
 
     public Map<PubKey, Vote> fetchPrecommits() {
-        return repository.find(generatePrecommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId),
+        return repository.find(StateUtil.generatePrecommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId),
                 Collections.emptyMap());
     }
 
