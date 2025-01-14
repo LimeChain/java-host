@@ -78,8 +78,6 @@ public class WarpSyncState {
     protected final RuntimeBuilder runtimeBuilder;
     //TODO Yordan: maybe we won't need this anymore.
     private final Set<BigInteger> scheduledRuntimeUpdateBlocks;
-    private final PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges;
-
 
     public WarpSyncState(SyncState syncState,
                          KVRepository<String, Object> db,
@@ -87,28 +85,28 @@ public class WarpSyncState {
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator,
                          RoundState roundState) {
+
         this(syncState,
                 roundState,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
-                new PriorityQueue<>(Comparator.comparing(Pair::getValue0)),
                 requester,
-                messageCoordinator);
+                messageCoordinator
+        );
     }
 
     public WarpSyncState(SyncState syncState, RoundState roundState,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
-                         PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges,
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator) {
+
         this.syncState = syncState;
         this.roundState = roundState;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
-        this.scheduledAuthorityChanges = scheduledAuthorityChanges;
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
     }
@@ -281,8 +279,13 @@ public class WarpSyncState {
     }
 
     private void updateSetData(BigInteger setChangeBlock) {
+
         List<BlockData> response = requester.requestBlockData(
-                BlockRequestField.ALL, setChangeBlock.intValue(), 1).join();
+                BlockRequestField.ALL,
+                setChangeBlock.intValue(),
+                1
+        ).join();
+
         BlockData block = response.getFirst();
 
         if (block.getIsEmptyJustification()) {
@@ -292,6 +295,7 @@ public class WarpSyncState {
 
         Justification justification = new JustificationReader().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
+
         boolean verified = justification != null
                 && JustificationVerifier.verify(justification.getPrecommits(), justification.getRound());
 
@@ -299,85 +303,18 @@ public class WarpSyncState {
             BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));
 
             syncState.finalizeHeader(header);
-            handleAuthorityChanges(header.getDigest(), setChangeBlock);
-            handleScheduledEvents();
+            roundState.handleGrandpaConsensusMessage(header.getDigest());
         }
     }
 
     /**
-     * Executes authority changes, scheduled for the current block.
+     * Executes scheduled or forced authority changes for the last finalized block.
      */
     public void handleScheduledEvents() {
-        Pair<BigInteger, Authority[]> data = scheduledAuthorityChanges.peek();
-        BigInteger authoritiesSetId = roundState.getSetId();
-        boolean updated = false;
-        while (data != null) {
-            if (data.getValue0().compareTo(syncState.getLastFinalizedBlockNumber()) < 1) {
-                authoritiesSetId = roundState.incrementSetId();
-                roundState.resetRound();
-                roundState.setAuthorities(Arrays.asList(data.getValue1()));
-                scheduledAuthorityChanges.poll();
-                updated = true;
-            } else break;
-            data = scheduledAuthorityChanges.peek();
-        }
+        boolean updated = roundState.handleAuthoritySetChange(syncState.getLastFinalizedBlockNumber());
+
         if (warpSyncFinished && updated) {
-            log.log(Level.INFO, "Successfully transitioned to authority set id: " + authoritiesSetId);
             new Thread(messageCoordinator::sendMessagesToPeers).start();
         }
     }
-
-    /**
-     * Handles authority changes coming from a block header digest and schedules them.
-     *
-     * @param headerDigests digest of the block header
-     * @param blockNumber   block that contains the digest
-     */
-    public void handleAuthorityChanges(HeaderDigest[] headerDigests, BigInteger blockNumber) {
-        // Update authority set and set id
-        AuthoritySetChange authorityChanges;
-        for (HeaderDigest digest : headerDigests) {
-            if (digest.getId() == ConsensusEngine.GRANDPA) {
-                ScaleCodecReader reader = new ScaleCodecReader(digest.getMessage());
-                GrandpaDigestMessageType type = GrandpaDigestMessageType.fromId(reader.readByte());
-
-                if (type == null) {
-                    log.log(Level.SEVERE, "Could not get grandpa message type");
-                    throw new IllegalStateException("Unknown grandpa message type");
-                }
-
-                switch (type) {
-                    case SCHEDULED_CHANGE -> {
-                        ScheduledChangeReader authorityChangesReader = new ScheduledChangeReader();
-                        authorityChanges = authorityChangesReader.read(reader);
-                        scheduledAuthorityChanges
-                                .add(new Pair<>(blockNumber.add(authorityChanges.getDelay()),
-                                        authorityChanges.getAuthorities()));
-                        return;
-                    }
-                    case FORCED_CHANGE -> {
-                        ForcedChangeReader authorityForcedChangesReader = new ForcedChangeReader();
-                        authorityChanges = authorityForcedChangesReader.read(reader);
-                        scheduledAuthorityChanges
-                                .add(new Pair<>(blockNumber.add(authorityChanges.getDelay()),
-                                        authorityChanges.getAuthorities()));
-                        return;
-                    }
-                    case ON_DISABLED -> {
-                        log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
-                        return;
-                    }
-                    case PAUSE -> {
-                        log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
-                        return;
-                    }
-                    case RESUME -> {
-                        log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
 }

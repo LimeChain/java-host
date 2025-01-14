@@ -4,27 +4,38 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.warp.dto.ConsensusEngine;
+import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import com.limechain.sync.warpsync.dto.AuthoritySetChange;
+import com.limechain.sync.warpsync.dto.GrandpaDigestMessageType;
+import com.limechain.sync.warpsync.scale.ForcedChangeReader;
+import com.limechain.sync.warpsync.scale.ScheduledChangeReader;
+import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.libp2p.core.crypto.PubKey;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.extern.java.Log;
 
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 /**
  * Represents the state information for the current round and authorities that are needed
  * for block finalization with GRANDPA.
  * Note: Intended for use only when the host is configured as an Authoring Node.
  */
+@Log
 @Getter
 @Setter //TODO: remove it when initialize() method is implemented
 @RequiredArgsConstructor
@@ -36,6 +47,8 @@ public class RoundState {
     private List<Authority> authorities;
     private BigInteger setId;
     private BigInteger roundNumber;
+
+    private final PriorityQueue<AuthoritySetChange> authoritySetChanges = new PriorityQueue<>(AuthoritySetChange.getComparator());
 
     //TODO: This may not be the best place for those maps
     private Map<PubKey, Vote> precommits = new ConcurrentHashMap<>();
@@ -130,17 +143,85 @@ public class RoundState {
         savePrevotes();
     }
 
-    public BigInteger incrementSetId() {
+    public void startNewSet(List<Authority> authorities) {
         this.setId = setId.add(BigInteger.ONE);
-        return setId;
-    }
+        this.roundNumber = BigInteger.ZERO;
+        this.authorities = authorities;
 
-    public void resetRound() {
-        this.roundNumber = BigInteger.ONE;
+        log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
 
     public void setLightSyncState(LightSyncState initState) {
         this.setId = initState.getGrandpaAuthoritySet().getSetId();
         this.authorities = Arrays.asList(initState.getGrandpaAuthoritySet().getCurrentAuthorities());
+    }
+
+    /**
+     * Apply scheduled or forced authority set changes from the queue if present
+     * @param blockNumber required to determine if it's time to apply the change
+     */
+    public boolean handleAuthoritySetChange(BigInteger blockNumber) {
+        AuthoritySetChange changeSetData = authoritySetChanges.peek();
+
+        boolean updated = false;
+        while (changeSetData != null) {
+
+            // Too early to add the new authority set
+            if (changeSetData.getDelay().compareTo(blockNumber) > 0) {
+                break;
+            }
+
+            startNewSet(Arrays.asList(changeSetData.getAuthorities()));
+            authoritySetChanges.poll();
+            updated = true;
+
+            changeSetData = authoritySetChanges.peek();
+        }
+
+        return updated;
+    }
+
+    /**
+     * Handles grandpa consensus message
+     * @param headerDigests digest of the block header
+     */
+    public void handleGrandpaConsensusMessage(HeaderDigest[] headerDigests) {
+        // Update authority set and set id
+        for (HeaderDigest digest : headerDigests) {
+            if (digest.getId() == ConsensusEngine.GRANDPA) {
+                ScaleCodecReader reader = new ScaleCodecReader(digest.getMessage());
+                GrandpaDigestMessageType type = GrandpaDigestMessageType.fromId(reader.readByte());
+
+                if (type == null) {
+                    log.log(Level.SEVERE, "Could not get grandpa message type");
+                    throw new IllegalStateException("Unknown grandpa message type");
+                }
+
+                switch (type) {
+                    case SCHEDULED_CHANGE -> {
+                        ScheduledChangeReader authorityChangesReader = new ScheduledChangeReader();
+                        authoritySetChanges.add(authorityChangesReader.read(reader));
+                        return;
+                    }
+                    case FORCED_CHANGE -> {
+                        ForcedChangeReader authorityForcedChangesReader = new ForcedChangeReader();
+                        authoritySetChanges.add(authorityForcedChangesReader.read(reader));
+                        return;
+                    }
+                    case ON_DISABLED -> {
+                        log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
+                        return;
+                    }
+                    case PAUSE -> {
+                        log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
+                        return;
+                    }
+                    case RESUME -> {
+                        log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
