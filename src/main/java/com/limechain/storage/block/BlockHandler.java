@@ -121,10 +121,10 @@ public class BlockHandler {
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
 
-        //TODO
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                 .ifPresent(cm -> {
-//                    roundState.
+                    roundState.handleGrandpaConsensusMessage(cm);
+                    log.fine(String.format("Updated grandpa set config: %s", cm.getFormat().toString()));
                 });
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));

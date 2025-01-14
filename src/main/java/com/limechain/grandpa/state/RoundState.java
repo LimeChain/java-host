@@ -4,16 +4,13 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
-import com.limechain.network.protocol.warp.dto.ConsensusEngine;
-import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
-import com.limechain.sync.warpsync.dto.GrandpaDigestMessageType;
-import com.limechain.sync.warpsync.scale.ForcedChangeReader;
-import com.limechain.sync.warpsync.scale.ScheduledChangeReader;
-import io.emeraldpay.polkaj.scale.ScaleCodecReader;
+import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
+import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
 import io.libp2p.core.crypto.PubKey;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
@@ -158,6 +155,7 @@ public class RoundState {
 
     /**
      * Apply scheduled or forced authority set changes from the queue if present
+     *
      * @param blockNumber required to determine if it's time to apply the change
      */
     public boolean handleAuthoritySetChange(BigInteger blockNumber) {
@@ -183,44 +181,28 @@ public class RoundState {
 
     /**
      * Handles grandpa consensus message
-     * @param headerDigests digest of the block header
+     *
+     * @param consensusMessage grandpa consensus message provided by any block header digest
      */
-    public void handleGrandpaConsensusMessage(HeaderDigest[] headerDigests) {
-        // Update authority set and set id
-        for (HeaderDigest digest : headerDigests) {
-            if (digest.getId() == ConsensusEngine.GRANDPA) {
-                ScaleCodecReader reader = new ScaleCodecReader(digest.getMessage());
-                GrandpaDigestMessageType type = GrandpaDigestMessageType.fromId(reader.readByte());
-
-                if (type == null) {
-                    log.log(Level.SEVERE, "Could not get grandpa message type");
-                    throw new IllegalStateException("Unknown grandpa message type");
-                }
-
-                switch (type) {
-                    case SCHEDULED_CHANGE -> {
-                        ScheduledChangeReader authorityChangesReader = new ScheduledChangeReader();
-                        authoritySetChanges.add(authorityChangesReader.read(reader));
-                        return;
-                    }
-                    case FORCED_CHANGE -> {
-                        ForcedChangeReader authorityForcedChangesReader = new ForcedChangeReader();
-                        authoritySetChanges.add(authorityForcedChangesReader.read(reader));
-                        return;
-                    }
-                    case ON_DISABLED -> {
-                        log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
-                        return;
-                    }
-                    case PAUSE -> {
-                        log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
-                        return;
-                    }
-                    case RESUME -> {
-                        log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
-                        return;
-                    }
-                }
+    public void handleGrandpaConsensusMessage(GrandpaConsensusMessage consensusMessage) {
+        switch (consensusMessage.getFormat()) {
+            case GRANDPA_SCHEDULED_CHANGE -> authoritySetChanges.add(new ScheduledAuthoritySetChange(
+                    consensusMessage.getAuthorities(),
+                    consensusMessage.getDelay()
+            ));
+            case GRANDPA_FORCED_CHANGE -> authoritySetChanges.add(new ForcedAuthoritySetChange(
+                    consensusMessage.getAuthorities(),
+                    consensusMessage.getDelay()
+            ));
+            //TODO: Implement later
+            case GRANDPA_ON_DISABLED -> {
+                log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
+            }
+            case GRANDPA_PAUSE -> {
+                log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
+            }
+            case GRANDPA_RESUME -> {
+                log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
             }
         }
     }

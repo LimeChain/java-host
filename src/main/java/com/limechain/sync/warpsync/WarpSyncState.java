@@ -1,6 +1,5 @@
 package com.limechain.sync.warpsync;
 
-import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
 import com.limechain.grandpa.state.RoundState;
@@ -12,10 +11,9 @@ import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessag
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage.BlockData;
+import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
-import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
@@ -25,10 +23,6 @@ import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.SyncState;
 import com.limechain.sync.JustificationVerifier;
-import com.limechain.sync.warpsync.dto.AuthoritySetChange;
-import com.limechain.sync.warpsync.dto.GrandpaDigestMessageType;
-import com.limechain.sync.warpsync.scale.ForcedChangeReader;
-import com.limechain.sync.warpsync.scale.ScheduledChangeReader;
 import com.limechain.trie.decoded.Trie;
 import com.limechain.trie.decoded.TrieVerifier;
 import com.limechain.utils.LittleEndianUtils;
@@ -39,14 +33,11 @@ import io.libp2p.core.PeerId;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
-import org.javatuples.Pair;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -303,7 +294,9 @@ public class WarpSyncState {
             BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));
 
             syncState.finalizeHeader(header);
-            roundState.handleGrandpaConsensusMessage(header.getDigest());
+
+            DigestHelper.getGrandpaConsensusMessage(header.getDigest())
+                    .ifPresent(roundState::handleGrandpaConsensusMessage);
         }
     }
 

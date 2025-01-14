@@ -11,6 +11,6 @@ public class GrandpaConsensusMessage {
     private BigInteger delayStartBlockNumber;
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
-    private long delay;
+    private BigInteger delay;
     private GrandpaConsensusMessageFormat format;
 }

@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.math.BigInteger;
 import java.util.Comparator;
+import java.util.List;
 
 @Getter
 @Setter
@@ -16,6 +17,10 @@ import java.util.Comparator;
 public class AuthoritySetChange {
     private Authority[] authorities;
     private BigInteger delay;
+
+    public AuthoritySetChange(List<Authority> authorities, BigInteger delay) {
+        this(authorities.toArray(new Authority[0]), delay);
+    }
 
     // ForcedAuthoritySetChange has priority over ScheduledAuthoritySetChanges
     public static Comparator<AuthoritySetChange> getComparator() {
