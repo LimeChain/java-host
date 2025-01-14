@@ -1,6 +1,7 @@
 package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.sync.JustificationVerificationException;
+import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.SyncState;
@@ -15,11 +16,14 @@ import java.util.logging.Level;
 // Maybe we can make it a singleton in order to reduce performance overhead?
 @Log
 public class VerifyJustificationAction implements WarpSyncAction {
+
     private final WarpSyncState warpSyncState;
     private final SyncState syncState;
+    private final RoundState roundState;
     private Exception error;
 
     public VerifyJustificationAction() {
+        this.roundState = AppBean.getBean(RoundState.class);
         this.syncState = AppBean.getBean(SyncState.class);
         this.warpSyncState = AppBean.getBean(WarpSyncState.class);
     }
@@ -68,9 +72,8 @@ public class VerifyJustificationAction implements WarpSyncAction {
 
     private void handleAuthorityChanges(WarpSyncFragment fragment) {
         try {
-            warpSyncState.handleAuthorityChanges(
-                    fragment.getHeader().getDigest(),
-                    fragment.getJustification().getTargetBlock());
+            roundState.handleGrandpaConsensusMessage(fragment.getHeader().getDigest());
+
             log.log(Level.INFO, "Verified justification. Block hash is now at #"
                     + syncState.getLastFinalizedBlockNumber() + ": "
                     + syncState.getLastFinalizedBlockHash().toString()
