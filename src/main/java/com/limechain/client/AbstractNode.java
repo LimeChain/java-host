@@ -7,7 +7,7 @@ import java.util.List;
 
 public abstract class AbstractNode extends HostNode {
 
-    public AbstractNode(List<NodeService> services, List<ServiceState> states) {
+    protected AbstractNode(List<NodeService> services, List<ServiceState> states) {
         super(services, states);
     }
 }

@@ -18,7 +18,7 @@ public abstract class HostNode {
     protected final List<NodeService> services;
     protected final List<ServiceState> states;
 
-    public HostNode(List<NodeService> services, List<ServiceState> states) {
+    protected HostNode(List<NodeService> services, List<ServiceState> states) {
         this.services = services;
         this.states = states;
     }
