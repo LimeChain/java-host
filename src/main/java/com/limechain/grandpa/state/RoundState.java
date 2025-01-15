@@ -112,9 +112,9 @@ public class RoundState {
     }
 
     private void loadPersistedState() {
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.setId = fetchAuthoritiesSetId();
         this.roundNumber = fetchLatestRound();
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.precommits = fetchPrecommits();
         this.prevotes = fetchPrevotes();
     }
