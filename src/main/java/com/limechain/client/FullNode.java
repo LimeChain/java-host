@@ -11,7 +11,7 @@ import com.limechain.sync.state.SyncState;
 import java.util.List;
 import java.util.Objects;
 
-public class FullNode extends AbstractNode {
+public class FullNode extends HostNode {
 
     public FullNode() {
         super(List.of(

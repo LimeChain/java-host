@@ -18,4 +18,19 @@ public abstract class AbstractState implements ServiceState {
 
         syncMode = mode;
     }
+
+    @Override
+    public void initialize() {
+        initialized = true;
+    }
+
+    @Override
+    public void initializeFromDatabase() {
+        //Do nothing
+    }
+
+    @Override
+    public void persistState() {
+        //Do nothing
+    }
 }

@@ -9,9 +9,9 @@ import com.limechain.sync.fullsync.FullSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 @RequiredArgsConstructor
 public class SyncService implements NodeService {
 

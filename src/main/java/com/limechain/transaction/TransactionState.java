@@ -35,20 +35,6 @@ public class TransactionState extends AbstractState {
         transactionQueue = new PriorityQueue<>();
     }
 
-    public void initialize() {
-        initialized = true;
-    }
-
-    @Override
-    public void initializeFromDatabase() {
-        //Nothing happens here as we don't store any historical transaction data in DB.
-    }
-
-    @Override
-    public void persistState() {
-        //There's no need to store historical transaction data in DB.
-    }
-
     public byte[] pushTransaction(ValidTransaction validTransaction) {
         transactionQueue.add(validTransaction);
         return HashUtils.hashWithBlake2b(validTransaction.getExtrinsic().getData());

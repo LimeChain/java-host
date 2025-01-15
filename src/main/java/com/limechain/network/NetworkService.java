@@ -34,7 +34,7 @@ import lombok.extern.java.Log;
 import org.peergos.HostBuilder;
 import org.peergos.protocol.IdentifyBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
 import java.util.Collections;
@@ -51,7 +51,7 @@ import static com.limechain.network.kad.KademliaService.REPLICATION;
  */
 @Log
 @Getter
-@Service
+@Component
 public class NetworkService implements NodeService {
     public static final String LOCAL_IPV4_TCP_ADDRESS = "/ip4/127.0.0.1/tcp/";
     private static final int HOST_PORT = 30333;

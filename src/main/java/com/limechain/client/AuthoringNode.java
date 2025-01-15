@@ -12,7 +12,7 @@ import com.limechain.transaction.TransactionState;
 import java.util.List;
 import java.util.Objects;
 
-public class AuthoringNode extends AbstractNode {
+public class AuthoringNode extends HostNode {
 
     public AuthoringNode() {
         super(List.of(
