@@ -168,7 +168,7 @@ public class RoundState {
                 break;
             }
 
-            startNewSet(Arrays.asList(changeSetData.getAuthorities()));
+            startNewSet(changeSetData.getAuthorities());
             authoritySetChanges.poll();
             updated = true;
 

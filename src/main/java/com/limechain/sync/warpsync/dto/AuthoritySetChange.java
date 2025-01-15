@@ -2,7 +2,6 @@ package com.limechain.sync.warpsync.dto;
 
 import com.limechain.chain.lightsyncstate.Authority;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigInteger;
@@ -11,15 +10,14 @@ import java.util.List;
 
 @Getter
 @Setter
-@NoArgsConstructor
 public class AuthoritySetChange {
 
-    private Authority[] authorities;
+    private List<Authority> authorities;
     private Long delay;
     private BigInteger applicationBlock;
 
     public AuthoritySetChange(List<Authority> authorities, Long delay, BigInteger announceBlock) {
-        this.authorities = authorities.toArray(new Authority[0]);
+        this.authorities = authorities;
         this.delay = delay;
         this.applicationBlock = announceBlock.add(BigInteger.valueOf(delay));
     }
