@@ -164,8 +164,7 @@ public class RoundState {
         boolean updated = false;
         while (changeSetData != null) {
 
-            // Too early to add the new authority set
-            if (changeSetData.getDelay().compareTo(blockNumber) > 0) {
+            if (changeSetData.getApplicationBlock().compareTo(blockNumber) > 0) {
                 break;
             }
 
@@ -184,15 +183,18 @@ public class RoundState {
      *
      * @param consensusMessage grandpa consensus message provided by any block header digest
      */
-    public void handleGrandpaConsensusMessage(GrandpaConsensusMessage consensusMessage) {
+    public void handleGrandpaConsensusMessage(GrandpaConsensusMessage consensusMessage, BigInteger currentBlockNumber) {
         switch (consensusMessage.getFormat()) {
             case GRANDPA_SCHEDULED_CHANGE -> authoritySetChanges.add(new ScheduledAuthoritySetChange(
                     consensusMessage.getAuthorities(),
-                    consensusMessage.getDelay()
+                    consensusMessage.getDelay(),
+                    currentBlockNumber
             ));
             case GRANDPA_FORCED_CHANGE -> authoritySetChanges.add(new ForcedAuthoritySetChange(
                     consensusMessage.getAuthorities(),
-                    consensusMessage.getDelay()
+                    consensusMessage.getDelay(),
+                    consensusMessage.getAdditionalOffset(),
+                    currentBlockNumber
             ));
             //TODO: Implement later
             case GRANDPA_ON_DISABLED -> {
@@ -205,5 +207,7 @@ public class RoundState {
                 log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
             }
         }
+
+        log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
     }
 }

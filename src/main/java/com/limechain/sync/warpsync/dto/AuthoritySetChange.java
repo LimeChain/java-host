@@ -1,7 +1,6 @@
 package com.limechain.sync.warpsync.dto;
 
 import com.limechain.chain.lightsyncstate.Authority;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,14 +11,17 @@ import java.util.List;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
 public class AuthoritySetChange {
-    private Authority[] authorities;
-    private BigInteger delay;
 
-    public AuthoritySetChange(List<Authority> authorities, BigInteger delay) {
-        this(authorities.toArray(new Authority[0]), delay);
+    private Authority[] authorities;
+    private Long delay;
+    private BigInteger applicationBlock;
+
+    public AuthoritySetChange(List<Authority> authorities, Long delay, BigInteger announceBlock) {
+        this.authorities = authorities.toArray(new Authority[0]);
+        this.delay = delay;
+        this.applicationBlock = announceBlock.add(BigInteger.valueOf(delay));
     }
 
     // ForcedAuthoritySetChange has priority over ScheduledAuthoritySetChanges

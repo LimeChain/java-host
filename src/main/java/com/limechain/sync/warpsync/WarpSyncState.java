@@ -296,7 +296,7 @@ public class WarpSyncState {
             syncState.finalizeHeader(header);
 
             DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                    .ifPresent(roundState::handleGrandpaConsensusMessage);
+                    .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
         }
     }
 

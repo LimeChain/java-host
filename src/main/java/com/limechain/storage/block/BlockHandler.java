@@ -122,10 +122,7 @@ public class BlockHandler {
                 });
 
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                .ifPresent(cm -> {
-                    roundState.handleGrandpaConsensusMessage(cm);
-                    log.fine(String.format("Updated grandpa set config: %s", cm.getFormat().toString()));
-                });
+                .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }

@@ -4,6 +4,7 @@ import com.limechain.exception.sync.JustificationVerificationException;
 import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.warp.DigestHelper;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.SyncState;
@@ -74,10 +75,10 @@ public class VerifyJustificationAction implements WarpSyncAction {
     }
 
     private void handleAuthorityChanges(WarpSyncFragment fragment) {
-        Optional<GrandpaConsensusMessage> grandpaConsensusMessage =
-                DigestHelper.getGrandpaConsensusMessage(fragment.getHeader().getDigest());
+        BlockHeader header = fragment.getHeader();
 
-        grandpaConsensusMessage.ifPresent(roundState::handleGrandpaConsensusMessage);
+        DigestHelper.getGrandpaConsensusMessage(header.getDigest())
+                .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
         log.log(Level.INFO, "Verified justification. Block hash is now at #"
                 + syncState.getLastFinalizedBlockNumber() + ": "

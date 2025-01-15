@@ -6,11 +6,11 @@ import java.math.BigInteger;
 import java.util.List;
 
 public class ForcedAuthoritySetChange extends AuthoritySetChange {
-    public ForcedAuthoritySetChange(Authority[] authorities, BigInteger delay) {
-        super(authorities, delay);
-    }
+    public ForcedAuthoritySetChange(List<Authority> authorities,
+                                    Long delay,
+                                    Long additionalOffset,
+                                    BigInteger announceBlock) {
 
-    public ForcedAuthoritySetChange(List<Authority> authorities, BigInteger delay) {
-        super(authorities, delay);
+        super(authorities, delay + additionalOffset, announceBlock);
     }
 }
