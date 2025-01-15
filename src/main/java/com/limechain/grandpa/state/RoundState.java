@@ -8,7 +8,6 @@ import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
 import io.libp2p.core.crypto.PubKey;
-import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -43,8 +42,6 @@ public class RoundState {
     private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
     private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
-
-    @PostConstruct
     public void initialize() {
         loadPersistedState();
     }
