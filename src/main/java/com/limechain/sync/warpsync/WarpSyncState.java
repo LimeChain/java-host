@@ -273,7 +273,7 @@ public class WarpSyncState {
 
         List<BlockData> response = requester.requestBlockData(
                 BlockRequestField.ALL,
-                setChangeBlock.intValue(),
+                setChangeBlock.intValueExact(),
                 1
         ).join();
 
