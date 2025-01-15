@@ -124,6 +124,8 @@ public class BlockHandler {
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                 .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
+        roundState.handleAuthoritySetChange(header.getBlockNumber());
+
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }
 }
