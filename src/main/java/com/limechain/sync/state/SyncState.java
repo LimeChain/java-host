@@ -101,7 +101,7 @@ public class SyncState extends AbstractState {
     private boolean updateBlockState(CommitMessage commitMessage, BlockHeader blockHeader) {
         try {
             blockState.setFinalizedHash(blockHeader, commitMessage.getRoundNumber(), commitMessage.getSetId());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.fine(e.getMessage());
             return false;
         }
