@@ -22,7 +22,7 @@ public class GrandpaConsensusMessageReader implements ScaleReader<GrandpaConsens
                 List<Authority> authorities = reader.read(new ListReader<>(new AuthorityReader()));
                 long delay = reader.readUint32();
                 grandpaConsensusMessage.setAuthorities(authorities);
-                grandpaConsensusMessage.setDelay(delay);
+                grandpaConsensusMessage.setDelay(BigInteger.valueOf(delay));
             }
             case GRANDPA_FORCED_CHANGE -> {
                 long delayStartBlockNumber = reader.readUint32();
@@ -30,10 +30,12 @@ public class GrandpaConsensusMessageReader implements ScaleReader<GrandpaConsens
                 long delay = reader.readUint32();
                 grandpaConsensusMessage.setDelayStartBlockNumber(BigInteger.valueOf(delayStartBlockNumber));
                 grandpaConsensusMessage.setAuthorities(authorities);
-                grandpaConsensusMessage.setDelay(delay);
+                grandpaConsensusMessage.setDelay(BigInteger.valueOf(delay));
             }
             case GRANDPA_ON_DISABLED -> grandpaConsensusMessage.setDisabledAuthority(new UInt64Reader().read(reader));
-            case GRANDPA_PAUSE, GRANDPA_RESUME -> grandpaConsensusMessage.setDelay(reader.readUint32());
+            case GRANDPA_PAUSE, GRANDPA_RESUME -> grandpaConsensusMessage.setDelay(
+                    BigInteger.valueOf(reader.readUint32())
+            );
         }
         return grandpaConsensusMessage;
     }

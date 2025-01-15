@@ -22,7 +22,7 @@ class GrandpaConsensusMessageReaderTest {
         assertEquals(GrandpaConsensusMessageFormat.GRANDPA_SCHEDULED_CHANGE, message.getFormat());
         assertNotNull(message.getAuthorities());
         assertEquals(1, message.getAuthorities().size());
-        assertEquals(768L, message.getDelay());
+        assertEquals(BigInteger.valueOf(768L), message.getDelay());
     }
 
     @Test
@@ -36,7 +36,7 @@ class GrandpaConsensusMessageReaderTest {
         assertNotNull(message.getAuthorities());
 
         assertEquals(1, message.getAuthorities().size());
-        assertEquals(768L, message.getDelay());
+        assertEquals(BigInteger.valueOf(768L), message.getDelay());
     }
 
     @Test
@@ -56,7 +56,7 @@ class GrandpaConsensusMessageReaderTest {
         GrandpaConsensusMessage message = reader.read(new ScaleCodecReader(input));
         assertNotNull(message);
         assertEquals(GrandpaConsensusMessageFormat.GRANDPA_PAUSE, message.getFormat());
-        assertEquals(20L, message.getDelay());
+        assertEquals(BigInteger.valueOf(20L), message.getDelay());
     }
 
     @Test
@@ -66,6 +66,6 @@ class GrandpaConsensusMessageReaderTest {
         GrandpaConsensusMessage message = reader.read(new ScaleCodecReader(input));
         assertNotNull(message);
         assertEquals(GrandpaConsensusMessageFormat.GRANDPA_RESUME, message.getFormat());
-        assertEquals(25L, message.getDelay());
+        assertEquals(BigInteger.valueOf(25L), message.getDelay());
     }
 }

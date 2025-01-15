@@ -2,6 +2,8 @@ package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.sync.JustificationVerificationException;
 import com.limechain.grandpa.state.RoundState;
+import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
+import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.SyncState;
@@ -10,6 +12,7 @@ import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
 import lombok.extern.java.Log;
 
+import java.util.Optional;
 import java.util.logging.Level;
 
 // VerifyJustificationState is going to be instantiated a lot of times
@@ -71,15 +74,14 @@ public class VerifyJustificationAction implements WarpSyncAction {
     }
 
     private void handleAuthorityChanges(WarpSyncFragment fragment) {
-        try {
-            roundState.handleGrandpaConsensusMessage(fragment.getHeader().getDigest());
+        Optional<GrandpaConsensusMessage> grandpaConsensusMessage =
+                DigestHelper.getGrandpaConsensusMessage(fragment.getHeader().getDigest());
 
-            log.log(Level.INFO, "Verified justification. Block hash is now at #"
-                    + syncState.getLastFinalizedBlockNumber() + ": "
-                    + syncState.getLastFinalizedBlockHash().toString()
-                    + " with state root " + syncState.getStateRoot());
-        } catch (Exception e) {
-            this.error = e;
-        }
+        grandpaConsensusMessage.ifPresent(roundState::handleGrandpaConsensusMessage);
+
+        log.log(Level.INFO, "Verified justification. Block hash is now at #"
+                + syncState.getLastFinalizedBlockNumber() + ": "
+                + syncState.getLastFinalizedBlockHash().toString()
+                + " with state root " + syncState.getStateRoot());
     }
 }
