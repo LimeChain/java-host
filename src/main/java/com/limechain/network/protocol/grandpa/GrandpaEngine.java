@@ -1,7 +1,7 @@
 package com.limechain.network.protocol.grandpa;
 
 import com.limechain.exception.scale.ScaleEncodingException;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
@@ -42,13 +42,13 @@ public class GrandpaEngine {
     protected ConnectionManager connectionManager;
     protected WarpSyncState warpSyncState;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
-    protected RoundState roundState;
+    protected GrandpaSetState grandpaSetState;
 
     public GrandpaEngine() {
         connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
-        roundState = AppBean.getBean(RoundState.class);
+        grandpaSetState = AppBean.getBean(GrandpaSetState.class);
     }
 
     /**
@@ -144,7 +144,7 @@ public class GrandpaEngine {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         VoteMessage voteMessage = reader.read(VoteMessageScaleReader.getInstance());
         //Maybe we need to add possible roundNumber check
-        roundState.updateVoteMessage(voteMessage);
+        grandpaSetState.handleVoteMessage(voteMessage);
         //todo: handle vote message (authoring node responsibility?)
         log.log(Level.INFO, "Received vote message from Peer " + peerId + "\n" + voteMessage);
     }
