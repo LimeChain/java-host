@@ -13,16 +13,16 @@ import java.util.List;
 public class AuthoritySetChange {
 
     private List<Authority> authorities;
-    private Long delay;
-    private BigInteger applicationBlock;
+    private BigInteger delay;
+    private BigInteger applicationBlockNumber;
 
-    public AuthoritySetChange(List<Authority> authorities, Long delay, BigInteger announceBlock) {
+    public AuthoritySetChange(List<Authority> authorities, BigInteger delay, BigInteger announceBlockNumber) {
         this.authorities = authorities;
         this.delay = delay;
-        this.applicationBlock = announceBlock.add(BigInteger.valueOf(delay));
+        this.applicationBlockNumber = announceBlockNumber.add(delay);
     }
 
-    // ForcedAuthoritySetChange has priority over ScheduledAuthoritySetChanges
+    // ForcedAuthoritySetChange has priority over ScheduledAuthoritySetChange
     public static Comparator<AuthoritySetChange> getComparator() {
         return (c1, c2) -> {
 

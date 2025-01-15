@@ -11,7 +11,7 @@ public class GrandpaConsensusMessage {
     private GrandpaConsensusMessageFormat format;
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
-    private Long delay;
+    private BigInteger delay;
     // this is denoted as 'm' in the polkadot spec
-    private Long additionalOffset;
+    private BigInteger additionalOffset;
 }

@@ -6,7 +6,7 @@ import java.math.BigInteger;
 import java.util.List;
 
 public class ScheduledAuthoritySetChange extends AuthoritySetChange {
-    public ScheduledAuthoritySetChange(List<Authority> authorities, Long delay, BigInteger announceBlock) {
+    public ScheduledAuthoritySetChange(List<Authority> authorities, BigInteger delay, BigInteger announceBlock) {
         super(authorities, delay, announceBlock);
     }
 }

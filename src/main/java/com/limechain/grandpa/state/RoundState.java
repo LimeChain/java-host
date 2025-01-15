@@ -164,7 +164,7 @@ public class RoundState {
         boolean updated = false;
         while (changeSetData != null) {
 
-            if (changeSetData.getApplicationBlock().compareTo(blockNumber) > 0) {
+            if (changeSetData.getApplicationBlockNumber().compareTo(blockNumber) > 0) {
                 break;
             }
 
@@ -178,11 +178,6 @@ public class RoundState {
         return updated;
     }
 
-    /**
-     * Handles grandpa consensus message
-     *
-     * @param consensusMessage grandpa consensus message provided by any block header digest
-     */
     public void handleGrandpaConsensusMessage(GrandpaConsensusMessage consensusMessage, BigInteger currentBlockNumber) {
         switch (consensusMessage.getFormat()) {
             case GRANDPA_SCHEDULED_CHANGE -> authoritySetChanges.add(new ScheduledAuthoritySetChange(

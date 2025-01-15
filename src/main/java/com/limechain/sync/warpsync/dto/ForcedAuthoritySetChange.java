@@ -7,10 +7,10 @@ import java.util.List;
 
 public class ForcedAuthoritySetChange extends AuthoritySetChange {
     public ForcedAuthoritySetChange(List<Authority> authorities,
-                                    Long delay,
-                                    Long additionalOffset,
+                                    BigInteger delay,
+                                    BigInteger additionalOffset,
                                     BigInteger announceBlock) {
 
-        super(authorities, delay + additionalOffset, announceBlock);
+        super(authorities, delay.add(additionalOffset), announceBlock);
     }
 }
