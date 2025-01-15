@@ -23,7 +23,7 @@ import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
-import com.limechain.storage.block.SyncState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.sync.JustificationVerifier;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.GrandpaDigestMessageType;

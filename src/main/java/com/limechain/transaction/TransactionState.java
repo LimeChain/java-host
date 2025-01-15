@@ -1,11 +1,11 @@
 package com.limechain.transaction;
 
+import com.limechain.state.AbstractState;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ValidTransaction;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.HashUtils;
 import io.libp2p.core.PeerId;
-import lombok.Getter;
 import lombok.extern.java.Log;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
@@ -23,10 +23,7 @@ import java.util.stream.Collectors;
 
 @Log
 @Component
-public class TransactionState {
-
-    @Getter
-    private boolean isInitialized = false;
+public class TransactionState extends AbstractState {
 
     private final TransactionPool transactionPool;
     private final Queue<ValidTransaction> transactionQueue;
@@ -36,10 +33,6 @@ public class TransactionState {
         transactionPool = new TransactionPool();
         executor = Executors.newSingleThreadExecutor();
         transactionQueue = new PriorityQueue<>();
-    }
-
-    public void initialize() {
-        isInitialized = true;
     }
 
     public byte[] pushTransaction(ValidTransaction validTransaction) {

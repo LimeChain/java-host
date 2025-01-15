@@ -4,14 +4,15 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
 import io.libp2p.core.crypto.PubKey;
-import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -27,8 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Getter
 @Setter //TODO: remove it when initialize() method is implemented
+@Component
 @RequiredArgsConstructor
-public class RoundState {
+public class RoundState extends AbstractState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
     private final KVRepository<String, Object> repository;
@@ -43,10 +45,24 @@ public class RoundState {
     private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
     private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
-
-    @PostConstruct
+    @Override
     public void initialize() {
+        initialized = true;
+        //TODO: Find a way to initiate a runtime instance during node startup to populate from genesis.
+    }
+
+    @Override
+    public void initializeFromDatabase() {
         loadPersistedState();
+    }
+
+    @Override
+    public void persistState() {
+        saveGrandpaAuthorities();
+        saveAuthoritySetId();
+        saveLatestRound();
+        savePrecommits();
+        savePrevotes();
     }
 
     /**
@@ -120,14 +136,6 @@ public class RoundState {
         this.roundNumber = fetchLatestRound();
         this.precommits = fetchPrecommits();
         this.prevotes = fetchPrevotes();
-    }
-
-    public void persistState() {
-        saveGrandpaAuthorities();
-        saveAuthoritySetId();
-        saveLatestRound();
-        savePrecommits();
-        savePrevotes();
     }
 
     public BigInteger incrementSetId() {

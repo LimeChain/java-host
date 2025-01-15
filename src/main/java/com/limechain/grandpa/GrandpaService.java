@@ -6,7 +6,7 @@ import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.crypto.PubKey;
 import lombok.extern.java.Log;

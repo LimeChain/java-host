@@ -2,18 +2,18 @@ package com.limechain.sync.warpsync;
 
 import com.google.protobuf.ByteString;
 import com.limechain.exception.global.RuntimeCodeException;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
+import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.network.PeerRequester;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
-import com.limechain.storage.block.SyncState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.trie.decoded.Trie;
 import com.limechain.trie.decoded.TrieVerifier;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
@@ -57,7 +57,7 @@ class WarpSyncActionTest {
     @Mock
     private KVRepository<String, Object> repository;
     @Mock
-    private Network network;
+    private NetworkService network;
     @Mock
     private Hash256 lastFinalizedBlockHash;
     @Mock

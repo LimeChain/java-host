@@ -4,9 +4,10 @@ import com.limechain.chain.ChainService;
 import com.limechain.chain.spec.ChainSpec;
 import com.limechain.chain.spec.ChainType;
 import com.limechain.config.SystemInfo;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
-import com.limechain.storage.block.SyncState;
+import com.limechain.storage.block.state.BlockState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,18 +24,20 @@ class SystemRPCImplTest {
     // Dependencies
     private ChainService chainService;
     private WarpSyncMachine warpSync;
-    private Network network;
+    private NetworkService network;
     private SystemInfo systemInfo;
     private SyncState syncState;
+    private BlockState blockState;
 
     @BeforeEach
     public void setup() {
         chainService = mock(ChainService.class);
         systemInfo = mock(SystemInfo.class);
         warpSync = mock(WarpSyncMachine.class);
-        network = mock(Network.class);
+        network = mock(NetworkService.class);
         syncState = mock(SyncState.class);
-        systemRPC = new SystemRPCImpl(chainService, systemInfo, network, warpSync, syncState);
+        blockState = mock(BlockState.class);
+        systemRPC = new SystemRPCImpl(chainService, systemInfo, network, warpSync, syncState, blockState);
     }
 
     @Test

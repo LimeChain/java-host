@@ -8,13 +8,13 @@ import com.limechain.exception.global.ExecutionFailedException;
 import com.limechain.exception.global.ThreadInterruptedException;
 import com.limechain.exception.rpc.PeerNotFoundException;
 import com.limechain.network.ConnectionManager;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import com.limechain.network.dto.PeerInfo;
-import com.limechain.storage.block.BlockState;
-import com.limechain.storage.block.SyncState;
+import com.limechain.storage.block.state.BlockState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import io.libp2p.core.PeerId;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
@@ -31,17 +31,17 @@ import static java.util.Map.entry;
  * described in {@link com.limechain.rpc.methods.RPCMethodsImpl} it doesn't do that
  */
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class SystemRPCImpl {
     /**
      * Reference to services used when executing business logic
      */
     private final ChainService chainService;
     private final SystemInfo systemInfo;
-    private final Network network;
+    private final NetworkService network;
     private final WarpSyncMachine warpSync;
     private final SyncState syncState;
-    private final BlockState blockState = BlockState.getInstance();
+    private final BlockState blockState;
     private final ConnectionManager connectionManager = ConnectionManager.getInstance();
 
     /**

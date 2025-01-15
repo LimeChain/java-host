@@ -1,9 +1,9 @@
 package com.limechain.config;
 
 import com.limechain.chain.Chain;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
-import com.limechain.storage.block.SyncState;
+import com.limechain.sync.state.SyncState;
 import io.libp2p.core.Host;
 import io.libp2p.core.PeerId;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class SystemInfoTest {
         when(hostConfig.getChain()).thenReturn(Chain.POLKADOT);
         when(hostConfig.getRocksDbPath()).thenReturn("./test/db");
 
-        Network network = mock(Network.class);
+        NetworkService network = mock(NetworkService.class);
         Host host = mock(Host.class);
         when(host.getPeerId()).thenReturn(PeerId.fromBase58("12D3KooWRHfNJwkKeSJWD28hYFyA18dcN9qU1JEzJJaguarDPS"));
         when(network.getHost()).thenReturn(host);

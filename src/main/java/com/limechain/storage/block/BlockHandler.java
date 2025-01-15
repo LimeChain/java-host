@@ -11,6 +11,7 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.transaction.TransactionProcessor;
 import com.limechain.utils.async.AsyncExecutor;
 import io.libp2p.core.PeerId;
@@ -37,17 +38,18 @@ public class BlockHandler {
     private final BlockProductionVerifier verifier;
 
     public BlockHandler(EpochState epochState,
+                        BlockState blockState,
                         PeerRequester requester,
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor,
                         PeerMessageCoordinator messageCoordinator) {
         this.epochState = epochState;
+        this.blockState = blockState;
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
         this.builder = builder;
         this.transactionProcessor = transactionProcessor;
         this.verifier = new BlockProductionVerifier();
-        blockState = BlockState.getInstance();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
     }
 

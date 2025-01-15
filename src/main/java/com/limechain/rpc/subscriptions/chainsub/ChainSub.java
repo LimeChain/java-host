@@ -8,7 +8,8 @@ import com.limechain.rpc.pubsub.Message;
 import com.limechain.rpc.pubsub.PubSubService;
 import com.limechain.rpc.pubsub.Topic;
 import com.limechain.rpc.pubsub.messages.JsonRpcWsResponseMessage;
-import com.limechain.storage.block.BlockState;
+import com.limechain.rpc.server.AppBean;
+import com.limechain.storage.block.state.BlockState;
 import lombok.NoArgsConstructor;
 import lombok.extern.java.Log;
 
@@ -21,7 +22,7 @@ public class ChainSub {
     private static final ChainSub INSTANCE = new ChainSub();
     private final PubSubService pubSubService = PubSubService.getInstance();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final BlockState blockState = BlockState.getInstance();
+    private final BlockState blockState = AppBean.getBean(BlockState.class);
 
     /**
      * Gets the singleton reference
@@ -64,7 +65,7 @@ public class ChainSub {
         pubSubService.broadcast();
         pubSubService.notifySubscribers();
     }
-    
+
     /**
      * Creates a message from a block header and a topic.
      * This method serializes the block header into a JSON string and wraps it into a message.
