@@ -1,12 +1,12 @@
 package com.limechain.rpc.methods.childstate;
 
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.trie.structure.database.NodeData;
 import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.types.Hash256;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Array;
@@ -15,11 +15,11 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ChildStateRPCImpl {
-    @Autowired
-    private TrieStorage trieStorage;
 
-    private final BlockState blockState = BlockState.getInstance();
+    private final TrieStorage trieStorage;
+    private final BlockState blockState;
 
     /**
      * Retrieves a list of storage keys that match a given prefix within a specific child storage and block.
@@ -69,8 +69,8 @@ public class ChildStateRPCImpl {
     /**
      * Retrieves the storage hash for a specific key within a child storage and block.
      *
-     * @param childKeyHex The hexadecimal representation of the child storage key.
-     * @param keyHex The key (in hexadecimal format) for which to retrieve the storage hash.
+     * @param childKeyHex  The hexadecimal representation of the child storage key.
+     * @param keyHex       The key (in hexadecimal format) for which to retrieve the storage hash.
      * @param blockHashHex The block hash (in hexadecimal format) to scope the search.
      * @return The storage hash in hexadecimal format, or {@code null} if the block state is not initialized or the hash does not exist.
      */
@@ -90,8 +90,8 @@ public class ChildStateRPCImpl {
     /**
      * Retrieves the storage size for a specific key within a child storage and block.
      *
-     * @param childKeyHex The hexadecimal representation of the child storage key.
-     * @param keyHex The key (in hexadecimal format) for which to retrieve the storage size.
+     * @param childKeyHex  The hexadecimal representation of the child storage key.
+     * @param keyHex       The key (in hexadecimal format) for which to retrieve the storage size.
      * @param blockHashHex The block hash (in hexadecimal format) to scope the search.
      * @return The storage size as a string, or {@code null} if the block state is not initialized or the key does not exist.
      */

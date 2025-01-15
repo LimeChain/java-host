@@ -5,7 +5,7 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.server.AppBean;
-import com.limechain.storage.block.SyncState;
+import com.limechain.sync.state.SyncState;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass

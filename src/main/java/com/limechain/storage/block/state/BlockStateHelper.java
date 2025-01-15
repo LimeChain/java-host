@@ -1,4 +1,4 @@
-package com.limechain.storage.block;
+package com.limechain.storage.block.state;
 
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
@@ -10,6 +10,7 @@ import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
 import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import io.emeraldpay.polkaj.types.Hash256;
+import lombok.experimental.UtilityClass;
 import org.javatuples.Pair;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,9 +20,10 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+@UtilityClass
 public final class BlockStateHelper {
-    private final UInt64Writer uint64Writer = new UInt64Writer();
-    private final UInt64Reader uint64Reader = new UInt64Reader();
+    private static final UInt64Writer uint64Writer = new UInt64Writer();
+    private static final UInt64Reader uint64Reader = new UInt64Reader();
 
     @NotNull
     public String headerKey(Hash256 key) {

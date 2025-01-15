@@ -24,7 +24,7 @@ import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.block.BlockHandler;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.transaction.TransactionState;
@@ -252,7 +252,7 @@ public class BabeService implements SlotChangeListener {
             throw new BlockStorageGenericException("Could not get best block header");
         }
 
-        boolean parentIsGenesis = blockState.getGenesisHash().equals(parentHeader.getHash());
+        boolean parentIsGenesis = blockState.getGenesisBlockHeader().getHash().equals(parentHeader.getHash());
         if (!parentIsGenesis) {
             BigInteger bestBlockSlotNum = DigestHelper.getBabePreRuntimeDigest(parentHeader.getDigest())
                     .orElseThrow(() ->

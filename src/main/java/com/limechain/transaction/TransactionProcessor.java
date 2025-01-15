@@ -7,7 +7,7 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.version.ApiVersionName;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.TransactionSource;
 import com.limechain.transaction.dto.TransactionValidationRequest;
@@ -33,10 +33,12 @@ public class TransactionProcessor {
     private final PeerMessageCoordinator messageCoordinator;
     private final BlockState blockState;
 
-    public TransactionProcessor(TransactionState transactionState, PeerMessageCoordinator messageCoordinator) {
+    public TransactionProcessor(TransactionState transactionState,
+                                BlockState blockState,
+                                PeerMessageCoordinator messageCoordinator) {
         this.transactionState = transactionState;
+        this.blockState = blockState;
         this.messageCoordinator = messageCoordinator;
-        this.blockState = BlockState.getInstance();
     }
 
     public void handleExternalTransactions(Extrinsic[] extrinsics, PeerId peerId) {

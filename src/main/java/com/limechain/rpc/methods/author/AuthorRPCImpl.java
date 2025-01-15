@@ -5,7 +5,7 @@ import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.transaction.TransactionValidationException;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
 import com.limechain.runtime.Runtime;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.transaction.TransactionProcessor;
@@ -16,6 +16,7 @@ import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import io.emeraldpay.polkaj.schnorrkel.SchnorrkelException;
 import io.libp2p.crypto.keys.Ed25519PrivateKey;
+import lombok.RequiredArgsConstructor;
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
 import org.javatuples.Pair;
 import org.springframework.stereotype.Service;
@@ -24,18 +25,12 @@ import java.util.Arrays;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AuthorRPCImpl {
 
     private final BlockState blockState;
     private final TransactionProcessor transactionProcessor;
     private final KeyStore keyStore;
-
-    public AuthorRPCImpl(TransactionProcessor transactionProcessor, KeyStore keyStore) {
-
-        this.blockState = BlockState.getInstance();
-        this.transactionProcessor = transactionProcessor;
-        this.keyStore = keyStore;
-    }
 
     public String authorRotateKeys() {
         Runtime runtime;

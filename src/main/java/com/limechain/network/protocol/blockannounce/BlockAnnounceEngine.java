@@ -10,7 +10,7 @@ import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshake
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleReader;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.BlockHandler;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
@@ -23,7 +23,6 @@ import lombok.extern.java.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.logging.Level;
 
 @Log
@@ -93,7 +92,7 @@ public class BlockAnnounceEngine {
                 " parentHash:" + announce.getHeader().getParentHash() +
                 " stateRoot:" + announce.getHeader().getStateRoot());
 
-        if (BlockState.getInstance().isInitialized()) {
+        if (AppBean.getBean(BlockState.class).isInitialized()) {
             //TODO Network improvements: Block requests should be sent to the peer that announced the block itself.
             blockHandler.handleBlockHeader(Instant.now(), announce.getHeader(), peerId);
         }

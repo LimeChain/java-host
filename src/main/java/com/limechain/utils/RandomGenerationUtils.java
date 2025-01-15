@@ -1,6 +1,6 @@
 package com.limechain.utils;
 
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import io.ipfs.multiaddr.MultiAddress;
 import lombok.experimental.UtilityClass;
 
@@ -47,6 +47,6 @@ public class RandomGenerationUtils {
      * @return a new MultiAddress instance representing a random local network address
      */
     public static MultiAddress generateRandomAddress() {
-        return new MultiAddress(Network.LOCAL_IPV4_TCP_ADDRESS + generateRandomPort());
+        return new MultiAddress(NetworkService.LOCAL_IPV4_TCP_ADDRESS + generateRandomPort());
     }
 }

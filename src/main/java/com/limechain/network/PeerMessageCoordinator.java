@@ -21,9 +21,9 @@ import java.util.function.Consumer;
 public class PeerMessageCoordinator {
 
     private final AsyncExecutor asyncExecutor;
-    private final Network network;
+    private final NetworkService network;
 
-    public PeerMessageCoordinator(Network network) {
+    public PeerMessageCoordinator(NetworkService network) {
         this.network = network;
 
         asyncExecutor = AsyncExecutor.withPoolSize(50);
@@ -66,7 +66,7 @@ public class PeerMessageCoordinator {
      * those specified in the provided set. The excluded peers are typically the ones that
      * originally sent the transaction to our node.
      *
-     * @param extrinsic    the transaction data to encode and propagate to peers.
+     * @param extrinsic     the transaction data to encode and propagate to peers.
      * @param peersToIgnore a set of peer IDs that should not receive the transaction
      */
     public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> peersToIgnore) {

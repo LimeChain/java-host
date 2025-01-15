@@ -8,7 +8,7 @@ import com.limechain.config.HostConfig;
 import com.limechain.config.SystemInfo;
 import com.limechain.constants.GenesisBlockHash;
 import com.limechain.grandpa.state.RoundState;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.rpc.server.UnsafeInterceptor;
@@ -16,9 +16,11 @@ import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.DBInitializer;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.BlockHandler;
-import com.limechain.storage.block.SyncState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.trie.TrieStorage;
+import com.limechain.sync.SyncService;
 import com.limechain.sync.fullsync.FullSyncMachine;
+import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.transaction.TransactionState;
@@ -72,24 +74,17 @@ public class CommonConfig {
     }
 
     @Bean
-    public SyncState syncState(GenesisBlockHash genesisBlockHash, KVRepository<String, Object> repository) {
-        return new SyncState(genesisBlockHash, repository);
-    }
-
-    @Bean
-    public SystemInfo systemInfo(HostConfig hostConfig, Network network, SyncState syncState) {
+    public SystemInfo systemInfo(HostConfig hostConfig, NetworkService network, SyncState syncState) {
         return new SystemInfo(hostConfig, network, syncState);
     }
 
     @Bean
-    public Network network(ChainService chainService, HostConfig hostConfig, KVRepository<String, Object> repository,
-                           CliArguments cliArgs, GenesisBlockHash genesisBlockHash) {
-        return new Network(chainService, hostConfig, repository, cliArgs, genesisBlockHash);
-    }
-
-    @Bean
-    public RoundState roundState(KVRepository<String, Object> repository) {
-        return new RoundState(repository);
+    public NetworkService networkService(ChainService chainService,
+                                         HostConfig hostConfig,
+                                         KVRepository<String, Object> repository,
+                                         CliArguments cliArgs,
+                                         GenesisBlockHash genesisBlockHash) {
+        return new NetworkService(chainService, hostConfig, repository, cliArgs, genesisBlockHash);
     }
 
     @Bean
@@ -103,19 +98,33 @@ public class CommonConfig {
     }
 
     @Bean
-    public WarpSyncMachine warpSyncMachine(Network network, ChainService chainService, SyncState syncState,
-                                           WarpSyncState warpSyncState, RoundState roundState) {
-        return new WarpSyncMachine(network, chainService, syncState, warpSyncState, roundState);
+    public SyncService syncService(WarpSyncMachine warpSyncMachine,
+                                   FullSyncMachine fullSyncMachine,
+                                   PeerMessageCoordinator peerMessageCoordinator,
+                                   CliArguments arguments) {
+        return new SyncService(warpSyncMachine, fullSyncMachine, peerMessageCoordinator, arguments);
     }
 
     @Bean
-    public FullSyncMachine fullSyncMachine(HostConfig hostConfig, Network network,
+    public WarpSyncMachine warpSyncMachine(NetworkService network,
+                                           ChainService chainService,
                                            SyncState syncState,
+                                           WarpSyncState warpSyncState,
+                                           RoundState roundState,
+                                           BlockState blockState) {
+        return new WarpSyncMachine(network, chainService, syncState, warpSyncState, roundState, blockState);
+    }
+
+    @Bean
+    public FullSyncMachine fullSyncMachine(HostConfig hostConfig, NetworkService network,
+                                           SyncState syncState,
+                                           BlockState blockState,
                                            TransactionState transactionState,
                                            PeerRequester requester,
                                            PeerMessageCoordinator coordinator,
                                            BlockHandler blockHandler) {
-        return new FullSyncMachine(network, syncState, transactionState, requester, coordinator, blockHandler, hostConfig);
+        return new FullSyncMachine(network, syncState, blockState, transactionState,
+                requester, coordinator, blockHandler, hostConfig);
     }
 
     @Bean

@@ -27,7 +27,7 @@ public class EpochStateTest {
     public void testGetCurrentSlotNumber() {
         BigInteger slotDuration = BigInteger.valueOf(6000);
         when(babeApiConfiguration.getSlotDuration()).thenReturn(slotDuration);
-        epochState.initialize(babeApiConfiguration);
+        epochState.populateDataFromRuntime(babeApiConfiguration);
 
         Instant now = Instant.now();
         long expectedSlotNumber = now.toEpochMilli() / slotDuration.longValue();

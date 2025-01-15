@@ -29,9 +29,9 @@ public class PeerRequester {
     private static final String BLOCK_REQUEST_ERROR = "There was an issue in the block request: ";
 
     private final AsyncExecutor asyncExecutor;
-    private final Network network;
+    private final NetworkService network;
 
-    public PeerRequester(Network network) {
+    public PeerRequester(NetworkService network) {
         this.network = network;
 
         asyncExecutor = AsyncExecutor.withPoolSize(50);

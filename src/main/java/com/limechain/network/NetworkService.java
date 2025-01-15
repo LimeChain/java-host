@@ -1,5 +1,6 @@
 package com.limechain.network;
 
+import com.limechain.NodeService;
 import com.limechain.chain.Chain;
 import com.limechain.chain.ChainService;
 import com.limechain.cli.CliArguments;
@@ -26,12 +27,14 @@ import io.libp2p.core.PeerId;
 import io.libp2p.core.multiformats.Multiaddr;
 import io.libp2p.crypto.keys.Ed25519PrivateKey;
 import io.libp2p.protocol.PingProtocol;
+import jakarta.annotation.PreDestroy;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.java.Log;
 import org.peergos.HostBuilder;
 import org.peergos.protocol.IdentifyBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
@@ -47,11 +50,10 @@ import static com.limechain.network.kad.KademliaService.REPLICATION;
  */
 @Log
 @Getter
-@Component
-public class Network {
+@Service
+public class NetworkService implements NodeService {
     public static final String LOCAL_IPV4_TCP_ADDRESS = "/ip4/127.0.0.1/tcp/";
     private static final int HOST_PORT = 30333;
-    private static final int ASYNC_EXECUTOR_POOL_SIZE = 10;
     private static final Random RANDOM = new Random();
 
     private final Chain chain;
@@ -89,8 +91,8 @@ public class Network {
      * @param cliArgs          command line arguments
      * @param genesisBlockHash genesis block hash
      */
-    public Network(ChainService chainService, HostConfig hostConfig, KVRepository<String, Object> repository,
-                   CliArguments cliArgs, GenesisBlockHash genesisBlockHash) {
+    public NetworkService(ChainService chainService, HostConfig hostConfig, KVRepository<String, Object> repository,
+                          CliArguments cliArgs, GenesisBlockHash genesisBlockHash) {
         this.bootNodes = chainService.getChainSpec().getBootNodes();
         this.chain = hostConfig.getChain();
         this.nodeRole = hostConfig.getNodeRole();
@@ -187,13 +189,32 @@ public class Network {
         return privateKey;
     }
 
+    @SneakyThrows
+    @Override
     public void start() {
         log.log(Level.INFO, "Starting network module...");
         kademliaService.connectBootNodes(this.bootNodes);
         started = true;
         log.log(Level.INFO, "Started network module!");
+
+        // Wait for peers
+        while (true) {
+            if (!kademliaService.getBootNodePeerIds().isEmpty()) {
+                if (kademliaService.getSuccessfulBootNodes() > 0) {
+                    break;
+                }
+                updateCurrentSelectedPeer();
+            }
+
+            log.log(Level.INFO, "Waiting for peer connection...");
+            Thread.sleep(10000);
+        }
+
+        log.log(Level.INFO, "Node successfully connected to a peer! Sync can start!");
     }
 
+    @Override
+    @PreDestroy
     public void stop() {
         log.log(Level.INFO, "Stopping network module...");
         started = false;

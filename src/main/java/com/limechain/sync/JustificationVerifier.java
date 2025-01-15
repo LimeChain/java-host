@@ -6,7 +6,6 @@ import com.limechain.network.protocol.warp.dto.Precommit;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.hostapi.dto.Key;
 import com.limechain.runtime.hostapi.dto.VerifySignature;
-import com.limechain.storage.block.SyncState;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.StringUtils;

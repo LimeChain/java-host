@@ -6,10 +6,10 @@ import com.limechain.exception.storage.HeaderNotFoundException;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.types.Hash256;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
@@ -21,11 +21,11 @@ import java.util.Objects;
 import java.util.function.Function;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ChainRPCImpl {
 
     private static final String HEX_PREFIX = "0x";
-    private final BlockState blockState = BlockState.getInstance();
+    private final BlockState blockState;
 
     /**
      * Converts a BlockHeader object into a map representation.
