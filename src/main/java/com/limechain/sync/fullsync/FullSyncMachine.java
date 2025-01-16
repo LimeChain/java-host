@@ -115,7 +115,7 @@ public class FullSyncMachine {
         blockState.storeRuntime(lastFinalizedBlockHash, runtime);
 
         Hash256 genesisStateRoot = genesisBlockHash.getGenesisBlockHeader().getStateRoot();
-        if (!stateRoot.equals(genesisStateRoot)) {
+        if (stateRoot.equals(genesisStateRoot)) {
             epochState.populateDataFromRuntime(runtime);
             roundState.populateDataFromRuntime(runtime);
         }
