@@ -194,7 +194,7 @@ public class Authorship {
         var authorityIndex = rand.mod(authoritiesCount);
 
         if (authorityIndex.compareTo(authoritiesCount) < 0) {
-            return authorityIndex.intValue();
+            return authorityIndex.intValueExact();
         }
 
         return null;

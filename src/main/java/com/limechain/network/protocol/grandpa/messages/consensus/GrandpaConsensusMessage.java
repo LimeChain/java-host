@@ -8,9 +8,10 @@ import java.util.List;
 
 @Data
 public class GrandpaConsensusMessage {
-    private BigInteger delayStartBlockNumber;
+    private GrandpaConsensusMessageFormat format;
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
-    private long delay;
-    private GrandpaConsensusMessageFormat format;
+    private BigInteger delay;
+    // this is denoted as 'm' in the polkadot spec
+    private BigInteger additionalOffset;
 }

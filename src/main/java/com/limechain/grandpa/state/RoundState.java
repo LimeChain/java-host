@@ -4,26 +4,34 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import com.limechain.sync.warpsync.dto.AuthoritySetChange;
+import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
+import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
 import io.libp2p.core.crypto.PubKey;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.extern.java.Log;
 
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 /**
  * Represents the state information for the current round and authorities that are needed
  * for block finalization with GRANDPA.
  * Note: Intended for use only when the host is configured as an Authoring Node.
  */
+@Log
 @Getter
 @Setter //TODO: remove it when initialize() method is implemented
 @RequiredArgsConstructor
@@ -35,6 +43,8 @@ public class RoundState {
     private List<Authority> authorities;
     private BigInteger setId;
     private BigInteger roundNumber;
+
+    private final PriorityQueue<AuthoritySetChange> authoritySetChanges = new PriorityQueue<>(AuthoritySetChange.getComparator());
 
     //TODO: This may not be the best place for those maps
     private Map<PubKey, Vote> precommits = new ConcurrentHashMap<>();
@@ -127,17 +137,69 @@ public class RoundState {
         savePrevotes();
     }
 
-    public BigInteger incrementSetId() {
+    public void startNewSet(List<Authority> authorities) {
         this.setId = setId.add(BigInteger.ONE);
-        return setId;
-    }
+        this.roundNumber = BigInteger.ZERO;
+        this.authorities = authorities;
 
-    public void resetRound() {
-        this.roundNumber = BigInteger.ONE;
+        log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
 
     public void setLightSyncState(LightSyncState initState) {
         this.setId = initState.getGrandpaAuthoritySet().getSetId();
         this.authorities = Arrays.asList(initState.getGrandpaAuthoritySet().getCurrentAuthorities());
+    }
+
+    /**
+     * Apply scheduled or forced authority set changes from the queue if present
+     *
+     * @param blockNumber required to determine if it's time to apply the change
+     */
+    public boolean handleAuthoritySetChange(BigInteger blockNumber) {
+        AuthoritySetChange changeSetData = authoritySetChanges.peek();
+
+        boolean updated = false;
+        while (changeSetData != null) {
+
+            if (changeSetData.getApplicationBlockNumber().compareTo(blockNumber) > 0) {
+                break;
+            }
+
+            startNewSet(changeSetData.getAuthorities());
+            authoritySetChanges.poll();
+            updated = true;
+
+            changeSetData = authoritySetChanges.peek();
+        }
+
+        return updated;
+    }
+
+    public void handleGrandpaConsensusMessage(GrandpaConsensusMessage consensusMessage, BigInteger currentBlockNumber) {
+        switch (consensusMessage.getFormat()) {
+            case GRANDPA_SCHEDULED_CHANGE -> authoritySetChanges.add(new ScheduledAuthoritySetChange(
+                    consensusMessage.getAuthorities(),
+                    consensusMessage.getDelay(),
+                    currentBlockNumber
+            ));
+            case GRANDPA_FORCED_CHANGE -> authoritySetChanges.add(new ForcedAuthoritySetChange(
+                    consensusMessage.getAuthorities(),
+                    consensusMessage.getDelay(),
+                    consensusMessage.getAdditionalOffset(),
+                    currentBlockNumber
+            ));
+            //TODO: Implement later
+            case GRANDPA_ON_DISABLED -> {
+                log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
+            }
+            case GRANDPA_PAUSE -> {
+                log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
+            }
+            case GRANDPA_RESUME -> {
+                log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
+            }
+        }
+
+        log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
     }
 }

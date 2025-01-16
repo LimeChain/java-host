@@ -22,9 +22,9 @@ public class VarUint64Writer implements ScaleWriter<BigInteger> {
             throw new IllegalArgumentException("Negative values are not supported: " + value);
         }
         if (blockNumSize > 0) {
-            wrt.directWrite(value.and(BigInteger.valueOf(255L)).intValue());
+            wrt.directWrite(value.and(BigInteger.valueOf(255L)).intValueExact());
             for (int i = 1; i < blockNumSize; i++) {
-                wrt.directWrite(value.shiftRight(8 * i).and(BigInteger.valueOf(255L)).intValue());
+                wrt.directWrite(value.shiftRight(8 * i).and(BigInteger.valueOf(255L)).intValueExact());
             }
         }
     }

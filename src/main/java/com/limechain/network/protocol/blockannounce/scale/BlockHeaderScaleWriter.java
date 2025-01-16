@@ -37,7 +37,7 @@ public class BlockHeaderScaleWriter implements ScaleWriter<BlockHeader> {
         writer.writeUint256(blockHeader.getParentHash().getBytes());
         // NOTE: Usage of BlockNumberWriter is intentionally omitted here,
         //  since we want this to be a compact int, not a var size int
-        writer.writeCompact(blockHeader.getBlockNumber().intValue());
+        writer.writeCompact(blockHeader.getBlockNumber().intValueExact());
         writer.writeUint256(blockHeader.getStateRoot().getBytes());
         writer.writeUint256(blockHeader.getExtrinsicsRoot().getBytes());
 

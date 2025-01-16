@@ -115,7 +115,7 @@ public class FullSyncMachine {
 
         int startNumber = syncState.getLastFinalizedBlockNumber()
                 .add(BigInteger.ONE)
-                .intValue();
+                .intValueExact();
 
         int blocksToFetch = 100;
         List<Block> receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
