@@ -58,7 +58,7 @@ public class RoundState extends AbstractState implements ServiceConsensusState {
     private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
     @Override
-    public void initializeFromRuntime(Runtime runtime) {
+    public void populateDataFromRuntime(Runtime runtime) {
         this.authorities = runtime.getGrandpaApiGrandpaAuthorities();
         this.setId = BigInteger.ZERO;
         this.roundNumber = BigInteger.ZERO;

@@ -1,7 +1,6 @@
 package com.limechain.babe.state;
 
 import com.limechain.ServiceConsensusState;
-import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.consensus.BabeConsensusMessage;
 import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
@@ -37,8 +36,14 @@ public class EpochState extends AbstractState implements ServiceConsensusState {
     private EpochDescriptor nextEpochDescriptor;
 
     @Override
-    public void initializeFromRuntime(Runtime runtime) {
-        populateDataFromRuntime(runtime.getBabeApiConfiguration());
+    public void populateDataFromRuntime(Runtime runtime) {
+        var babeApiConfiguration = runtime.getBabeApiConfiguration();
+        this.slotDuration = babeApiConfiguration.getSlotDuration();
+        this.epochLength = babeApiConfiguration.getEpochLength();
+        this.currentEpochData = new EpochData(
+                babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
+        this.currentEpochDescriptor = new EpochDescriptor(
+                babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
         setGenesisSlotNumber(runtime.getGenesisSlotNumber());
     }
 
@@ -50,15 +55,6 @@ public class EpochState extends AbstractState implements ServiceConsensusState {
     @Override
     public void persistState() {
         //TODO: Add methods to store epoch state data.
-    }
-
-    public void populateDataFromRuntime(BabeApiConfiguration babeApiConfiguration) {
-        this.slotDuration = babeApiConfiguration.getSlotDuration();
-        this.epochLength = babeApiConfiguration.getEpochLength();
-        this.currentEpochData = new EpochData(
-                babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
-        this.currentEpochDescriptor = new EpochDescriptor(
-                babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
     }
 
     public void updateNextEpochConfig(BabeConsensusMessage message) {

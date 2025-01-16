@@ -10,5 +10,5 @@ import com.limechain.runtime.Runtime;
  */
 public interface ServiceConsensusState {
 
-    void initializeFromRuntime(Runtime runtime);
+    void populateDataFromRuntime(Runtime runtime);
 }

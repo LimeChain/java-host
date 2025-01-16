@@ -115,9 +115,9 @@ public class FullSyncMachine {
         blockState.storeRuntime(lastFinalizedBlockHash, runtime);
 
         Hash256 genesisStateRoot = genesisBlockHash.getGenesisBlockHeader().getStateRoot();
-        if (stateRoot.equals(genesisStateRoot)) {
-            epochState.initializeFromRuntime(runtime);
-            roundState.initializeFromRuntime(runtime);
+        if (!stateRoot.equals(genesisStateRoot)) {
+            epochState.populateDataFromRuntime(runtime);
+            roundState.populateDataFromRuntime(runtime);
         }
 
         int startNumber = syncState.getLastFinalizedBlockNumber()
@@ -139,20 +139,13 @@ public class FullSyncMachine {
     }
 
     private void finishFullSync() {
-        initializeStates();
+        slotCoordinator.start(List.of(
+                AppBean.getBean(BabeService.class)
+        ));
 
         AbstractState.setSyncMode(SyncMode.HEAD);
         messageCoordinator.handshakeBootNodes();
         messageCoordinator.handshakePeers();
-    }
-
-    private void initializeStates() {
-        epochState.populateDataFromRuntime(runtime.getBabeApiConfiguration());
-        epochState.setGenesisSlotNumber(runtime.getGenesisSlotNumber());
-
-        slotCoordinator.start(List.of(
-                AppBean.getBean(BabeService.class)
-        ));
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {
