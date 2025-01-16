@@ -12,7 +12,6 @@ import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
 import io.libp2p.core.crypto.PubKey;
-import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -53,8 +52,6 @@ public class RoundState {
     private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
     private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
-
-    @PostConstruct
     public void initialize() {
         loadPersistedState();
     }
@@ -125,9 +122,9 @@ public class RoundState {
     }
 
     private void loadPersistedState() {
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.setId = fetchAuthoritiesSetId();
         this.roundNumber = fetchLatestRound();
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.precommits = fetchPrecommits();
         this.prevotes = fetchPrevotes();
     }
