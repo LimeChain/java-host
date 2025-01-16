@@ -2,6 +2,7 @@ package com.limechain.storage.block;
 
 import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.babe.state.EpochState;
+import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
@@ -28,6 +29,7 @@ public class BlockHandler {
 
     private final BlockState blockState;
     private final EpochState epochState;
+    private final RoundState roundState;
 
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
@@ -42,7 +44,9 @@ public class BlockHandler {
                         PeerRequester requester,
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor,
-                        PeerMessageCoordinator messageCoordinator) {
+                        PeerMessageCoordinator messageCoordinator,
+                        RoundState roundState) {
+
         this.epochState = epochState;
         this.blockState = blockState;
         this.requester = requester;
@@ -51,6 +55,7 @@ public class BlockHandler {
         this.transactionProcessor = transactionProcessor;
         this.verifier = new BlockProductionVerifier();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
+        this.roundState = roundState;
     }
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
@@ -117,6 +122,11 @@ public class BlockHandler {
                     epochState.updateNextEpochConfig(cm);
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
+
+        DigestHelper.getGrandpaConsensusMessage(header.getDigest())
+                .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+
+        roundState.handleAuthoritySetChange(header.getBlockNumber());
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }

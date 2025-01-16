@@ -577,9 +577,9 @@ public class BlockState extends AbstractState {
 
         BigInteger blocksInRange = endHeader.getBlockNumber()
                 .subtract(startHeader.getBlockNumber()).add(BigInteger.ONE);
-        List<Hash256> hashes = new ArrayList<>(blocksInRange.intValue());
+        List<Hash256> hashes = new ArrayList<>(blocksInRange.intValueExact());
 
-        int lastPosition = blocksInRange.intValue() - 1;
+        int lastPosition = blocksInRange.intValueExact() - 1;
 
         hashes.add(0, startHash);
         hashes.add(lastPosition, endHeader.getHash());
