@@ -3,7 +3,6 @@ package com.limechain.runtime;
 import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.api.BlockEquivocationProof;
 import com.limechain.babe.api.OpaqueKeyOwnershipProof;
-import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
@@ -59,7 +58,4 @@ public interface Runtime {
     void persistsChanges();
 
     void close();
-
-    List<Authority> getGrandpaApiGrandpaAuthorities();
-
 }

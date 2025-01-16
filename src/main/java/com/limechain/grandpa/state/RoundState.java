@@ -1,12 +1,10 @@
 package com.limechain.grandpa.state;
 
-import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
-import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
@@ -40,7 +38,7 @@ import java.util.logging.Level;
 @Setter //TODO: remove it when initialize() method is implemented
 @Component
 @RequiredArgsConstructor
-public class RoundState extends AbstractState implements ServiceConsensusState {
+public class RoundState extends AbstractState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
     private final KVRepository<String, Object> repository;
@@ -58,10 +56,9 @@ public class RoundState extends AbstractState implements ServiceConsensusState {
     private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
 
     @Override
-    public void initializeFromRuntime(Runtime runtime) {
-        this.authorities = runtime.getGrandpaApiGrandpaAuthorities();
-        this.setId = BigInteger.ZERO;
-        this.roundNumber = BigInteger.ZERO;
+    public void initialize() {
+        initialized = true;
+        //TODO: Find a way to initiate a runtime instance during node startup to populate from genesis.
     }
 
     @Override

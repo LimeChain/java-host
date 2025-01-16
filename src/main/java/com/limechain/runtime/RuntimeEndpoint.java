@@ -26,7 +26,6 @@ public enum RuntimeEndpoint {
     SESSION_KEYS_GENERATE_SESSION_KEYS("SessionKeys_generate_session_keys"),
     SESSION_KEYS_DECODE_SESSION_KEYS("SessionKeys_decode_session_keys"),
     TRANSACTION_QUEUE_VALIDATE_TRANSACTION("TaggedTransactionQueue_validate_transaction"),
-    GRANDPA_API_GRANDPA_AUTHORITIES("GrandpaApi_grandpa_authorities"),
     ;
 
     private final String name;
