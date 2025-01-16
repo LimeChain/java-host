@@ -5,8 +5,10 @@ import com.limechain.babe.BabeService;
 import com.limechain.babe.coordinator.SlotCoordinator;
 import com.limechain.babe.state.EpochState;
 import com.limechain.config.HostConfig;
+import com.limechain.constants.GenesisBlockHash;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
+import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -33,7 +35,6 @@ import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
 import com.limechain.trie.structure.TrieStructure;
 import com.limechain.trie.structure.database.NodeData;
-import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.scale.ScaleUtils;
 import com.limechain.utils.scale.readers.PairReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;
@@ -67,6 +68,8 @@ public class FullSyncMachine {
     private final TrieStorage trieStorage = AppBean.getBean(TrieStorage.class);
     private final RuntimeBuilder runtimeBuilder = AppBean.getBean(RuntimeBuilder.class);
     private final EpochState epochState = AppBean.getBean(EpochState.class);
+    private final RoundState roundState = AppBean.getBean(RoundState.class);
+    private final GenesisBlockHash genesisBlockHash = AppBean.getBean(GenesisBlockHash.class);
     private final SlotCoordinator slotCoordinator = AppBean.getBean(SlotCoordinator.class);
     private Runtime runtime = null;
 
@@ -99,7 +102,7 @@ public class FullSyncMachine {
             loadStateAtBlockFromPeer(lastFinalizedBlockHash);
         }
 
-        runtime = buildRuntimeFromState(trieAccessor);
+        runtime = runtimeBuilder.buildRuntimeFromState(trieAccessor);
         StateVersion runtimeStateVersion = runtime.getCachedVersion().getStateVersion();
         trieAccessor.setCurrentStateVersion(runtimeStateVersion);
 
@@ -110,6 +113,12 @@ public class FullSyncMachine {
         }
 
         blockState.storeRuntime(lastFinalizedBlockHash, runtime);
+
+        Hash256 genesisStateRoot = genesisBlockHash.getGenesisBlockHeader().getStateRoot();
+        if (stateRoot.equals(genesisStateRoot)) {
+            epochState.initializeFromRuntime(runtime);
+            roundState.initializeFromRuntime(runtime);
+        }
 
         int startNumber = syncState.getLastFinalizedBlockNumber()
                 .add(BigInteger.ONE)
@@ -233,7 +242,7 @@ public class FullSyncMachine {
 
             if (blockUpdatedRuntime) {
                 log.info("Runtime updated, updating the runtime code");
-                runtime = buildRuntimeFromState(trieAccessor);
+                runtime = runtimeBuilder.buildRuntimeFromState(trieAccessor);
                 trieAccessor.setCurrentStateVersion(runtime.getCachedVersion().getStateVersion());
                 blockState.storeRuntime(blockHeader.getHash(), runtime);
             }
@@ -245,13 +254,6 @@ public class FullSyncMachine {
                 log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
             }
         }
-    }
-
-    private Runtime buildRuntimeFromState(TrieAccessor trieAccessor) {
-        return trieAccessor
-                .findStorageValue(Nibbles.fromBytes(":code".getBytes()))
-                .map(wasm -> runtimeBuilder.buildRuntime(wasm, trieAccessor))
-                .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
     }
 
     private boolean checkInherents(Block block) {

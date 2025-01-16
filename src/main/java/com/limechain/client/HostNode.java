@@ -46,6 +46,8 @@ public abstract class HostNode {
         // if: database has some persisted storage
         if (db.find(BlockStateHelper.headerHashKey(BigInteger.ZERO)).isPresent()) {
             states.forEach(ServiceState::initializeFromDatabase);
+            //TODO: should implement the method
+            //    consensusStates.forEach(ServiceState::initializeFromDatabase);
         } else {
             GenesisBlockHash genesisBlockHash = AppBean.getBean(GenesisBlockHash.class);
             TrieStructure<NodeData> trie = genesisBlockHash.getGenesisTrie();

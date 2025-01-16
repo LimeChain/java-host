@@ -1,7 +1,9 @@
 package com.limechain.babe.state;
 
+import com.limechain.ServiceConsensusState;
 import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.consensus.BabeConsensusMessage;
+import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.KVRepository;
 import lombok.Getter;
@@ -19,7 +21,7 @@ import java.time.Instant;
 @Getter
 @Component
 @RequiredArgsConstructor
-public class EpochState extends AbstractState {
+public class EpochState extends AbstractState implements ServiceConsensusState {
 
     private final KVRepository<String, Object> repository;
 
@@ -35,10 +37,9 @@ public class EpochState extends AbstractState {
     private EpochDescriptor nextEpochDescriptor;
 
     @Override
-    public void initialize() {
-        initialized = true;
-        //TODO: Find a way to initiate a runtime instance during node startup to populate from genesis.
-        //Epoch data gets populated via a runtime call at the end of the syncing process.
+    public void initializeFromRuntime(Runtime runtime) {
+        populateDataFromRuntime(runtime.getBabeApiConfiguration());
+        setGenesisSlotNumber(runtime.getGenesisSlotNumber());
     }
 
     @Override
