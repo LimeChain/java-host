@@ -41,6 +41,7 @@ public class RoundState {
     private final KVRepository<String, Object> repository;
 
     private List<Authority> authorities;
+    private BigInteger disabledAuthority;
     private BigInteger setId;
     private BigInteger roundNumber;
 
@@ -190,7 +191,7 @@ public class RoundState {
             ));
             //TODO: Implement later
             case GRANDPA_ON_DISABLED -> {
-                log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
+                disabledAuthority = consensusMessage.getDisabledAuthority();
             }
             case GRANDPA_PAUSE -> {
                 log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
