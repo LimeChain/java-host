@@ -122,7 +122,9 @@ public class GrandpaService {
      * @return the best pre-voted block
      */
     public Vote getBestPreVoteCandidate(GrandpaRound grandpaRound) {
-        Vote previousBestFinalCandidate = grandpaRound.getPrevious().getBestFinalCandidate();
+        Vote previousBestFinalCandidate = grandpaRound.getPrevious() != null
+                ? grandpaRound.getPrevious().getBestFinalCandidate()
+                : new Vote(null, BigInteger.ZERO);
         Vote currentVote = getGrandpaGhost(grandpaRound);
 
         SignedVote primaryVote = grandpaRound.getPrimaryVote();

@@ -2,7 +2,7 @@ package com.limechain.storage.block;
 
 import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.babe.state.EpochState;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
@@ -28,7 +28,7 @@ public class BlockHandler {
 
     private final BlockState blockState;
     private final EpochState epochState;
-    private final RoundState roundState;
+    private final GrandpaSetState grandpaSetState;
 
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
@@ -43,7 +43,7 @@ public class BlockHandler {
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor,
                         PeerMessageCoordinator messageCoordinator,
-                        RoundState roundState) {
+                        GrandpaSetState grandpaSetState) {
 
         this.epochState = epochState;
         this.requester = requester;
@@ -53,7 +53,7 @@ public class BlockHandler {
         this.verifier = new BlockProductionVerifier();
         blockState = BlockState.getInstance();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
-        this.roundState = roundState;
+        this.grandpaSetState = grandpaSetState;
     }
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
@@ -122,9 +122,9 @@ public class BlockHandler {
                 });
 
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+                .ifPresent(cm -> grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
-        roundState.handleAuthoritySetChange(header.getBlockNumber());
+        grandpaSetState.handleAuthoritySetChange(header.getBlockNumber());
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }
