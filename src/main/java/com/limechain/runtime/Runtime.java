@@ -60,6 +60,6 @@ public interface Runtime {
 
     void close();
 
-    List<Authority> getGrandpaApiGrandpaAuthorities();
+    List<Authority> getGrandpaApiAuthorities();
 
 }

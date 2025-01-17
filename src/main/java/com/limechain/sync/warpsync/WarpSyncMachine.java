@@ -6,6 +6,7 @@ import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.action.FinishedAction;
@@ -39,24 +40,18 @@ public class WarpSyncMachine {
     private final ExecutorService executor;
     private WarpSyncAction warpSyncAction;
     private final WarpSyncState warpState;
+    private final StateManager stateManager;
     private final NetworkService networkService;
-    private final SyncState syncState;
-    private final RoundState roundState;
-    private final BlockState blockState;
     private final List<Runnable> onFinishCallbacks;
 
     public WarpSyncMachine(NetworkService network,
                            ChainService chainService,
-                           SyncState syncState,
                            WarpSyncState warpSyncState,
-                           RoundState roundState,
-                           BlockState blockState) {
+                           StateManager stateManager) {
         this.networkService = network;
         this.chainService = chainService;
-        this.syncState = syncState;
         this.warpState = warpSyncState;
-        this.roundState = roundState;
-        this.blockState = blockState;
+        this.stateManager = stateManager;
         this.executor = Executors.newSingleThreadExecutor();
         this.scheduledAuthorityChanges = new PriorityQueue<>(Comparator.comparing(Pair::getValue0));
         this.chainInformation = new ChainInformation();
@@ -76,15 +71,18 @@ public class WarpSyncMachine {
     }
 
     public void start() {
+        SyncState syncState = stateManager.getSyncState();
+        RoundState roundState = stateManager.getRoundState();
+
         if (this.chainService.getChainSpec().getLightSyncState() != null) {
             LightSyncState initState = LightSyncState.decode(this.chainService.getChainSpec().getLightSyncState());
-            if (this.syncState.getLastFinalizedBlockNumber()
+            if (syncState.getLastFinalizedBlockNumber()
                     .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
-                this.syncState.setLightSyncState(initState);
-                this.roundState.setLightSyncState(initState);
+                syncState.setLightSyncState(initState);
+                roundState.setLightSyncState(initState);
             }
         }
-        final Hash256 initStateHash = this.syncState.getLastFinalizedBlockHash();
+        final Hash256 initStateHash = syncState.getLastFinalizedBlockHash();
 
         // Always start with requesting fragments
         log.log(Level.INFO, "Requesting fragments...");
@@ -108,9 +106,13 @@ public class WarpSyncMachine {
     }
 
     private void finishWarpSync() {
+        SyncState syncState = stateManager.getSyncState();
+        RoundState roundState = stateManager.getRoundState();
+        BlockState blockState = stateManager.getBlockState();
+
         this.warpState.setWarpSyncFinished(true);
-        this.syncState.persistState();
-        this.roundState.persistState();
+        syncState.persistState();
+        roundState.persistState();
 
         blockState.setupPostWarpSync(syncState.getLastFinalizedBlockHash(), syncState.getLastFinalizedBlockNumber());
 

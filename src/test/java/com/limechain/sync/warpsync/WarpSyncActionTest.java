@@ -11,6 +11,7 @@ import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.sync.state.SyncState;
@@ -51,7 +52,7 @@ class WarpSyncActionTest {
     @Mock
     private Set<BigInteger> scheduledRuntimeUpdateBlocks;
     @Mock
-    private SyncState syncState;
+    private StateManager stateManager;
     @Mock
     private RuntimeBuilder runtimeBuilder;
     @Mock
@@ -79,6 +80,8 @@ class WarpSyncActionTest {
         String[] codeKey = new String[]{WarpSyncState.CODE_KEY};
         String stateRootString = "state root";
         byte[] runtimeCode = new byte[]{1, 2};
+        SyncState syncState = mock(SyncState.class);
+        when(stateManager.getSyncState()).thenReturn(syncState);
         when(syncState.getLastFinalizedBlockHash()).thenReturn(lastFinalizedBlockHash);
         when(lastFinalizedBlockHash.toString()).thenReturn(blockHashString);
         when(syncState.getStateRoot()).thenReturn(stateRoot);
