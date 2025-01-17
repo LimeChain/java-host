@@ -13,10 +13,8 @@ import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.storage.block.BlockState;
-import com.limechain.utils.Ed25519Utils;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
-import io.libp2p.core.crypto.PubKey;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -366,10 +364,6 @@ class GrandpaServiceTest {
 
     @Test
     void testGetDirectVotesWithMultipleVotesForSingleBlockForPrevotes() throws Exception {
-        // Prepare mock data
-        PubKey pubKey1 = Ed25519Utils.generateKeyPair().publicKey();
-        PubKey pubKey2 = Ed25519Utils.generateKeyPair().publicKey();
-
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
@@ -395,9 +389,6 @@ class GrandpaServiceTest {
 
     @Test
     void testGetVotes() throws Exception {
-        // Prepare mock data
-        Ed25519Utils.generateKeyPair().publicKey();
-
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
@@ -419,7 +410,6 @@ class GrandpaServiceTest {
 
     @Test
     void testGetVotesWithMultipleVotes() throws Exception {
-
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);

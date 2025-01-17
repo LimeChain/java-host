@@ -63,17 +63,14 @@ class GrandpaSetStateTest {
         grandpaSetState.setRoundCache(roundCache);
 
         // 4 % voters.size = 1
-//        grandpaSetState.setRoundNumber();
         when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(4));
         assertEquals(BigInteger.ONE, grandpaSetState.derivePrimary());
 
         // 5 % voters.size = 2
-//        grandpaSetState.setRoundNumber(BigInteger.valueOf(5));
         when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(5));
         assertEquals(BigInteger.TWO, grandpaSetState.derivePrimary());
 
         // 6 % voters.size = 0
-//        grandpaSetState.setRoundNumber(BigInteger.valueOf(6));
         when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(6));
         assertEquals(BigInteger.ZERO, grandpaSetState.derivePrimary());
     }

@@ -192,15 +192,9 @@ public class GrandpaSetState {
                     currentBlockNumber
             ));
             //TODO: Implement later
-            case GRANDPA_ON_DISABLED -> {
-                log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
-            }
-            case GRANDPA_PAUSE -> {
-                log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
-            }
-            case GRANDPA_RESUME -> {
-                log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
-            }
+            case GRANDPA_ON_DISABLED -> log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
+            case GRANDPA_PAUSE -> log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
+            case GRANDPA_RESUME -> log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
         }
 
         log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
