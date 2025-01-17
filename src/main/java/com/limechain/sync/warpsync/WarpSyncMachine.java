@@ -3,7 +3,7 @@ package com.limechain.sync.warpsync;
 import com.limechain.chain.ChainService;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.Network;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.storage.block.BlockState;
@@ -41,19 +41,19 @@ public class WarpSyncMachine {
     private final WarpSyncState warpState;
     private final Network networkService;
     private final SyncState syncState;
-    private final RoundState roundState;
+    private final GrandpaSetState grandpaSetState;
     private final List<Runnable> onFinishCallbacks;
 
     public WarpSyncMachine(Network network,
                            ChainService chainService,
                            SyncState syncState,
                            WarpSyncState warpSyncState,
-                           RoundState roundState) {
+                           GrandpaSetState grandpaSetState) {
         this.networkService = network;
         this.chainService = chainService;
         this.syncState = syncState;
         this.warpState = warpSyncState;
-        this.roundState = roundState;
+        this.grandpaSetState = grandpaSetState;
         this.executor = Executors.newSingleThreadExecutor();
         this.scheduledAuthorityChanges = new PriorityQueue<>(Comparator.comparing(Pair::getValue0));
         this.chainInformation = new ChainInformation();
@@ -78,7 +78,7 @@ public class WarpSyncMachine {
             if (this.syncState.getLastFinalizedBlockNumber()
                     .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
                 this.syncState.setLightSyncState(initState);
-                this.roundState.setLightSyncState(initState);
+                this.grandpaSetState.setLightSyncState(initState);
             }
         }
         final Hash256 initStateHash = this.syncState.getLastFinalizedBlockHash();
@@ -108,7 +108,7 @@ public class WarpSyncMachine {
     private void finishWarpSync() {
         this.warpState.setWarpSyncFinished(true);
         this.syncState.persistState();
-        this.roundState.persistState();
+        this.grandpaSetState.persistState();
 
         BlockState.getInstance().initializeAfterWarpSync(
                 syncState.getLastFinalizedBlockHash(),

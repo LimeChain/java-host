@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.grandpa;
 
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.dto.PeerInfo;
 import com.limechain.network.protocol.blockannounce.NodeRole;
@@ -47,6 +48,8 @@ class GrandpaEngineTest {
     private ConnectionManager connectionManager;
     @Mock
     private WarpSyncState warpSyncState;
+    @Mock
+    private GrandpaSetState grandpaSetState;
     @Mock
     private BlockAnnounceHandshakeBuilder blockAnnounceHandshakeBuilder;
 
