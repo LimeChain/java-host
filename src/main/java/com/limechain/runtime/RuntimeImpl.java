@@ -277,8 +277,10 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
-    public List<Authority> getGrandpaApiGrandpaAuthorities() {
-        return ScaleUtils.Decode.decode(call(RuntimeEndpoint.GRANDPA_API_GRANDPA_AUTHORITIES), new ListReader<>(new AuthorityReader()));
+    public List<Authority> getGrandpaApiAuthorities() {
+        return ScaleUtils.Decode.decode(
+                call(RuntimeEndpoint.GRANDPA_API_GRANDPA_AUTHORITIES), new ListReader<>(new AuthorityReader())
+        );
     }
 
 }

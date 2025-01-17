@@ -6,39 +6,48 @@ import com.limechain.chain.spec.ChainType;
 import com.limechain.config.SystemInfo;
 import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class SystemRPCImplTest {
+
     // Class to be tested
+    @InjectMocks
     private SystemRPCImpl systemRPC;
 
-    // Dependencies
+    @Mock
     private ChainService chainService;
+
+    @Mock
     private WarpSyncMachine warpSync;
+
+    @Mock
     private NetworkService network;
+
+    @Mock
     private SystemInfo systemInfo;
+
+    @Mock
     private SyncState syncState;
+
+    @Mock
     private BlockState blockState;
 
-    @BeforeEach
-    public void setup() {
-        chainService = mock(ChainService.class);
-        systemInfo = mock(SystemInfo.class);
-        warpSync = mock(WarpSyncMachine.class);
-        network = mock(NetworkService.class);
-        syncState = mock(SyncState.class);
-        blockState = mock(BlockState.class);
-        systemRPC = new SystemRPCImpl(chainService, systemInfo, network, warpSync, syncState, blockState);
-    }
+    @InjectMocks
+    private StateManager stateManager;
 
     @Test
     void systemName() {

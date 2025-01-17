@@ -6,6 +6,7 @@ import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.crypto.PubKey;
@@ -22,12 +23,10 @@ import java.util.Map;
 @Component
 public class GrandpaService {
 
-    private final RoundState roundState;
-    private final BlockState blockState;
+    private final StateManager stateManager;
 
-    public GrandpaService(RoundState roundState, BlockState blockState) {
-        this.roundState = roundState;
-        this.blockState = blockState;
+    public GrandpaService(StateManager stateManager) {
+        this.stateManager = stateManager;
     }
 
     /**
@@ -39,6 +38,8 @@ public class GrandpaService {
      * @return the best final candidate block
      */
     public Vote getBestFinalCandidate() {
+        RoundState roundState = stateManager.getRoundState();
+        BlockState blockState = stateManager.getBlockState();
 
         Vote prevoteCandidate = getGrandpaGhost();
 
@@ -96,6 +97,7 @@ public class GrandpaService {
      * @return GRANDPA GHOST block as a vote
      */
     public Vote getGrandpaGhost() {
+        RoundState roundState = stateManager.getRoundState();
         var threshold = roundState.getThreshold();
 
         if (roundState.getRoundNumber().equals(BigInteger.ZERO)) {
@@ -184,7 +186,7 @@ public class GrandpaService {
                                                                   Map<Hash256, BigInteger> selected,
                                                                   Subround subround,
                                                                   BigInteger threshold) {
-
+        BlockState blockState = stateManager.getBlockState();
         for (Vote vote : votes) {
             if (vote.getBlockHash().equals(currentBlockHash)) {
                 continue;
@@ -234,6 +236,7 @@ public class GrandpaService {
             return 0L;
         }
 
+        RoundState roundState = stateManager.getRoundState();
         int equivocationCount = switch (subround) {
             case Subround.PREVOTE -> roundState.getPvEquivocations().size();
             case Subround.PRECOMMIT -> roundState.getPcEquivocations().size();
@@ -259,7 +262,7 @@ public class GrandpaService {
             var vote = entry.getKey();
             var count = entry.getValue();
 
-            if (blockState.isDescendantOf(blockHash, vote.getBlockHash())) {
+            if (stateManager.getBlockState().isDescendantOf(blockHash, vote.getBlockHash())) {
                 votesForBlock += count;
             }
         }
@@ -275,6 +278,7 @@ public class GrandpaService {
      */
     private HashMap<Vote, Long> getDirectVotes(Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
+        RoundState roundState = stateManager.getRoundState();
 
         Map<PubKey, Vote> votes = switch (subround) {
             case Subround.PREVOTE -> roundState.getPrevotes();
@@ -293,7 +297,7 @@ public class GrandpaService {
     }
 
     private Vote getLastFinalizedBlockAsVote() {
-        var lastFinalizedBlockHeader = blockState.getHighestFinalizedHeader();
+        var lastFinalizedBlockHeader = stateManager.getBlockState().getHighestFinalizedHeader();
 
         return new Vote(
                 lastFinalizedBlockHeader.getHash(),

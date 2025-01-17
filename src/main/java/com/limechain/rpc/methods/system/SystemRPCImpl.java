@@ -10,6 +10,7 @@ import com.limechain.exception.rpc.PeerNotFoundException;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.NetworkService;
 import com.limechain.network.dto.PeerInfo;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
@@ -40,8 +41,7 @@ public class SystemRPCImpl {
     private final SystemInfo systemInfo;
     private final NetworkService network;
     private final WarpSyncMachine warpSync;
-    private final SyncState syncState;
-    private final BlockState blockState;
+    private final StateManager stateManager;
     private final ConnectionManager connectionManager = ConnectionManager.getInstance();
 
     /**
@@ -176,8 +176,9 @@ public class SystemRPCImpl {
     public Map<String, Object> systemSyncState() {
         final BigInteger highestBlock;
 
-        if (this.blockState.isInitialized()) {
-            highestBlock = this.blockState.bestBlockNumber();
+        BlockState blockState = stateManager.getBlockState();
+        if (blockState.isInitialized()) {
+            highestBlock = blockState.bestBlockNumber();
         } else {
             highestBlock = this.connectionManager
                     .getPeerIds()
@@ -188,9 +189,10 @@ public class SystemRPCImpl {
                     .orElse(BigInteger.ZERO);
         }
 
+        SyncState syncState = stateManager.getSyncState();
         return Map.ofEntries(
-                entry("startingBlock", this.syncState.getStartingBlock()),
-                entry("currentBlock", this.syncState.getLastFinalizedBlockNumber()),
+                entry("startingBlock", syncState.getStartingBlock()),
+                entry("currentBlock", syncState.getLastFinalizedBlockNumber()),
                 entry("highestBlock", highestBlock)
         );
     }

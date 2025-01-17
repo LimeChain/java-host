@@ -59,9 +59,9 @@ public class RoundState extends AbstractState implements ServiceConsensusState {
 
     @Override
     public void populateDataFromRuntime(Runtime runtime) {
-        this.authorities = runtime.getGrandpaApiGrandpaAuthorities();
+        this.authorities = runtime.getGrandpaApiAuthorities();
         this.setId = BigInteger.ZERO;
-        this.roundNumber = BigInteger.ZERO;
+        this.roundNumber = BigInteger.ONE;
     }
 
     @Override

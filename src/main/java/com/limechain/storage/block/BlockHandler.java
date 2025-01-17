@@ -12,6 +12,7 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.transaction.TransactionProcessor;
 import com.limechain.utils.async.AsyncExecutor;
@@ -27,10 +28,7 @@ import java.util.concurrent.CompletableFuture;
 @Log
 public class BlockHandler {
 
-    private final BlockState blockState;
-    private final EpochState epochState;
-    private final RoundState roundState;
-
+    private final StateManager stateManager;
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
 
@@ -39,27 +37,24 @@ public class BlockHandler {
     private final TransactionProcessor transactionProcessor;
     private final BlockProductionVerifier verifier;
 
-    public BlockHandler(EpochState epochState,
-                        BlockState blockState,
+    public BlockHandler(StateManager stateManager,
                         PeerRequester requester,
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor,
-                        PeerMessageCoordinator messageCoordinator,
-                        RoundState roundState) {
-
-        this.epochState = epochState;
-        this.blockState = blockState;
+                        PeerMessageCoordinator messageCoordinator) {
+        this.stateManager = stateManager;
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
         this.builder = builder;
         this.transactionProcessor = transactionProcessor;
         this.verifier = new BlockProductionVerifier();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
-        this.roundState = roundState;
     }
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
         try {
+            BlockState blockState = stateManager.getBlockState();
+            EpochState epochState = stateManager.getEpochState();
             Runtime runtime = blockState.getRuntime(header.getParentHash());
             Runtime newRuntime = builder.copyRuntime(runtime);
 
@@ -113,16 +108,17 @@ public class BlockHandler {
     private void handleBlock(Block block, Instant arrivalTime) {
         BlockHeader header = block.getHeader();
 
-        blockState.addBlockWithArrivalTime(block, arrivalTime);
+        stateManager.getBlockState().addBlockWithArrivalTime(block, arrivalTime);
         log.fine(String.format("Added block No: %s with hash: %s to block tree.",
                 block.getHeader().getBlockNumber(), header.getHash()));
 
         DigestHelper.getBabeConsensusMessage(header.getDigest())
                 .ifPresent(cm -> {
-                    epochState.updateNextEpochConfig(cm);
+                    stateManager.getEpochState().updateNextEpochConfig(cm);
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
 
+        RoundState roundState = stateManager.getRoundState();
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                 .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 

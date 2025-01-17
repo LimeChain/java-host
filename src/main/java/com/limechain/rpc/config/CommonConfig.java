@@ -1,6 +1,7 @@
 package com.limechain.rpc.config;
 
 import com.googlecode.jsonrpc4j.spring.AutoJsonRpcServiceImplExporter;
+import com.limechain.babe.state.EpochState;
 import com.limechain.chain.ChainService;
 import com.limechain.cli.Cli;
 import com.limechain.cli.CliArguments;
@@ -13,6 +14,7 @@ import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.rpc.server.UnsafeInterceptor;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.storage.DBInitializer;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.BlockHandler;
@@ -88,13 +90,12 @@ public class CommonConfig {
     }
 
     @Bean
-    public WarpSyncState warpSyncState(SyncState syncState,
-                                       RoundState roundState,
+    public WarpSyncState warpSyncState(StateManager stateManager,
                                        KVRepository<String, Object> repository,
                                        RuntimeBuilder runtimeBuilder,
                                        PeerRequester requester,
                                        PeerMessageCoordinator messageCoordinator) {
-        return new WarpSyncState(syncState, repository, runtimeBuilder, requester, messageCoordinator, roundState);
+        return new WarpSyncState(stateManager, repository, runtimeBuilder, requester, messageCoordinator);
     }
 
     @Bean
@@ -106,25 +107,30 @@ public class CommonConfig {
     }
 
     @Bean
-    public WarpSyncMachine warpSyncMachine(NetworkService network,
-                                           ChainService chainService,
-                                           SyncState syncState,
-                                           WarpSyncState warpSyncState,
-                                           RoundState roundState,
-                                           BlockState blockState) {
-        return new WarpSyncMachine(network, chainService, syncState, warpSyncState, roundState, blockState);
+    public StateManager stateManager(SyncState syncState,
+                                     RoundState roundState,
+                                     EpochState epochState,
+                                     TransactionState transactionState,
+                                     BlockState blockState) {
+        return new StateManager(syncState, roundState, epochState, transactionState, blockState);
     }
 
     @Bean
-    public FullSyncMachine fullSyncMachine(HostConfig hostConfig, NetworkService network,
-                                           SyncState syncState,
-                                           BlockState blockState,
-                                           TransactionState transactionState,
+    public WarpSyncMachine warpSyncMachine(NetworkService network,
+                                           ChainService chainService,
+                                           WarpSyncState warpSyncState,
+                                           StateManager stateManager) {
+        return new WarpSyncMachine(network, chainService, warpSyncState, stateManager);
+    }
+
+    @Bean
+    public FullSyncMachine fullSyncMachine(HostConfig hostConfig,
+                                           NetworkService network,
+                                           StateManager stateManager,
                                            PeerRequester requester,
                                            PeerMessageCoordinator coordinator,
                                            BlockHandler blockHandler) {
-        return new FullSyncMachine(network, syncState, blockState, transactionState,
-                requester, coordinator, blockHandler, hostConfig);
+        return new FullSyncMachine(network, stateManager, requester, coordinator, blockHandler, hostConfig);
     }
 
     @Bean

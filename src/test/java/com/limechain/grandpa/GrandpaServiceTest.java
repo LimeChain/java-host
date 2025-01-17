@@ -9,12 +9,16 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.utils.Ed25519Utils;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.crypto.PubKey;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
 import java.math.BigInteger;
@@ -27,9 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class GrandpaServiceTest {
 
     private static final byte[] ZEROS_ARRAY = new byte[32];
@@ -39,17 +43,17 @@ class GrandpaServiceTest {
             new byte[]{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
     private static final byte[] THREES_ARRAY =
             new byte[]{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    @Mock
+    private StateManager stateManager;
 
+    @Mock
     private RoundState roundState;
-    private BlockState blockState;
-    private GrandpaService grandpaService;
 
-    @BeforeEach
-    void setUp() {
-        roundState = mock(RoundState.class);
-        blockState = mock(BlockState.class);
-        grandpaService = new GrandpaService(roundState, blockState);
-    }
+    @Mock
+    private BlockState blockState;
+
+    @InjectMocks
+    private GrandpaService grandpaService;
 
     @Test
     void testGetBestFinalCandidateWithoutPreCommits() {
@@ -59,6 +63,7 @@ class GrandpaServiceTest {
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
@@ -68,6 +73,7 @@ class GrandpaServiceTest {
                 Ed25519Utils.generateKeyPair().publicKey(), secondVote
         ));
 
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
@@ -87,6 +93,7 @@ class GrandpaServiceTest {
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
@@ -99,6 +106,7 @@ class GrandpaServiceTest {
                 Ed25519Utils.generateKeyPair().publicKey(), thirdVote
         ));
 
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
@@ -120,6 +128,7 @@ class GrandpaServiceTest {
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(6));
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
@@ -132,11 +141,11 @@ class GrandpaServiceTest {
                 Ed25519Utils.generateKeyPair().publicKey(), thirdVote
         ));
 
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
-        when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), blockHeader.getHash())).thenReturn(true);
 
         Vote result = grandpaService.getBestFinalCandidate();
@@ -149,7 +158,9 @@ class GrandpaServiceTest {
     void testGetBestFinalCandidateWhereRoundNumberIsZero() {
         BlockHeader blockHeader = createBlockHeader();
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
         var result = grandpaService.getBestFinalCandidate();
@@ -159,6 +170,7 @@ class GrandpaServiceTest {
 
     @Test
     void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getPrevotes()).thenReturn(Map.of());
@@ -169,7 +181,9 @@ class GrandpaServiceTest {
     void testGetGrandpaGHOSTWhereRoundNumberIsZero() {
         BlockHeader blockHeader = createBlockHeader();
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
         var result = grandpaService.getGrandpaGhost();
@@ -185,6 +199,7 @@ class GrandpaServiceTest {
         BlockHeader blockHeader = createBlockHeader();
         blockHeader.setBlockNumber(BigInteger.valueOf(1));
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(1));
         when(roundState.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
 
@@ -193,6 +208,7 @@ class GrandpaServiceTest {
                 Ed25519Utils.generateKeyPair().publicKey(), secondVote
         ));
 
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
@@ -215,6 +231,7 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
 
         // Call the private method via reflection
@@ -240,6 +257,7 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
 
         // Call the private method via reflection
@@ -261,6 +279,7 @@ class GrandpaServiceTest {
         Map<PubKey, Vote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
 
         // Call the private method via reflection
@@ -285,6 +304,7 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
 
         // Call the private method via reflection
@@ -309,7 +329,9 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -337,7 +359,9 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -370,8 +394,9 @@ class GrandpaServiceTest {
         Map<PubKey, SignedVote> pvEquivocations = new HashMap<>();
         pvEquivocations.put(pubKey3, new SignedVote());
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
-        when(roundState.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -399,8 +424,10 @@ class GrandpaServiceTest {
         prevotes.put(pubKey1, firstVote);
         prevotes.put(pubKey2, secondVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
         when(roundState.getPvEquivocations()).thenReturn(new HashMap<>());
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -433,8 +460,10 @@ class GrandpaServiceTest {
         Map<PubKey, SignedVote> pvEquivocations = new HashMap<>();
         pvEquivocations.put(pubKey3, new SignedVote());
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
         when(roundState.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -465,8 +494,10 @@ class GrandpaServiceTest {
         Map<PubKey, Vote> prevotes = new HashMap<>();
         prevotes.put(pubKey1, firstVote);
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(prevotes);
         when(roundState.getPvEquivocations()).thenReturn(new HashMap<>());
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         when(blockState.lowestCommonAncestor(new Hash256(ONES_ARRAY), new Hash256(THREES_ARRAY)))
@@ -506,13 +537,14 @@ class GrandpaServiceTest {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
 
+        when(stateManager.getRoundState()).thenReturn(roundState);
         when(roundState.getPrevotes()).thenReturn(Map.of(
                 Ed25519Utils.generateKeyPair().publicKey(), firstVote,
                 Ed25519Utils.generateKeyPair().publicKey(), secondVote
         ));
 
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
-        when(roundState.getThreshold()).thenReturn(BigInteger.valueOf(3));
 
         Method method = GrandpaService.class.getDeclaredMethod(
                 "getPossibleSelectedBlocks", BigInteger.class, Subround.class);
@@ -533,6 +565,7 @@ class GrandpaServiceTest {
         blocks.put(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
 
         BlockHeader blockHeader = createBlockHeader();
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
         Method method = GrandpaService.class.getDeclaredMethod("selectBlockWithMostVotes", Map.class);
@@ -551,6 +584,7 @@ class GrandpaServiceTest {
         blocks.put(new Hash256(ONES_ARRAY), BigInteger.valueOf(0));
 
         BlockHeader blockHeader = createBlockHeader();
+        when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
         Method method = GrandpaService.class.getDeclaredMethod("selectBlockWithMostVotes", Map.class);

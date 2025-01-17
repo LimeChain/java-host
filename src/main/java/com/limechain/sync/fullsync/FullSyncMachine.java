@@ -3,12 +3,9 @@ package com.limechain.sync.fullsync;
 import com.google.protobuf.ByteString;
 import com.limechain.babe.BabeService;
 import com.limechain.babe.coordinator.SlotCoordinator;
-import com.limechain.babe.state.EpochState;
 import com.limechain.config.HostConfig;
-import com.limechain.constants.GenesisBlockHash;
 import com.limechain.exception.storage.BlockNodeNotFoundException;
 import com.limechain.exception.sync.BlockExecutionException;
-import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -23,13 +20,13 @@ import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.runtime.version.StateVersion;
 import com.limechain.state.AbstractState;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.sync.SyncMode;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.state.SyncState;
-import com.limechain.transaction.TransactionState;
 import com.limechain.trie.DiskTrieAccessor;
 import com.limechain.trie.TrieAccessor;
 import com.limechain.trie.TrieStructureFactory;
@@ -59,32 +56,23 @@ public class FullSyncMachine {
 
     private final HostConfig hostConfig;
     private final NetworkService networkService;
-    private final SyncState syncState;
-    private final TransactionState transactionState;
+    private final StateManager stateManager;
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
     private final BlockHandler blockHandler;
-    private final BlockState blockState;
     private final TrieStorage trieStorage = AppBean.getBean(TrieStorage.class);
     private final RuntimeBuilder runtimeBuilder = AppBean.getBean(RuntimeBuilder.class);
-    private final EpochState epochState = AppBean.getBean(EpochState.class);
-    private final RoundState roundState = AppBean.getBean(RoundState.class);
-    private final GenesisBlockHash genesisBlockHash = AppBean.getBean(GenesisBlockHash.class);
     private final SlotCoordinator slotCoordinator = AppBean.getBean(SlotCoordinator.class);
     private Runtime runtime = null;
 
     public FullSyncMachine(NetworkService networkService,
-                           SyncState syncState,
-                           BlockState blockState,
-                           TransactionState transactionState,
+                           StateManager stateManager,
                            PeerRequester requester,
                            PeerMessageCoordinator messageCoordinator,
                            BlockHandler blockHandler,
                            HostConfig hostConfig) {
         this.networkService = networkService;
-        this.syncState = syncState;
-        this.blockState = blockState;
-        this.transactionState = transactionState;
+        this.stateManager = stateManager;
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
         this.blockHandler = blockHandler;
@@ -92,6 +80,7 @@ public class FullSyncMachine {
     }
 
     public void start() {
+        SyncState syncState = stateManager.getSyncState();
         Hash256 stateRoot = syncState.getStateRoot();
         Hash256 lastFinalizedBlockHash = syncState.getLastFinalizedBlockHash();
 
@@ -112,12 +101,11 @@ public class FullSyncMachine {
             return;
         }
 
-        blockState.storeRuntime(lastFinalizedBlockHash, runtime);
+        stateManager.getBlockState().storeRuntime(lastFinalizedBlockHash, runtime);
 
-        Hash256 genesisStateRoot = genesisBlockHash.getGenesisBlockHeader().getStateRoot();
-        if (stateRoot.equals(genesisStateRoot)) {
-            epochState.populateDataFromRuntime(runtime);
-            roundState.populateDataFromRuntime(runtime);
+        if (syncState.getLastFinalizedBlockNumber().equals(BigInteger.ZERO)) {
+            stateManager.getEpochState().populateDataFromRuntime(runtime);
+            stateManager.getRoundState().populateDataFromRuntime(runtime);
         }
 
         int startNumber = syncState.getLastFinalizedBlockNumber()
@@ -199,6 +187,7 @@ public class FullSyncMachine {
      * @param receivedBlockDatas A list of BlockData to execute.
      */
     private void executeBlocks(List<Block> receivedBlockDatas, TrieAccessor trieAccessor) {
+        BlockState blockState = stateManager.getBlockState();
         for (Block block : receivedBlockDatas) {
             log.fine("Block number to be executed is " + block.getHeader().getBlockNumber());
 
@@ -241,7 +230,7 @@ public class FullSyncMachine {
             }
 
             try {
-                syncState.finalizeHeader(blockHeader);
+                stateManager.getSyncState().finalizeHeader(blockHeader);
                 blockState.setFinalizedHash(blockHeader, BigInteger.ZERO, BigInteger.ZERO);
             } catch (BlockNodeNotFoundException ignored) {
                 log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
