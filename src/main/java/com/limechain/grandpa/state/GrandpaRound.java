@@ -23,7 +23,7 @@ public class GrandpaRound {
 
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
     private Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
-    private Map<Hash256, SignedVote> primaryProposals = new ConcurrentHashMap<>();
+    private SignedVote primaryVote;
 
     private Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();

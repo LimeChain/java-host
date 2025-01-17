@@ -5,9 +5,14 @@ import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.Subround;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
+import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.crypto.PubKey;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
@@ -19,7 +24,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents the state information for the current round and authorities that are needed
@@ -36,13 +40,7 @@ public class GrandpaSetState {
 
     private List<Authority> authorities;
     private BigInteger setId;
-    private BigInteger roundNumber;
-
-    //TODO: This may not be the best place for those maps
-    private Map<PubKey, Vote> precommits = new ConcurrentHashMap<>();
-    private Map<PubKey, Vote> prevotes = new ConcurrentHashMap<>();
-    private Map<PubKey, SignedVote> pvEquivocations = new ConcurrentHashMap<>();
-    private Map<PubKey, SignedVote> pcEquivocations = new ConcurrentHashMap<>();
+    private RoundCache roundCache;
 
 
     @PostConstruct
@@ -123,9 +121,6 @@ public class GrandpaSetState {
     private void loadPersistedState() {
         this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.setId = fetchAuthoritiesSetId();
-        this.roundNumber = fetchLatestRound();
-        this.precommits = fetchPrecommits();
-        this.prevotes = fetchPrevotes();
     }
 
     public void persistState() {
@@ -141,12 +136,38 @@ public class GrandpaSetState {
         return setId;
     }
 
-    public void resetRound() {
-        this.roundNumber = BigInteger.ONE;
-    }
-
     public void setLightSyncState(LightSyncState initState) {
         this.setId = initState.getGrandpaAuthoritySet().getSetId();
         this.authorities = Arrays.asList(initState.getGrandpaAuthoritySet().getCurrentAuthorities());
     }
+
+    public void handleVoteMessage(VoteMessage voteMessage) {
+        BigInteger voteMessageSetId = voteMessage.getSetId();
+        BigInteger voteMessageRoundNumber = voteMessage.getRound();
+        SignedMessage signedMessage = voteMessage.getMessage();
+
+        SignedVote signedVote = new SignedVote();
+        signedVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
+        signedVote.setSignature(signedMessage.getSignature());
+        signedVote.setAuthorityPublicKey(signedMessage.getAuthorityPublicKey());
+
+        GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
+        if (round == null) {
+            round = new GrandpaRound();
+            round.setRoundNumber(voteMessageRoundNumber);
+            roundCache.addRound(voteMessageSetId, round);
+        }
+
+        Subround subround = signedMessage.getStage();
+        switch (subround) {
+            case PREVOTE -> round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
+            case PRECOMMIT -> round.getPreCommits().put(signedMessage.getAuthorityPublicKey(), signedVote);
+            case PRIMARY_PROPOSAL -> {
+                round.setPrimaryVote(signedVote);
+                round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
+            }
+            default -> throw new GrandpaGenericException("Unknown subround: " + subround);
+        }
+    }
+
 }

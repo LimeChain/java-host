@@ -6,23 +6,18 @@ import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
-import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
-import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
-import io.libp2p.core.crypto.PubKey;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Log
 @Component
@@ -130,16 +125,19 @@ public class GrandpaService {
         Vote previousBestFinalCandidate = grandpaRound.getPrevious().getBestFinalCandidate();
         Vote currentVote = getGrandpaGhost(grandpaRound);
 
-        return grandpaRound.getPrimaryProposals().values().stream()
-                .max(Comparator.comparing(signedVote -> signedVote.getVote().getBlockNumber()))
-                .filter(primaryVote -> {
-                    BigInteger primaryVoteBlockNumber = primaryVote.getVote().getBlockNumber();
-                    return primaryVoteBlockNumber.compareTo(currentVote.getBlockNumber()) > 0 &&
-                            primaryVoteBlockNumber.compareTo(previousBestFinalCandidate.getBlockNumber()) > 0;
-                })
-                .map(SignedVote::getVote)
-                .orElse(currentVote);
+        SignedVote primaryVote = grandpaRound.getPrimaryVote();
+
+        if (primaryVote != null) {
+            BigInteger primaryBlockNumber = primaryVote.getVote().getBlockNumber();
+
+            if (primaryBlockNumber.compareTo(currentVote.getBlockNumber()) > 0 &&
+                    primaryBlockNumber.compareTo(previousBestFinalCandidate.getBlockNumber()) > 0) {
+                return primaryVote.getVote();
+            }
+        }
+        return currentVote;
     }
+
 
     /**
      * Selects the block with the most votes from the provided map of blocks.
@@ -310,7 +308,7 @@ public class GrandpaService {
         Map<Hash256, SignedVote> votes = switch (subround) {
             case Subround.PREVOTE -> grandpaRound.getPreVotes();
             case Subround.PRECOMMIT -> grandpaRound.getPreCommits();
-            case Subround.PRIMARY_PROPOSAL -> grandpaRound.getPrimaryProposals();
+            default -> new HashMap<>();
         };
 
         votes.values().forEach(vote -> voteCounts.merge(vote.getVote(), 1L, Long::sum));

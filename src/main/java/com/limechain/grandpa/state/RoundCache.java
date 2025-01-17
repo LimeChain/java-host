@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,15 +19,14 @@ import java.util.Map;
 public class RoundCache {
 
     private static final int CACHE_SET_CAPACITY = 4;
-    private final Map<BigInteger, List<GrandpaRound>> roundMap = new LinkedHashMap<>(
-            CACHE_SET_CAPACITY, 0.75f, true) {
+    private final Map<BigInteger, List<GrandpaRound>> roundMap = Collections.synchronizedMap(new LinkedHashMap<>() {
         @Override
         protected boolean removeEldestEntry(Map.Entry<BigInteger, List<GrandpaRound>> eldest) {
             return size() > CACHE_SET_CAPACITY;
         }
-    };
+    });
 
-    public void addRound(BigInteger setId, GrandpaRound grandpaRound) {
+    public synchronized void addRound(BigInteger setId, GrandpaRound grandpaRound) {
         roundMap.putIfAbsent(setId, new ArrayList<>());
 
         List<GrandpaRound> rounds = roundMap.get(setId);
@@ -44,7 +44,7 @@ public class RoundCache {
         rounds.add(grandpaRound);
     }
 
-    public void removeRoundOlderThan(BigInteger setId, BigInteger lastFinalizedRoundNumber) {
+    public synchronized void removeRoundOlderThan(BigInteger setId, BigInteger lastFinalizedRoundNumber) {
         List<GrandpaRound> rounds = roundMap.get(setId);
         if (rounds == null) {
             return;
@@ -59,7 +59,7 @@ public class RoundCache {
         rounds.removeIf(r -> r.getRoundNumber().compareTo(lastFinalizedRoundNumber) < 0);
     }
 
-    public GrandpaRound getRound(BigInteger setId, BigInteger roundNumber) {
+    public synchronized GrandpaRound getRound(BigInteger setId, BigInteger roundNumber) {
         List<GrandpaRound> rounds = roundMap.get(setId);
         if (rounds == null) {
             return null;
@@ -71,7 +71,7 @@ public class RoundCache {
                 .orElse(null);
     }
 
-    public GrandpaRound getLatestRound(BigInteger setId) {
+    public synchronized GrandpaRound getLatestRound(BigInteger setId) {
         List<GrandpaRound> rounds = roundMap.get(setId);
         if (rounds == null || rounds.isEmpty()) {
             return null;
@@ -79,7 +79,7 @@ public class RoundCache {
         return rounds.getLast();
     }
 
-    public BigInteger getLatestRoundNumber(BigInteger setId) {
+    public synchronized BigInteger getLatestRoundNumber(BigInteger setId) {
         GrandpaRound latestRound = getLatestRound(setId);
         return latestRound != null ? latestRound.getRoundNumber() : null;
     }

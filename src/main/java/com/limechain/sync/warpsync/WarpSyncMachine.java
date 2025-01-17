@@ -4,7 +4,6 @@ import com.limechain.chain.ChainService;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.Network;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.storage.block.BlockState;

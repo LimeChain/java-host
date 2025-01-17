@@ -1,8 +1,9 @@
 package com.limechain.sync.warpsync;
 
+import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
@@ -11,9 +12,10 @@ import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessag
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage.BlockData;
-import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
+import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
@@ -23,6 +25,10 @@ import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.SyncState;
 import com.limechain.sync.JustificationVerifier;
+import com.limechain.sync.warpsync.dto.AuthoritySetChange;
+import com.limechain.sync.warpsync.dto.GrandpaDigestMessageType;
+import com.limechain.sync.warpsync.scale.ForcedChangeReader;
+import com.limechain.sync.warpsync.scale.ScheduledChangeReader;
 import com.limechain.trie.decoded.Trie;
 import com.limechain.trie.decoded.TrieVerifier;
 import com.limechain.utils.LittleEndianUtils;
@@ -33,11 +39,14 @@ import io.libp2p.core.PeerId;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
+import org.javatuples.Pair;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -49,7 +58,7 @@ import java.util.logging.Level;
 public class WarpSyncState {
 
     private final SyncState syncState;
-    private final RoundState roundState;
+    private final GrandpaSetState grandpaSetState;
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
     private final KVRepository<String, Object> db;
@@ -69,6 +78,8 @@ public class WarpSyncState {
     protected final RuntimeBuilder runtimeBuilder;
     //TODO Yordan: maybe we won't need this anymore.
     private final Set<BigInteger> scheduledRuntimeUpdateBlocks;
+    private final PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges;
+
 
     public WarpSyncState(SyncState syncState,
                          KVRepository<String, Object> db,
@@ -76,28 +87,27 @@ public class WarpSyncState {
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator,
                          RoundState roundState) {
-
         this(syncState,
-                roundState,
+                grandpaSetState,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
                 requester,
-                messageCoordinator
-        );
+                messageCoordinator);
     }
 
-    public WarpSyncState(SyncState syncState, RoundState roundState,
+    public WarpSyncState(SyncState syncState, GrandpaSetState grandpaSetState,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
+                         PriorityQueue<Pair<BigInteger, Authority[]>> scheduledAuthorityChanges,
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator) {
-
         this.syncState = syncState;
-        this.roundState = roundState;
+        this.grandpaSetState = grandpaSetState;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
+        this.scheduledAuthorityChanges = scheduledAuthorityChanges;
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
     }
@@ -264,13 +274,12 @@ public class WarpSyncState {
      */
     public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
         messageCoordinator.sendNeighbourMessageToPeer(peerId);
-        if (warpSyncFinished && neighbourMessage.getSetId().compareTo(roundState.getSetId()) > 0) {
+        if (warpSyncFinished && neighbourMessage.getSetId().compareTo(grandpaSetState.getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
     }
 
     private void updateSetData(BigInteger setChangeBlock) {
-
         List<BlockData> response = requester.requestBlockData(
                 BlockRequestField.ALL,
                 setChangeBlock.intValueExact(),
@@ -286,7 +295,6 @@ public class WarpSyncState {
 
         Justification justification = new JustificationReader().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
-
         boolean verified = justification != null
                 && JustificationVerifier.verify(justification.getPrecommits(), justification.getRound());
 
@@ -306,10 +314,76 @@ public class WarpSyncState {
      * Executes scheduled or forced authority changes for the last finalized block.
      */
     public void handleScheduledEvents() {
-        boolean updated = roundState.handleAuthoritySetChange(syncState.getLastFinalizedBlockNumber());
-
+        Pair<BigInteger, Authority[]> data = scheduledAuthorityChanges.peek();
+        BigInteger authoritiesSetId = roundState.getSetId();
+        boolean updated = false;
+        while (data != null) {
+            if (data.getValue0().compareTo(syncState.getLastFinalizedBlockNumber()) < 1) {
+                authoritiesSetId = roundState.incrementSetId();
+                roundState.resetRound();
+                roundState.setAuthorities(Arrays.asList(data.getValue1()));
+                scheduledAuthorityChanges.poll();
+                updated = true;
+            } else break;
+            data = scheduledAuthorityChanges.peek();
+        }
         if (warpSyncFinished && updated) {
+            log.log(Level.INFO, "Successfully transitioned to authority set id: " + authoritiesSetId);
             new Thread(messageCoordinator::sendMessagesToPeers).start();
         }
     }
+
+    /**
+     * Handles authority changes coming from a block header digest and schedules them.
+     *
+     * @param headerDigests digest of the block header
+     * @param blockNumber   block that contains the digest
+     */
+    public void handleAuthorityChanges(HeaderDigest[] headerDigests, BigInteger blockNumber) {
+        // Update authority set and set id
+        AuthoritySetChange authorityChanges;
+        for (HeaderDigest digest : headerDigests) {
+            if (digest.getId() == ConsensusEngine.GRANDPA) {
+                ScaleCodecReader reader = new ScaleCodecReader(digest.getMessage());
+                GrandpaDigestMessageType type = GrandpaDigestMessageType.fromId(reader.readByte());
+
+                if (type == null) {
+                    log.log(Level.SEVERE, "Could not get grandpa message type");
+                    throw new IllegalStateException("Unknown grandpa message type");
+                }
+
+                switch (type) {
+                    case SCHEDULED_CHANGE -> {
+                        ScheduledChangeReader authorityChangesReader = new ScheduledChangeReader();
+                        authorityChanges = authorityChangesReader.read(reader);
+                        scheduledAuthorityChanges
+                                .add(new Pair<>(blockNumber.add(authorityChanges.getDelay()),
+                                        authorityChanges.getAuthorities()));
+                        return;
+                    }
+                    case FORCED_CHANGE -> {
+                        ForcedChangeReader authorityForcedChangesReader = new ForcedChangeReader();
+                        authorityChanges = authorityForcedChangesReader.read(reader);
+                        scheduledAuthorityChanges
+                                .add(new Pair<>(blockNumber.add(authorityChanges.getDelay()),
+                                        authorityChanges.getAuthorities()));
+                        return;
+                    }
+                    case ON_DISABLED -> {
+                        log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
+                        return;
+                    }
+                    case PAUSE -> {
+                        log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
+                        return;
+                    }
+                    case RESUME -> {
+                        log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
 }

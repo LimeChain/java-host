@@ -5,15 +5,20 @@ import com.limechain.utils.Ed25519Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigInteger;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GrandpaSetStateTest {
+
+    @Mock
+    private RoundCache roundCache;
 
     @InjectMocks
     private GrandpaSetState grandpaSetState;
@@ -54,16 +59,22 @@ class GrandpaSetStateTest {
                 authority1, authority2, authority3
         ));
 
+        grandpaSetState.setSetId(BigInteger.ONE);
+        grandpaSetState.setRoundCache(roundCache);
+
         // 4 % voters.size = 1
-        grandpaSetState.setRoundNumber(BigInteger.valueOf(4));
+//        grandpaSetState.setRoundNumber();
+        when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(4));
         assertEquals(BigInteger.ONE, grandpaSetState.derivePrimary());
 
         // 5 % voters.size = 2
-        grandpaSetState.setRoundNumber(BigInteger.valueOf(5));
+//        grandpaSetState.setRoundNumber(BigInteger.valueOf(5));
+        when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(5));
         assertEquals(BigInteger.TWO, grandpaSetState.derivePrimary());
 
         // 6 % voters.size = 0
-        grandpaSetState.setRoundNumber(BigInteger.valueOf(6));
+//        grandpaSetState.setRoundNumber(BigInteger.valueOf(6));
+        when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(6));
         assertEquals(BigInteger.ZERO, grandpaSetState.derivePrimary());
     }
 }
