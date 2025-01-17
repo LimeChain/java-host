@@ -108,7 +108,7 @@ public class FullSyncMachine {
             stateManager.getRoundState().populateDataFromRuntime(runtime);
         }
 
-        int startNumber = stateManager.getSyncState().getLastFinalizedBlockNumber()
+        int startNumber = syncState.getLastFinalizedBlockNumber()
                 .add(BigInteger.ONE)
                 .intValueExact();
 
