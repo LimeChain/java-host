@@ -574,13 +574,8 @@ class GrandpaServiceTest {
         preVotes.put(firstVoteAuthorityHash, firstSignedVote);
         preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        Hash256 thirdVoteAuthorityHash = new Hash256(ONES_ARRAY);
-
-        Map<Hash256, Set<SignedVote>> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(thirdVoteAuthorityHash, Set.of(new SignedVote()));
-
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
-        when(grandpaRound.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(grandpaRound.getPvEquivocationsCount()).thenReturn(1L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
