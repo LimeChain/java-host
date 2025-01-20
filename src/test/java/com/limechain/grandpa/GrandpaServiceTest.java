@@ -338,7 +338,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetDirectVotesForPrevotes() throws Exception {
+    void testGetDirectVotesForPreVotes() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
@@ -346,11 +346,11 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getDirectVotes", GrandpaRound.class, Subround.class);
@@ -363,7 +363,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetDirectVotesWithMultipleVotesForSingleBlockForPrevotes() throws Exception {
+    void testGetDirectVotesWithMultipleVotesForSingleBlockForPreVotes() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
@@ -371,12 +371,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
 
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getDirectVotes", GrandpaRound.class, Subround.class);
@@ -393,11 +393,11 @@ class GrandpaServiceTest {
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
 
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getVotes", GrandpaRound.class, Subround.class);
@@ -417,11 +417,11 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getVotes", GrandpaRound.class, Subround.class);
@@ -442,11 +442,11 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -472,11 +472,11 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -503,16 +503,16 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         Hash256 thirdVoteAuthorityHash = new Hash256(ONES_ARRAY);
 
         Map<Hash256, Set<SignedVote>> pvEquivocations = new HashMap<>();
         pvEquivocations.put(thirdVoteAuthorityHash, Set.of(new SignedVote()));
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(grandpaRound.getPvEquivocations()).thenReturn(pvEquivocations);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
@@ -539,11 +539,11 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(grandpaRound.getPvEquivocations()).thenReturn(new HashMap<>());
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
@@ -570,17 +570,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        Hash256 thirdVoteAuthorityHash = new Hash256(ONES_ARRAY);
-
-        Map<Hash256, Set<SignedVote>> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(thirdVoteAuthorityHash, Set.of(new SignedVote()));
-
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
-        when(grandpaRound.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
+        when(grandpaRound.getPvEquivocationsCount()).thenReturn(1L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -609,10 +604,10 @@ class GrandpaServiceTest {
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(grandpaRound.getPvEquivocations()).thenReturn(new HashMap<>());
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 

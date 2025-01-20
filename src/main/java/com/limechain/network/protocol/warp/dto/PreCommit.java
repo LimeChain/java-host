@@ -11,7 +11,7 @@ import java.math.BigInteger;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Precommit {
+public class PreCommit {
     private Hash256 targetHash;
     private BigInteger targetNumber;
     private Hash512 signature;
@@ -19,7 +19,7 @@ public class Precommit {
 
     @Override
     public String toString() {
-        return "Precommit{" +
+        return "PreCommit{" +
                 "targetHash=" + targetHash +
                 ", targetNumber=" + targetNumber +
                 ", signature=" + signature +

@@ -38,6 +38,6 @@ public class DBConstants {
     public static final String AUTHORITY_SET = "gs::authoritySet";
     public static final String LATEST_ROUND = "gs::latestRound";
     public static final String SET_ID = "gs::setId";
-    public static final String GRANDPA_PREVOTES = "gs:grandpaPrevotes";
-    public static final String GRANDPA_PRECOMMITS = "gs:grandpaPrecommits";
+    public static final String GRANDPA_PREVOTES = "gs:grandpaPreVotes";
+    public static final String GRANDPA_PRECOMMITS = "gs:grandpaPreCommits";
 }

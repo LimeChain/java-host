@@ -18,7 +18,7 @@ public class GrandpaRound {
     private GrandpaRound previous;
     private BigInteger roundNumber;
 
-    private Vote preVotedBlock;
+    private Vote preVotedBlock; // GHOST
     private Vote bestFinalCandidate;
 
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
@@ -27,4 +27,16 @@ public class GrandpaRound {
 
     private Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
+
+    public long getPvEquivocationsCount() {
+        return this.pvEquivocations.values().stream()
+                .mapToLong(Set::size)
+                .sum();
+    }
+
+    public long getPcEquivocationsCount() {
+        return this.pcEquivocations.values().stream()
+                .mapToInt(Set::size)
+                .sum();
+    }
 }
