@@ -1,12 +1,12 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
-import com.limechain.network.protocol.warp.dto.Precommit;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
 
 import java.io.IOException;
 
-public class CompactJustificationScaleWriter implements ScaleWriter<Precommit[]> {
+public class CompactJustificationScaleWriter implements ScaleWriter<PreCommit[]> {
 
     private static final CompactJustificationScaleWriter INSTANCE = new CompactJustificationScaleWriter();
 
@@ -21,23 +21,23 @@ public class CompactJustificationScaleWriter implements ScaleWriter<Precommit[]>
     }
 
     @Override
-    public void write(ScaleCodecWriter writer, Precommit[] precommits) throws IOException {
-        writer.writeCompact(precommits.length);
+    public void write(ScaleCodecWriter writer, PreCommit[] preCommits) throws IOException {
+        writer.writeCompact(preCommits.length);
 
-        for (int i = 0; i < precommits.length; i++) {
-            Precommit precommit = precommits[i];
+        for (int i = 0; i < preCommits.length; i++) {
+            PreCommit preCommit = preCommits[i];
             Vote vote = new Vote();
-            vote.setBlockHash(precommit.getTargetHash());
-            vote.setBlockNumber(precommit.getTargetNumber());
+            vote.setBlockHash(preCommit.getTargetHash());
+            vote.setBlockNumber(preCommit.getTargetNumber());
             voteScaleWriter.write(writer, vote);
         }
 
-        writer.writeCompact(precommits.length);
+        writer.writeCompact(preCommits.length);
 
-        for (int i = 0; i < precommits.length; i++) {
-            Precommit precommit = precommits[i];
-            writer.writeByteArray(precommit.getSignature().getBytes());
-            writer.writeUint256(precommit.getAuthorityPublicKey().getBytes());
+        for (int i = 0; i < preCommits.length; i++) {
+            PreCommit preCommit = preCommits[i];
+            writer.writeByteArray(preCommit.getSignature().getBytes());
+            writer.writeUint256(preCommit.getAuthorityPublicKey().getBytes());
         }
     }
 }

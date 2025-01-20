@@ -120,17 +120,17 @@ public class GrandpaService {
      */
     public Vote getBestFinalCandidate(GrandpaRound grandpaRound) {
 
-        Vote prevoteCandidate = getGrandpaGhost(grandpaRound);
+        Vote preVoteCandidate = getGrandpaGhost(grandpaRound);
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
-            return prevoteCandidate;
+            return preVoteCandidate;
         }
 
         var threshold = grandpaSetState.getThreshold();
         Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PRECOMMIT);
 
         if (possibleSelectedBlocks.isEmpty()) {
-            return prevoteCandidate;
+            return preVoteCandidate;
         }
 
         var bestFinalCandidate = getLastFinalizedBlockAsVote();
@@ -140,13 +140,13 @@ public class GrandpaService {
             var blockHash = block.getKey();
             var blockNumber = block.getValue();
 
-            boolean isDescendant = blockState.isDescendantOf(blockHash, prevoteCandidate.getBlockHash());
+            boolean isDescendant = blockState.isDescendantOf(blockHash, preVoteCandidate.getBlockHash());
 
             if (!isDescendant) {
 
                 Hash256 lowestCommonAncestor;
                 try {
-                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, prevoteCandidate.getBlockHash());
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, preVoteCandidate.getBlockHash());
                 } catch (IllegalArgumentException e) {
                     log.warning("Error finding the lowest common ancestor: " + e.getMessage());
                     continue;
@@ -169,7 +169,7 @@ public class GrandpaService {
     }
 
     /**
-     * Finds and returns the block with the most votes in the GRANDPA prevote stage.
+     * Finds and returns the block with the most votes in the GRANDPA pre-vote stage.
      * If there are multiple blocks with the same number of votes, selects the block with the highest number.
      * If no block meets the criteria, throws an exception indicating no valid GHOST candidate.
      *

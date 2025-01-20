@@ -15,7 +15,7 @@ public class Justification {
     private BigInteger round;
     private Hash256 targetHash;
     private BigInteger targetBlock;
-    private Precommit[] precommits;
+    private PreCommit[] preCommits;
     private BlockHeader[] ancestryVotes;
 
     @Override
@@ -24,7 +24,7 @@ public class Justification {
                 "round=" + round +
                 ", targetHash=" + targetHash +
                 ", targetBlock=" + targetBlock +
-                ", precommits=" + Arrays.toString(precommits) +
+                ", preCommits=" + Arrays.toString(preCommits) +
                 ", ancestryVotes=" + Arrays.toString(ancestryVotes) +
                 '}';
     }

@@ -1,7 +1,7 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
 import com.limechain.exception.network.SignatureCountMismatchException;
-import com.limechain.network.protocol.warp.dto.Precommit;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;
@@ -10,7 +10,7 @@ import io.emeraldpay.polkaj.types.Hash512;
 
 import java.util.List;
 
-public class CompactJustificationScaleReader implements ScaleReader<Precommit[]> {
+public class CompactJustificationScaleReader implements ScaleReader<PreCommit[]> {
 
     private static final CompactJustificationScaleReader INSTANCE = new CompactJustificationScaleReader();
 
@@ -26,31 +26,31 @@ public class CompactJustificationScaleReader implements ScaleReader<Precommit[]>
     }
 
     @Override
-    public Precommit[] read(ScaleCodecReader reader) {
+    public PreCommit[] read(ScaleCodecReader reader) {
         List<Vote> votes = voteListReader.read(reader);
 
-        int precommitsCount = votes.size();
-        Precommit[] precommits = new Precommit[precommitsCount];
+        int preCommitsCount = votes.size();
+        PreCommit[] preCommits = new PreCommit[preCommitsCount];
 
-        for (int i = 0; i < precommitsCount; i++) {
+        for (int i = 0; i < preCommitsCount; i++) {
             Vote vote = votes.get(i);
-            precommits[i] = new Precommit();
-            precommits[i].setTargetHash(vote.getBlockHash());
-            precommits[i].setTargetNumber(vote.getBlockNumber());
+            preCommits[i] = new PreCommit();
+            preCommits[i].setTargetHash(vote.getBlockHash());
+            preCommits[i].setTargetNumber(vote.getBlockNumber());
         }
 
         int signaturesCount = reader.readCompactInt();
-        if (signaturesCount != precommitsCount) {
+        if (signaturesCount != preCommitsCount) {
             throw new SignatureCountMismatchException(
-                    String.format("Number of signatures (%d) does not match number of precommits (%d)",
-                            signaturesCount, precommitsCount));
+                    String.format("Number of signatures (%d) does not match number of preCommits (%d)",
+                            signaturesCount, preCommitsCount));
         }
 
         for (int i = 0; i < signaturesCount; i++) {
-            precommits[i].setSignature(new Hash512(reader.readByteArray(64)));
-            precommits[i].setAuthorityPublicKey(new Hash256(reader.readUint256()));
+            preCommits[i].setSignature(new Hash512(reader.readByteArray(64)));
+            preCommits[i].setAuthorityPublicKey(new Hash256(reader.readUint256()));
         }
 
-        return precommits;
+        return preCommits;
     }
 }

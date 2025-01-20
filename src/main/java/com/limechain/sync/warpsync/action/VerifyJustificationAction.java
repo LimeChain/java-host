@@ -58,7 +58,7 @@ public class VerifyJustificationAction implements WarpSyncAction {
                 throw new JustificationVerificationException("No such fragment");
             }
             boolean verified = JustificationVerifier.verify(
-                    fragment.getJustification().getPrecommits(),
+                    fragment.getJustification().getPreCommits(),
                     fragment.getJustification().getRound());
             if (!verified) {
                 throw new JustificationVerificationException("Justification could not be verified.");
