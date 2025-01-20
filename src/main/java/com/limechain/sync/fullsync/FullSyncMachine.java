@@ -105,7 +105,7 @@ public class FullSyncMachine {
 
         if (syncState.getLastFinalizedBlockNumber().equals(BigInteger.ZERO)) {
             stateManager.getEpochState().populateDataFromRuntime(runtime);
-            stateManager.getRoundState().populateDataFromRuntime(runtime);
+            stateManager.getGrandpaSetState().populateDataFromRuntime(runtime);
         }
 
         int startNumber = syncState.getLastFinalizedBlockNumber()

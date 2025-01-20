@@ -118,7 +118,7 @@ public class BlockHandler {
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
 
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                 .ifPresent(cm -> grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 

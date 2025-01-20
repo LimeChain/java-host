@@ -7,6 +7,9 @@ import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.Subround;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
@@ -56,22 +59,11 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     @Override
     public void populateDataFromRuntime(Runtime runtime) {
         this.authorities = runtime.getGrandpaApiAuthorities();
-        this.setId = BigInteger.ZERO;
-        this.roundNumber = BigInteger.ONE;
     }
 
     @Override
     public void initializeFromDatabase() {
         loadPersistedState();
-    }
-
-    @Override
-    public void persistState() {
-        saveGrandpaAuthorities();
-        saveAuthoritySetId();
-        saveLatestRound();
-        savePrecommits();
-        savePrevotes();
     }
 
     /**
@@ -148,6 +140,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         this.setId = fetchAuthoritiesSetId();
     }
 
+    @Override
     public void persistState() {
         saveGrandpaAuthorities();
         saveAuthoritySetId();

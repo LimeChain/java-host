@@ -39,7 +39,7 @@ public class GrandpaService {
      * @return the best final candidate block
      */
     public Vote getBestFinalCandidate(GrandpaRound grandpaRound) {
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         BlockState blockState = stateManager.getBlockState();
 
         Vote prevoteCandidate = getGrandpaGhost(grandpaRound);
@@ -98,7 +98,7 @@ public class GrandpaService {
      * @return GRANDPA GHOST block as a vote
      */
     public Vote getGrandpaGhost(GrandpaRound grandpaRound) {
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         var threshold = grandpaSetState.getThreshold();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
@@ -267,7 +267,6 @@ public class GrandpaService {
             return 0L;
         }
 
-        RoundState roundState = stateManager.getRoundState();
         int equivocationCount = switch (subround) {
             case Subround.PREVOTE -> grandpaRound.getPvEquivocations().size();
             case Subround.PRECOMMIT -> grandpaRound.getPcEquivocations().size();
@@ -309,7 +308,7 @@ public class GrandpaService {
      */
     private HashMap<Vote, Long> getDirectVotes(GrandpaRound grandpaRound, Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
 
         Map<Hash256, SignedVote> votes = switch (subround) {
             case Subround.PREVOTE -> grandpaRound.getPreVotes();

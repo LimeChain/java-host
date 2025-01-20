@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.message;
 
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;

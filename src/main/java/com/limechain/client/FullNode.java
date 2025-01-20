@@ -1,7 +1,7 @@
 package com.limechain.client;
 
 import com.limechain.babe.state.EpochState;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.NetworkService;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.block.state.BlockState;
@@ -21,6 +21,6 @@ public class FullNode extends HostNode {
                         Objects.requireNonNull(AppBean.getBean(BlockState.class)),
                         Objects.requireNonNull(AppBean.getBean(SyncState.class)),
                         Objects.requireNonNull(AppBean.getBean(EpochState.class)),
-                        Objects.requireNonNull(AppBean.getBean(RoundState.class))));
+                        Objects.requireNonNull(AppBean.getBean(GrandpaSetState.class))));
     }
 }

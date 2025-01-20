@@ -79,7 +79,7 @@ public class WarpSyncMachine {
             if (syncState.getLastFinalizedBlockNumber()
                     .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
                 syncState.setLightSyncState(initState);
-                roundState.setLightSyncState(initState);
+                grandpaSetState.setLightSyncState(initState);
             }
         }
         final Hash256 initStateHash = syncState.getLastFinalizedBlockHash();
@@ -112,7 +112,7 @@ public class WarpSyncMachine {
 
         this.warpState.setWarpSyncFinished(true);
         syncState.persistState();
-        roundState.persistState();
+        grandpaSetState.persistState();
 
         blockState.setupPostWarpSync(syncState.getLastFinalizedBlockHash(), syncState.getLastFinalizedBlockNumber());
 
