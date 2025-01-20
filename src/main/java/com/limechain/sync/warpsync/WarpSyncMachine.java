@@ -3,7 +3,7 @@ package com.limechain.sync.warpsync;
 import com.limechain.chain.ChainService;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.state.StateManager;
@@ -72,14 +72,14 @@ public class WarpSyncMachine {
 
     public void start() {
         SyncState syncState = stateManager.getSyncState();
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
 
         if (this.chainService.getChainSpec().getLightSyncState() != null) {
             LightSyncState initState = LightSyncState.decode(this.chainService.getChainSpec().getLightSyncState());
             if (syncState.getLastFinalizedBlockNumber()
                     .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
                 syncState.setLightSyncState(initState);
-                roundState.setLightSyncState(initState);
+                grandpaSetState.setLightSyncState(initState);
             }
         }
         final Hash256 initStateHash = syncState.getLastFinalizedBlockHash();
@@ -107,12 +107,12 @@ public class WarpSyncMachine {
 
     private void finishWarpSync() {
         SyncState syncState = stateManager.getSyncState();
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         BlockState blockState = stateManager.getBlockState();
 
         this.warpState.setWarpSyncFinished(true);
         syncState.persistState();
-        roundState.persistState();
+        grandpaSetState.persistState();
 
         blockState.setupPostWarpSync(syncState.getLastFinalizedBlockHash(), syncState.getLastFinalizedBlockNumber());
 

@@ -2,14 +2,15 @@ package com.limechain.grandpa;
 
 import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaRound;
+import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
-import io.libp2p.core.crypto.PubKey;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
@@ -37,18 +38,18 @@ public class GrandpaService {
      *
      * @return the best final candidate block
      */
-    public Vote getBestFinalCandidate() {
-        RoundState roundState = stateManager.getRoundState();
+    public Vote getBestFinalCandidate(GrandpaRound grandpaRound) {
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         BlockState blockState = stateManager.getBlockState();
 
-        Vote prevoteCandidate = getGrandpaGhost();
+        Vote prevoteCandidate = getGrandpaGhost(grandpaRound);
 
-        if (roundState.getRoundNumber().equals(BigInteger.ZERO)) {
+        if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
             return prevoteCandidate;
         }
 
-        var threshold = roundState.getThreshold();
-        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(threshold, Subround.PRECOMMIT);
+        var threshold = grandpaSetState.getThreshold();
+        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PRECOMMIT);
 
         if (possibleSelectedBlocks.isEmpty()) {
             return prevoteCandidate;
@@ -96,15 +97,15 @@ public class GrandpaService {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    public Vote getGrandpaGhost() {
-        RoundState roundState = stateManager.getRoundState();
-        var threshold = roundState.getThreshold();
+    public Vote getGrandpaGhost(GrandpaRound grandpaRound) {
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+        var threshold = grandpaSetState.getThreshold();
 
-        if (roundState.getRoundNumber().equals(BigInteger.ZERO)) {
+        if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
             return getLastFinalizedBlockAsVote();
         }
 
-        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(threshold, Subround.PREVOTE);
+        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PREVOTE);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
             throw new GhostExecutionException("GHOST not found");
@@ -112,6 +113,35 @@ public class GrandpaService {
 
         return selectBlockWithMostVotes(blocks);
     }
+
+    /**
+     * Determines what block is our pre-voted block for the current round
+     * if we receive a vote message from the network with a
+     * block that's greater than or equal to the current pre-voted block
+     * and greater than the best final candidate from the last round, we choose that.
+     * otherwise, we simply choose the head of our chain.
+     *
+     * @return the best pre-voted block
+     */
+    public Vote getBestPreVoteCandidate(GrandpaRound grandpaRound) {
+        Vote previousBestFinalCandidate = grandpaRound.getPrevious() != null
+                ? grandpaRound.getPrevious().getBestFinalCandidate()
+                : new Vote(null, BigInteger.ZERO);
+        Vote currentVote = getGrandpaGhost(grandpaRound);
+
+        SignedVote primaryVote = grandpaRound.getPrimaryVote();
+
+        if (primaryVote != null) {
+            BigInteger primaryBlockNumber = primaryVote.getVote().getBlockNumber();
+
+            if (primaryBlockNumber.compareTo(currentVote.getBlockNumber()) > 0 &&
+                    primaryBlockNumber.compareTo(previousBestFinalCandidate.getBlockNumber()) > 0) {
+                return primaryVote.getVote();
+            }
+        }
+        return currentVote;
+    }
+
 
     /**
      * Selects the block with the most votes from the provided map of blocks.
@@ -145,12 +175,12 @@ public class GrandpaService {
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return blocks that exceed the required vote threshold
      */
-    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(BigInteger threshold, Subround subround) {
-        var votes = getDirectVotes(subround);
+    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(GrandpaRound grandpaRound, BigInteger threshold, Subround subround) {
+        var votes = getDirectVotes(grandpaRound, subround);
         var blocks = new HashMap<Hash256, BigInteger>();
 
         for (Vote vote : votes.keySet()) {
-            long totalVotes = getTotalVotesForBlock(vote.getBlockHash(), subround);
+            long totalVotes = getTotalVotesForBlock(grandpaRound, vote.getBlockHash(), subround);
 
             if (BigInteger.valueOf(totalVotes).compareTo(threshold) >= 0) {
                 blocks.put(vote.getBlockHash(), vote.getBlockNumber());
@@ -161,10 +191,10 @@ public class GrandpaService {
             return blocks;
         }
 
-        List<Vote> allVotes = getVotes(subround);
+        List<Vote> allVotes = getVotes(grandpaRound, subround);
         for (Vote vote : votes.keySet()) {
             blocks = new HashMap<>(
-                    getPossibleSelectedAncestors(allVotes, vote.getBlockHash(), blocks, subround, threshold)
+                    getPossibleSelectedAncestors(grandpaRound, allVotes, vote.getBlockHash(), blocks, subround, threshold)
             );
         }
 
@@ -181,7 +211,8 @@ public class GrandpaService {
      * @param threshold        minimum votes required for a block to qualify.
      * @return map of block hash to block number for ancestors meeting the threshold condition.
      */
-    private Map<Hash256, BigInteger> getPossibleSelectedAncestors(List<Vote> votes,
+    private Map<Hash256, BigInteger> getPossibleSelectedAncestors(GrandpaRound grandpaRound,
+                                                                  List<Vote> votes,
                                                                   Hash256 currentBlockHash,
                                                                   Map<Hash256, BigInteger> selected,
                                                                   Subround subround,
@@ -205,7 +236,7 @@ public class GrandpaService {
                 return selected;
             }
 
-            long totalVotes = getTotalVotesForBlock(ancestorBlockHash, subround);
+            long totalVotes = getTotalVotesForBlock(grandpaRound, ancestorBlockHash, subround);
 
             if (BigInteger.valueOf(totalVotes).compareTo(threshold) >= 0) {
 
@@ -214,7 +245,7 @@ public class GrandpaService {
 
             } else {
                 // Recursively process ancestors
-                selected = getPossibleSelectedAncestors(votes, ancestorBlockHash, selected, subround, threshold);
+                selected = getPossibleSelectedAncestors(grandpaRound, votes, ancestorBlockHash, selected, subround, threshold);
             }
         }
 
@@ -229,17 +260,16 @@ public class GrandpaService {
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return total votes for a specific block
      */
-    private long getTotalVotesForBlock(Hash256 blockHash, Subround subround) {
-        long votesForBlock = getObservedVotesForBlock(blockHash, subround);
+    private long getTotalVotesForBlock(GrandpaRound grandpaRound, Hash256 blockHash, Subround subround) {
+        long votesForBlock = getObservedVotesForBlock(grandpaRound, blockHash, subround);
 
         if (votesForBlock == 0L) {
             return 0L;
         }
 
-        RoundState roundState = stateManager.getRoundState();
         int equivocationCount = switch (subround) {
-            case Subround.PREVOTE -> roundState.getPvEquivocations().size();
-            case Subround.PRECOMMIT -> roundState.getPcEquivocations().size();
+            case Subround.PREVOTE -> grandpaRound.getPvEquivocations().size();
+            case Subround.PRECOMMIT -> grandpaRound.getPcEquivocations().size();
             default -> 0;
         };
 
@@ -254,8 +284,8 @@ public class GrandpaService {
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return total observed votes
      */
-    private long getObservedVotesForBlock(Hash256 blockHash, Subround subround) {
-        var votes = getDirectVotes(subround);
+    private long getObservedVotesForBlock(GrandpaRound grandpaRound, Hash256 blockHash, Subround subround) {
+        var votes = getDirectVotes(grandpaRound, subround);
         var votesForBlock = 0L;
 
         for (Map.Entry<Vote, Long> entry : votes.entrySet()) {
@@ -276,23 +306,23 @@ public class GrandpaService {
      * @param subround stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return map of direct votes
      */
-    private HashMap<Vote, Long> getDirectVotes(Subround subround) {
+    private HashMap<Vote, Long> getDirectVotes(GrandpaRound grandpaRound, Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
 
-        Map<PubKey, Vote> votes = switch (subround) {
-            case Subround.PREVOTE -> roundState.getPrevotes();
-            case Subround.PRECOMMIT -> roundState.getPrecommits();
+        Map<Hash256, SignedVote> votes = switch (subround) {
+            case Subround.PREVOTE -> grandpaRound.getPreVotes();
+            case Subround.PRECOMMIT -> grandpaRound.getPreCommits();
             default -> new HashMap<>();
         };
 
-        votes.values().forEach(vote -> voteCounts.merge(vote, 1L, Long::sum));
+        votes.values().forEach(vote -> voteCounts.merge(vote.getVote(), 1L, Long::sum));
 
         return voteCounts;
     }
 
-    private List<Vote> getVotes(Subround subround) {
-        var votes = getDirectVotes(subround);
+    private List<Vote> getVotes(GrandpaRound grandpaRound, Subround subround) {
+        var votes = getDirectVotes(grandpaRound, subround);
         return new ArrayList<>(votes.keySet());
     }
 

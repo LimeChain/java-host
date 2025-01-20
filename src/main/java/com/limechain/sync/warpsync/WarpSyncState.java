@@ -264,7 +264,7 @@ public class WarpSyncState {
     public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
         messageCoordinator.sendNeighbourMessageToPeer(peerId);
         if (warpSyncFinished && neighbourMessage.getSetId()
-                .compareTo(stateManager.getRoundState().getSetId()) > 0) {
+                .compareTo(stateManager.getGrandpaSetState().getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
     }
@@ -296,7 +296,7 @@ public class WarpSyncState {
             stateManager.getSyncState().finalizeHeader(header);
 
             DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                    .ifPresent(cm -> stateManager.getRoundState()
+                    .ifPresent(cm -> stateManager.getGrandpaSetState()
                             .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
             handleScheduledEvents();
@@ -307,7 +307,7 @@ public class WarpSyncState {
      * Executes scheduled or forced authority changes for the last finalized block.
      */
     public void handleScheduledEvents() {
-        boolean updated = stateManager.getRoundState().handleAuthoritySetChange(
+        boolean updated = stateManager.getGrandpaSetState().handleAuthoritySetChange(
                 stateManager.getSyncState().getLastFinalizedBlockNumber());
 
         if (warpSyncFinished && updated) {

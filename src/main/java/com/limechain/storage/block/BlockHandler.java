@@ -4,7 +4,7 @@ import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.babe.state.EpochState;
 import com.limechain.config.HostConfig;
 import com.limechain.exception.storage.BlockStorageGenericException;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.NodeRole;
@@ -164,14 +164,14 @@ public class BlockHandler {
                     }));
         }
 
-        RoundState roundState = stateManager.getRoundState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         if (roundState.isInitialized()) {
             asyncExecutor.executeAndForget(() -> DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                     .ifPresent(cm ->
-                            roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber())
+                            grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber())
                     ));
 
-            roundState.handleAuthoritySetChange(header.getBlockNumber());
+            grandpaSetState.handleAuthoritySetChange(header.getBlockNumber());
         }
     }
 

@@ -74,7 +74,7 @@ public class VerifyJustificationAction implements WarpSyncAction {
         BlockHeader header = fragment.getHeader();
 
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                .ifPresent(cm -> stateManager.getRoundState()
+                .ifPresent(cm -> stateManager.getGrandpaSetState()
                         .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
         SyncState syncState = stateManager.getSyncState();

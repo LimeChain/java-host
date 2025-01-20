@@ -1,6 +1,5 @@
 package com.limechain.client;
 
-import com.limechain.grandpa.state.RoundState;
 import com.limechain.network.NetworkService;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.SyncService;
