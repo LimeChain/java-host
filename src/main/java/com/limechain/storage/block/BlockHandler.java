@@ -19,7 +19,6 @@ import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.SyncMode;
-import com.limechain.sync.state.SyncState;
 import com.limechain.transaction.TransactionProcessor;
 import com.limechain.utils.async.AsyncExecutor;
 import io.emeraldpay.polkaj.types.Hash256;
@@ -55,8 +54,6 @@ public class BlockHandler {
     private final ArrayDeque<Pair<Instant, Block>> pendingBlocksQueue;
 
     public BlockHandler(StateManager stateManager,
-                        RoundState roundState,
-                        SyncState syncState,
                         PeerRequester requester,
                         RuntimeBuilder builder,
                         HostConfig hostConfig,
@@ -165,7 +162,7 @@ public class BlockHandler {
         }
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        if (roundState.isInitialized()) {
+        if (grandpaSetState.isInitialized()) {
             asyncExecutor.executeAndForget(() -> DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                     .ifPresent(cm ->
                             grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber())
@@ -219,7 +216,7 @@ public class BlockHandler {
             blocks = responseFuture.join();
         }
 
-    log.fine("Request successful " + blocks.getFirst().getHeader().getHash());
-    return blocks.getFirst();
-}
+        log.fine("Request successful " + blocks.getFirst().getHeader().getHash());
+        return blocks.getFirst();
+    }
 }
