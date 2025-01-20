@@ -18,8 +18,7 @@ public class GrandpaRound {
     private GrandpaRound previous;
     private BigInteger roundNumber;
 
-    //TODO: is this ghost or bestPreVoteCandidate
-    private Vote preVotedBlock;
+    private Vote preVotedBlock; // GHOST
     private Vote bestFinalCandidate;
 
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
