@@ -19,7 +19,7 @@ public class EpochState {
 
     private boolean isInitialized = false;
 
-    private long disabledAuthority;
+    private BigInteger disabledAuthority;
     private BigInteger slotDuration;
     private BigInteger epochLength;
     private BigInteger genesisSlotNumber;

@@ -46,6 +46,7 @@ public class GrandpaSetState {
     private final KVRepository<String, Object> repository;
 
     private List<Authority> authorities;
+    private BigInteger disabledAuthority;
     private BigInteger setId;
     private RoundCache roundCache;
 
@@ -191,8 +192,8 @@ public class GrandpaSetState {
                     consensusMessage.getAdditionalOffset(),
                     currentBlockNumber
             ));
+            case GRANDPA_ON_DISABLED -> disabledAuthority = consensusMessage.getDisabledAuthority();
             //TODO: Implement later
-            case GRANDPA_ON_DISABLED -> log.log(Level.SEVERE, "'ON DISABLED' grandpa message not implemented");
             case GRANDPA_PAUSE -> log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
             case GRANDPA_RESUME -> log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
         }

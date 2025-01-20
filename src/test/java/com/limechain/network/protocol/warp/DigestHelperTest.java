@@ -42,7 +42,7 @@ class DigestHelperTest {
 
         var result = optResult.get();
         assertEquals(BabeConsensusMessageFormat.DISABLED_AUTHORITY, result.getFormat());
-        assertEquals(0, result.getDisabledAuthority());
+        assertEquals(BigInteger.ZERO, result.getDisabledAuthority());
         assertNull(result.getNextEpochData());
         assertNull(result.getNextEpochDescriptor());
     }
