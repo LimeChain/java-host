@@ -31,6 +31,12 @@ class InMemoryDB implements KVRepository<String, Object> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public <T> T find(String key, T defaultValue) {
+        return (T) find(key).orElse(defaultValue);
+    }
+
+    @Override
     public boolean delete(String key) {
         storage.remove(key);
         return true;
@@ -43,7 +49,7 @@ class InMemoryDB implements KVRepository<String, Object> {
 
     @Override
     public DeleteByPrefixResult deleteByPrefix(String prefix, Long limit) {
-        var keys = this.findKeysByPrefix(prefix, limit.intValue());
+        var keys = this.findKeysByPrefix(prefix, Math.toIntExact(limit));
 
         int deleted = 0;
         for (var key : keys) {
@@ -51,7 +57,7 @@ class InMemoryDB implements KVRepository<String, Object> {
             deleted++;
         }
 
-        boolean allDeleted = this.findKeysByPrefix(prefix, limit.intValue()).isEmpty();
+        boolean allDeleted = this.findKeysByPrefix(prefix, Math.toIntExact(limit)).isEmpty();
 
         return new DeleteByPrefixResult(deleted, allDeleted);
     }

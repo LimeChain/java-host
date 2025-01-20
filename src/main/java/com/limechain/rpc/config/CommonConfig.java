@@ -7,6 +7,7 @@ import com.limechain.cli.CliArguments;
 import com.limechain.config.HostConfig;
 import com.limechain.config.SystemInfo;
 import com.limechain.constants.GenesisBlockHash;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.Network;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -87,18 +88,24 @@ public class CommonConfig {
     }
 
     @Bean
+    public GrandpaSetState grandpaSetState(KVRepository<String, Object> repository) {
+        return new GrandpaSetState(repository);
+    }
+
+    @Bean
     public WarpSyncState warpSyncState(SyncState syncState,
+                                       GrandpaSetState grandpaSetState,
                                        KVRepository<String, Object> repository,
                                        RuntimeBuilder runtimeBuilder,
                                        PeerRequester requester,
                                        PeerMessageCoordinator messageCoordinator) {
-        return new WarpSyncState(syncState, repository, runtimeBuilder, requester, messageCoordinator);
+        return new WarpSyncState(syncState, repository, runtimeBuilder, requester, messageCoordinator, grandpaSetState);
     }
 
     @Bean
     public WarpSyncMachine warpSyncMachine(Network network, ChainService chainService, SyncState syncState,
-                                           WarpSyncState warpSyncState) {
-        return new WarpSyncMachine(network, chainService, syncState, warpSyncState);
+                                           WarpSyncState warpSyncState, GrandpaSetState grandpaSetState) {
+        return new WarpSyncMachine(network, chainService, syncState, warpSyncState, grandpaSetState);
     }
 
     @Bean

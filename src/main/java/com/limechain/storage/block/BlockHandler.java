@@ -2,6 +2,7 @@ package com.limechain.storage.block;
 
 import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.babe.state.EpochState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
@@ -27,6 +28,7 @@ public class BlockHandler {
 
     private final BlockState blockState;
     private final EpochState epochState;
+    private final GrandpaSetState grandpaSetState;
 
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
@@ -40,7 +42,9 @@ public class BlockHandler {
                         PeerRequester requester,
                         RuntimeBuilder builder,
                         TransactionProcessor transactionProcessor,
-                        PeerMessageCoordinator messageCoordinator) {
+                        PeerMessageCoordinator messageCoordinator,
+                        GrandpaSetState grandpaSetState) {
+
         this.epochState = epochState;
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
@@ -49,6 +53,7 @@ public class BlockHandler {
         this.verifier = new BlockProductionVerifier();
         blockState = BlockState.getInstance();
         asyncExecutor = AsyncExecutor.withPoolSize(10);
+        this.grandpaSetState = grandpaSetState;
     }
 
     public synchronized void handleBlockHeader(Instant arrivalTime, BlockHeader header, PeerId excluding) {
@@ -115,6 +120,11 @@ public class BlockHandler {
                     epochState.updateNextEpochConfig(cm);
                     log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                 });
+
+        DigestHelper.getGrandpaConsensusMessage(header.getDigest())
+                .ifPresent(cm -> grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+
+        grandpaSetState.handleAuthoritySetChange(header.getBlockNumber());
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }

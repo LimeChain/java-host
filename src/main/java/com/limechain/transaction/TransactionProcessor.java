@@ -180,7 +180,7 @@ public class TransactionProcessor {
                                                                              Extrinsic transaction) {
         TransactionValidationRequest request = new TransactionValidationRequest();
 
-        switch (txQueueVersion.intValue()) {
+        switch (txQueueVersion.intValueExact()) {
             case 1 -> request.setTransaction(transaction.getData());
             case 2 -> {
                 request.setSource(source);
