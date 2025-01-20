@@ -115,6 +115,9 @@ public class FullSyncMachine {
                 .add(BigInteger.ONE)
                 .intValueExact();
 
+        messageCoordinator.handshakeBootNodes();
+        messageCoordinator.handshakePeers();
+
         int blocksToFetch = 100;
         List<Block> receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
 
@@ -133,8 +136,6 @@ public class FullSyncMachine {
         initializeStates();
 
         AbstractState.setSyncMode(SyncMode.HEAD);
-        messageCoordinator.handshakeBootNodes();
-        messageCoordinator.handshakePeers();
     }
 
     private void initializeStates() {

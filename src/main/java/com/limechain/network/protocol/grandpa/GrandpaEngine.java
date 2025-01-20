@@ -17,6 +17,8 @@ import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleReader;
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
 import com.limechain.rpc.server.AppBean;
+import com.limechain.state.AbstractState;
+import com.limechain.sync.SyncMode;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
@@ -38,13 +40,15 @@ import java.util.logging.Level;
 public class GrandpaEngine {
     private static final int HANDSHAKE_LENGTH = 1;
 
+    private final WarpSyncState warpSyncState;
+
     protected ConnectionManager connectionManager;
-    protected WarpSyncState warpSyncState;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
 
     public GrandpaEngine() {
-        connectionManager = ConnectionManager.getInstance();
         warpSyncState = AppBean.getBean(WarpSyncState.class);
+
+        connectionManager = ConnectionManager.getInstance();
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
     }
 
@@ -98,6 +102,11 @@ public class GrandpaEngine {
         if (!connectedToPeer && messageType != GrandpaMessageType.HANDSHAKE) {
             log.log(Level.WARNING, "No handshake for grandpa message from Peer " + peerId);
             stream.close();
+            return;
+        }
+
+        if (!AbstractState.getSyncMode().equals(SyncMode.HEAD)) {
+            log.fine("Skipping grandpa message before we reach head of chain.");
             return;
         }
 

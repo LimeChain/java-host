@@ -12,7 +12,7 @@ public abstract class AbstractState implements ServiceState {
     protected boolean initialized;
 
     public static void setSyncMode(SyncMode mode) {
-        if (syncMode.ordinal() > mode.ordinal()) {
+        if (syncMode != null && syncMode.ordinal() > mode.ordinal()) {
             throw new IllegalStateException(mode + " mode precedes " + syncMode);
         }
 

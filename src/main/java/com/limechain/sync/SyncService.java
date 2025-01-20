@@ -22,14 +22,20 @@ public class SyncService implements NodeService {
 
     @Override
     public void start() {
+        SyncMode initSyncMode = arguments.syncMode();
+        AbstractState.setSyncMode(initSyncMode);
+
         switch (NodeRole.fromString(arguments.nodeRole())) {
             case LIGHT -> {
-                warpSyncMachine.onFinish(() -> AbstractState.setSyncMode(SyncMode.HEAD),
-                        messageCoordinator::handshakeBootNodes);
+                warpSyncMachine.onFinish(() -> {
+                    AbstractState.setSyncMode(SyncMode.HEAD);
+                    messageCoordinator.handshakeBootNodes();
+                    messageCoordinator.handshakePeers();
+                });
                 warpSyncMachine.start();
             }
             case FULL, AUTHORING -> {
-                switch (arguments.syncMode()) {
+                switch (initSyncMode) {
                     case FULL -> fullSyncMachine.start();
                     case WARP -> {
                         warpSyncMachine.onFinish(() -> AbstractState.setSyncMode(SyncMode.FULL),

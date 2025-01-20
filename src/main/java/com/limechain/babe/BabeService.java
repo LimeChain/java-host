@@ -102,7 +102,7 @@ public class BabeService implements SlotChangeListener {
             return;
         }
 
-        blockHandler.handleProducedBlock(block);
+        blockHandler.handleProduced(block);
     }
 
     private Block produceBlock(BlockHeader parentHeader, Slot slot, BabePreDigest preDigest) {
