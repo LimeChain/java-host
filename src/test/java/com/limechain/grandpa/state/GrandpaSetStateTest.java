@@ -60,7 +60,6 @@ class GrandpaSetStateTest {
         ));
 
         grandpaSetState.setSetId(BigInteger.ONE);
-        grandpaSetState.setRoundCache(roundCache);
 
         // 4 % voters.size = 1
         when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(4));

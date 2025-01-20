@@ -70,7 +70,7 @@ public class BabeService implements SlotChangeListener {
         this.keyStore = keyStore;
         this.runtimeBuilder = runtimeBuilder;
 
-        blockState = AppBean.getBean(BlockState.class);
+        blockState = BlockState.getInstance();
         asyncExecutor = AsyncExecutor.withSingleThread();
         this.blockHandler = blockHandler;
     }
