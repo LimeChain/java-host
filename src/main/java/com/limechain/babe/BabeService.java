@@ -20,9 +20,9 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.crypto.KeyStore;
@@ -55,27 +55,26 @@ import java.util.Map;
 @Component
 public class BabeService implements SlotChangeListener {
 
-    private final TransactionState transactionState;
-    private final EpochState epochState;
-    private final BlockState blockState;
+    private final StateManager stateManager;
     private final KeyStore keyStore;
     private final AsyncExecutor asyncExecutor;
     private final Map<BigInteger, BabePreDigest> slotToPreRuntimeDigest = new HashedMap<>();
     private final RuntimeBuilder runtimeBuilder;
     private final BlockHandler blockHandler;
 
-    public BabeService(TransactionState transactionState, EpochState epochState, KeyStore keyStore, RuntimeBuilder runtimeBuilder, BlockHandler blockHandler) {
-        this.transactionState = transactionState;
-        this.epochState = epochState;
+    public BabeService(StateManager stateManager,
+                       KeyStore keyStore,
+                       RuntimeBuilder runtimeBuilder,
+                       BlockHandler blockHandler) {
+        this.stateManager = stateManager;
         this.keyStore = keyStore;
         this.runtimeBuilder = runtimeBuilder;
-
-        blockState = AppBean.getBean(BlockState.class);
         asyncExecutor = AsyncExecutor.withSingleThread();
         this.blockHandler = blockHandler;
     }
 
     private void executeEpochLottery(BigInteger epochIndex) {
+        EpochState epochState = stateManager.getEpochState();
         var epochStartSlotNumber = epochState.getEpochStartSlotNumber(epochIndex);
         var epochEndSlotNumber = epochStartSlotNumber.add(epochState.getEpochLength());
 
@@ -110,6 +109,7 @@ public class BabeService implements SlotChangeListener {
         newBlockHeader.setParentHash(parentHeader.getHash());
         newBlockHeader.setBlockNumber(slot.getNumber().add(BigInteger.ONE));
 
+        BlockState blockState = stateManager.getBlockState();
         Runtime runtime = blockState.getRuntime(parentHeader.getHash());
         Runtime newRuntime = runtimeBuilder.copyRuntime(runtime);
         newRuntime.initializeBlock(newBlockHeader);
@@ -126,7 +126,7 @@ public class BabeService implements SlotChangeListener {
         try {
             finalizedHeader = newRuntime.finalizeBlock();
         } catch (Exception e) {
-            transactions.forEach(transactionState::pushTransaction);
+            transactions.forEach(stateManager.getTransactionState()::pushTransaction);
             throw new BabeGenericException("Block finalization failed. Pushed transaction back to queue.");
         }
         log.fine("Finished with finalizing block.");
@@ -159,7 +159,7 @@ public class BabeService implements SlotChangeListener {
 
         newDigests[length + 1] = preDigest;
 
-        Authority auth = epochState.getCurrentEpochData().getAuthorities()
+        Authority auth = stateManager.getEpochState().getCurrentEpochData().getAuthorities()
                 .get((int) digest.getAuthorityIndex());
         Schnorrkel.KeyPair keyPair = keyStore.getKeyPair(KeyType.BABE, auth.getPublicKey())
                 .orElseThrow(() -> new KeyStoreException("No KeyPair found for provided pub key."));
@@ -179,6 +179,7 @@ public class BabeService implements SlotChangeListener {
 
         Duration timeout = Duration.between(Instant.now(), slotEnd);
 
+        TransactionState transactionState = stateManager.getTransactionState();
         // while not End-Of-Slot
         while (timeout.isPositive()) {
             timeout = Duration.between(Instant.now(), slotEnd);
@@ -247,6 +248,7 @@ public class BabeService implements SlotChangeListener {
     }
 
     private BlockHeader getParentBlockHeader(BigInteger slotNum) {
+        BlockState blockState = stateManager.getBlockState();
         BlockHeader parentHeader = blockState.bestBlockHeader();
         if (parentHeader == null) {
             throw new BlockStorageGenericException("Could not get best block header");

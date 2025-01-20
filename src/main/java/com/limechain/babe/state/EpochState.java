@@ -1,7 +1,8 @@
 package com.limechain.babe.state;
 
-import com.limechain.babe.api.BabeApiConfiguration;
+import com.limechain.ServiceConsensusState;
 import com.limechain.babe.consensus.BabeConsensusMessage;
+import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.KVRepository;
 import lombok.Getter;
@@ -19,7 +20,7 @@ import java.time.Instant;
 @Getter
 @Component
 @RequiredArgsConstructor
-public class EpochState extends AbstractState {
+public class EpochState extends AbstractState implements ServiceConsensusState {
 
     private final KVRepository<String, Object> repository;
 
@@ -35,10 +36,15 @@ public class EpochState extends AbstractState {
     private EpochDescriptor nextEpochDescriptor;
 
     @Override
-    public void initialize() {
-        initialized = true;
-        //TODO: Find a way to initiate a runtime instance during node startup to populate from genesis.
-        //Epoch data gets populated via a runtime call at the end of the syncing process.
+    public void populateDataFromRuntime(Runtime runtime) {
+        var babeApiConfiguration = runtime.getBabeApiConfiguration();
+        this.slotDuration = babeApiConfiguration.getSlotDuration();
+        this.epochLength = babeApiConfiguration.getEpochLength();
+        this.currentEpochData = new EpochData(
+                babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
+        this.currentEpochDescriptor = new EpochDescriptor(
+                babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
+        setGenesisSlotNumber(runtime.getGenesisSlotNumber());
     }
 
     @Override
@@ -49,15 +55,6 @@ public class EpochState extends AbstractState {
     @Override
     public void persistState() {
         //TODO: Add methods to store epoch state data.
-    }
-
-    public void populateDataFromRuntime(BabeApiConfiguration babeApiConfiguration) {
-        this.slotDuration = babeApiConfiguration.getSlotDuration();
-        this.epochLength = babeApiConfiguration.getEpochLength();
-        this.currentEpochData = new EpochData(
-                babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
-        this.currentEpochDescriptor = new EpochDescriptor(
-                babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
     }
 
     public void updateNextEpochConfig(BabeConsensusMessage message) {

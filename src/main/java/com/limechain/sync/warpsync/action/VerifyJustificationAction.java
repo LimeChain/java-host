@@ -1,19 +1,17 @@
 package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.sync.JustificationVerificationException;
-import com.limechain.grandpa.state.RoundState;
-import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
 import com.limechain.rpc.server.AppBean;
+import com.limechain.state.StateManager;
 import com.limechain.sync.JustificationVerifier;
 import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
 import lombok.extern.java.Log;
 
-import java.util.Optional;
 import java.util.logging.Level;
 
 // VerifyJustificationState is going to be instantiated a lot of times
@@ -22,13 +20,11 @@ import java.util.logging.Level;
 public class VerifyJustificationAction implements WarpSyncAction {
 
     private final WarpSyncState warpSyncState;
-    private final SyncState syncState;
-    private final RoundState roundState;
+    private final StateManager stateManager;
     private Exception error;
 
     public VerifyJustificationAction() {
-        this.roundState = AppBean.getBean(RoundState.class);
-        this.syncState = AppBean.getBean(SyncState.class);
+        this.stateManager = AppBean.getBean(StateManager.class);
         this.warpSyncState = AppBean.getBean(WarpSyncState.class);
     }
 
@@ -45,7 +41,7 @@ public class VerifyJustificationAction implements WarpSyncAction {
         } else if (warpSyncState.isWarpSyncFragmentsFinished()) {
             sync.setWarpSyncAction(new RuntimeDownloadAction());
         } else {
-            sync.setWarpSyncAction(new RequestFragmentsAction(syncState.getLastFinalizedBlockHash()));
+            sync.setWarpSyncAction(new RequestFragmentsAction(stateManager.getSyncState().getLastFinalizedBlockHash()));
         }
     }
 
@@ -66,7 +62,7 @@ public class VerifyJustificationAction implements WarpSyncAction {
                 throw new JustificationVerificationException("Justification could not be verified.");
             }
 
-            syncState.finalizeHeader(fragment.getHeader());
+            stateManager.getSyncState().finalizeHeader(fragment.getHeader());
             handleAuthorityChanges(fragment);
         } catch (Exception e) {
             log.log(Level.WARNING, "Error while verifying justification: " + e.getMessage());
@@ -78,8 +74,10 @@ public class VerifyJustificationAction implements WarpSyncAction {
         BlockHeader header = fragment.getHeader();
 
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+                .ifPresent(cm -> stateManager.getRoundState()
+                        .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
+        SyncState syncState = stateManager.getSyncState();
         log.log(Level.INFO, "Verified justification. Block hash is now at #"
                 + syncState.getLastFinalizedBlockNumber() + ": "
                 + syncState.getLastFinalizedBlockHash().toString()

@@ -15,6 +15,7 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.SyncMode;
@@ -38,10 +39,7 @@ import java.util.concurrent.CompletableFuture;
 @Component
 public class BlockHandler {
 
-    private final BlockState blockState;
-    private final EpochState epochState;
-    private final RoundState roundState;
-    private final SyncState syncState;
+    private final StateManager stateManager;
 
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
@@ -56,8 +54,7 @@ public class BlockHandler {
     private final HashMap<Hash256, BlockHeader> blockHeaders;
     private final ArrayDeque<Pair<Instant, Block>> pendingBlocksQueue;
 
-    public BlockHandler(EpochState epochState,
-                        BlockState blockState,
+    public BlockHandler(StateManager stateManager,
                         RoundState roundState,
                         SyncState syncState,
                         PeerRequester requester,
@@ -66,10 +63,7 @@ public class BlockHandler {
                         TransactionProcessor transactionProcessor,
                         PeerMessageCoordinator messageCoordinator) {
 
-        this.epochState = epochState;
-        this.blockState = blockState;
-        this.roundState = roundState;
-        this.syncState = syncState;
+        this.stateManager = stateManager;
 
         this.requester = requester;
         this.messageCoordinator = messageCoordinator;
@@ -154,14 +148,14 @@ public class BlockHandler {
 
         BlockHeader header = block.getHeader();
 
-        blockState.addBlockWithArrivalTime(block, arrivalTime);
+        stateManager.getBlockState().addBlockWithArrivalTime(block, arrivalTime);
         log.fine(String.format("Added block No: %s with hash: %s to block tree.",
                 block.getHeader().getBlockNumber(), header.getHash()));
 
         if (epochState.isInitialized()) {
             asyncExecutor.executeAndForget(() -> DigestHelper.getBabeConsensusMessage(header.getDigest())
                     .ifPresent(cm -> {
-                        epochState.updateNextEpochConfig(cm);
+                        stateManager.getEpochState().updateNextEpochConfig(cm);
                         log.fine(String.format("Updated epoch block config: %s", cm.getFormat().toString()));
                     }));
         }
@@ -172,54 +166,54 @@ public class BlockHandler {
                             roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber())
                     ));
 
-            roundState.handleAuthoritySetChange(header.getBlockNumber());
-        }
+        roundState.handleAuthoritySetChange(header.getBlockNumber());
     }
+}
 
-    private void addBlockToQueue(BlockHeader blockHeader, Instant arrivalTime) {
+private void addBlockToQueue(BlockHeader blockHeader, Instant arrivalTime) {
 
-        blockHeaders.put(blockHeader.getHash(), blockHeader);
+    blockHeaders.put(blockHeader.getHash(), blockHeader);
 
-        asyncExecutor.executeAndForget(() -> {
-            Block block = requestBlock(blockHeader);
-            pendingBlocksQueue.add(Pair.with(arrivalTime, block));
-            log.fine("Added block to queue " + block.getHeader().getBlockNumber() + " " + block.getHeader().getHash());
-        });
-    }
+    asyncExecutor.executeAndForget(() -> {
+        Block block = requestBlock(blockHeader);
+        pendingBlocksQueue.add(Pair.with(arrivalTime, block));
+        log.fine("Added block to queue " + block.getHeader().getBlockNumber() + " " + block.getHeader().getHash());
+    });
+}
 
-    private void processPendingBlocksFromQueue() {
+private void processPendingBlocksFromQueue() {
 
-        while (!pendingBlocksQueue.isEmpty()) {
-            var currentPair = pendingBlocksQueue.poll();
-            var block = currentPair.getValue1();
-            var arrivalTime = currentPair.getValue0();
+    while (!pendingBlocksQueue.isEmpty()) {
+        var currentPair = pendingBlocksQueue.poll();
+        var block = currentPair.getValue1();
+        var arrivalTime = currentPair.getValue0();
 
-            blockHeaders.remove(block.getHeader().getHash());
+        blockHeaders.remove(block.getHeader().getHash());
 
-            if (block.getHeader().getBlockNumber().compareTo(syncState.getLastFinalizedBlockNumber()) <= 0) {
-                continue;
-            }
-
-            try {
-                processBlock(block, arrivalTime);
-            } catch (BlockStorageGenericException ex) {
-                log.fine(String.format("[%s] %s", block.getHeader().getHash().toString(), ex.getMessage()));
-            }
-        }
-    }
-
-    private Block requestBlock(BlockHeader header) {
-
-        List<Block> blocks = new ArrayList<>();
-
-        while (blocks.isEmpty()) {
-            CompletableFuture<List<Block>> responseFuture = requester.requestBlocks(
-                    BlockRequestField.ALL, header.getHash(), 1);
-
-            blocks = responseFuture.join();
+        if (block.getHeader().getBlockNumber().compareTo(syncState.getLastFinalizedBlockNumber()) <= 0) {
+            continue;
         }
 
-        log.fine("Request successful " + blocks.getFirst().getHeader().getHash());
-        return blocks.getFirst();
+        try {
+            processBlock(block, arrivalTime);
+        } catch (BlockStorageGenericException ex) {
+            log.fine(String.format("[%s] %s", block.getHeader().getHash().toString(), ex.getMessage()));
+        }
     }
+}
+
+private Block requestBlock(BlockHeader header) {
+
+    List<Block> blocks = new ArrayList<>();
+
+    while (blocks.isEmpty()) {
+        CompletableFuture<List<Block>> responseFuture = requester.requestBlocks(
+                BlockRequestField.ALL, header.getHash(), 1);
+
+        blocks = responseFuture.join();
+    }
+
+    log.fine("Request successful " + blocks.getFirst().getHeader().getHash());
+    return blocks.getFirst();
+}
 }
