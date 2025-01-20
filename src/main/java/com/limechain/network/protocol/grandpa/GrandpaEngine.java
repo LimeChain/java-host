@@ -105,7 +105,7 @@ public class GrandpaEngine {
             return;
         }
 
-        if (!AbstractState.getSyncMode().equals(SyncMode.HEAD)) {
+        if (!SyncMode.HEAD.equals(AbstractState.getSyncMode())) {
             log.fine("Skipping grandpa message before we reach head of chain.");
             return;
         }
