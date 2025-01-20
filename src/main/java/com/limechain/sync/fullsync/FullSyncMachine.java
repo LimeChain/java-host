@@ -9,6 +9,7 @@ import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.network.protocol.warp.dto.Block;
@@ -41,6 +42,7 @@ import lombok.extern.java.Log;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -193,7 +195,7 @@ public class FullSyncMachine {
             log.fine("Block number to be executed is " + block.getHeader().getBlockNumber());
 
             try {
-                blockState.addBlock(block);
+                blockHandler.addBlockToTree(block, Instant.now());
             } catch (BlockNodeNotFoundException ex) {
                 log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
             }

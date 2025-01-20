@@ -15,8 +15,8 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
-import com.limechain.state.StateManager;
 import com.limechain.state.AbstractState;
+import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.SyncMode;
 import com.limechain.sync.state.SyncState;
@@ -80,6 +80,7 @@ public class BlockHandler {
 
     public synchronized void handleAnnounced(BlockHeader header, Instant arrivalTime, PeerId peerId) {
 
+        BlockState blockState = stateManager.getBlockState();
         if (blockHeaders.containsKey(header.getHash()) || blockState.hasHeader(header.getHash())) {
             log.fine("Skipping announced block: " + header.getBlockNumber() + " " + header.getHash());
             return;
@@ -122,9 +123,11 @@ public class BlockHandler {
         try {
             BlockHeader header = block.getHeader();
 
+            BlockState blockState = stateManager.getBlockState();
             Runtime runtime = blockState.getRuntime(header.getParentHash());
             Runtime newRuntime = builder.copyRuntime(runtime);
 
+            EpochState epochState = stateManager.getEpochState();
             if (!verifier.isAuthorshipValid(newRuntime,
                     header,
                     epochState.getCurrentEpochData(),
@@ -144,7 +147,7 @@ public class BlockHandler {
         }
     }
 
-    private void addBlockToTree(Block block, Instant arrivalTime) {
+    public void addBlockToTree(Block block, Instant arrivalTime) {
 
         BlockHeader header = block.getHeader();
 
@@ -152,6 +155,7 @@ public class BlockHandler {
         log.fine(String.format("Added block No: %s with hash: %s to block tree.",
                 block.getHeader().getBlockNumber(), header.getHash()));
 
+        EpochState epochState = stateManager.getEpochState();
         if (epochState.isInitialized()) {
             asyncExecutor.executeAndForget(() -> DigestHelper.getBabeConsensusMessage(header.getDigest())
                     .ifPresent(cm -> {
@@ -160,58 +164,60 @@ public class BlockHandler {
                     }));
         }
 
+        RoundState roundState = stateManager.getRoundState();
         if (roundState.isInitialized()) {
             asyncExecutor.executeAndForget(() -> DigestHelper.getGrandpaConsensusMessage(header.getDigest())
                     .ifPresent(cm ->
                             roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber())
                     ));
 
-        roundState.handleAuthoritySetChange(header.getBlockNumber());
-    }
-}
-
-private void addBlockToQueue(BlockHeader blockHeader, Instant arrivalTime) {
-
-    blockHeaders.put(blockHeader.getHash(), blockHeader);
-
-    asyncExecutor.executeAndForget(() -> {
-        Block block = requestBlock(blockHeader);
-        pendingBlocksQueue.add(Pair.with(arrivalTime, block));
-        log.fine("Added block to queue " + block.getHeader().getBlockNumber() + " " + block.getHeader().getHash());
-    });
-}
-
-private void processPendingBlocksFromQueue() {
-
-    while (!pendingBlocksQueue.isEmpty()) {
-        var currentPair = pendingBlocksQueue.poll();
-        var block = currentPair.getValue1();
-        var arrivalTime = currentPair.getValue0();
-
-        blockHeaders.remove(block.getHeader().getHash());
-
-        if (block.getHeader().getBlockNumber().compareTo(syncState.getLastFinalizedBlockNumber()) <= 0) {
-            continue;
-        }
-
-        try {
-            processBlock(block, arrivalTime);
-        } catch (BlockStorageGenericException ex) {
-            log.fine(String.format("[%s] %s", block.getHeader().getHash().toString(), ex.getMessage()));
+            roundState.handleAuthoritySetChange(header.getBlockNumber());
         }
     }
-}
 
-private Block requestBlock(BlockHeader header) {
+    private void addBlockToQueue(BlockHeader blockHeader, Instant arrivalTime) {
 
-    List<Block> blocks = new ArrayList<>();
+        blockHeaders.put(blockHeader.getHash(), blockHeader);
 
-    while (blocks.isEmpty()) {
-        CompletableFuture<List<Block>> responseFuture = requester.requestBlocks(
-                BlockRequestField.ALL, header.getHash(), 1);
-
-        blocks = responseFuture.join();
+        asyncExecutor.executeAndForget(() -> {
+            Block block = requestBlock(blockHeader);
+            pendingBlocksQueue.add(Pair.with(arrivalTime, block));
+            log.fine("Added block to queue " + block.getHeader().getBlockNumber() + " " + block.getHeader().getHash());
+        });
     }
+
+    private void processPendingBlocksFromQueue() {
+
+        while (!pendingBlocksQueue.isEmpty()) {
+            var currentPair = pendingBlocksQueue.poll();
+            var block = currentPair.getValue1();
+            var arrivalTime = currentPair.getValue0();
+
+            blockHeaders.remove(block.getHeader().getHash());
+
+            if (block.getHeader().getBlockNumber().compareTo(
+                    stateManager.getSyncState().getLastFinalizedBlockNumber()) <= 0) {
+                continue;
+            }
+
+            try {
+                processBlock(block, arrivalTime);
+            } catch (BlockStorageGenericException ex) {
+                log.fine(String.format("[%s] %s", block.getHeader().getHash().toString(), ex.getMessage()));
+            }
+        }
+    }
+
+    private Block requestBlock(BlockHeader header) {
+
+        List<Block> blocks = new ArrayList<>();
+
+        while (blocks.isEmpty()) {
+            CompletableFuture<List<Block>> responseFuture = requester.requestBlocks(
+                    BlockRequestField.ALL, header.getHash(), 1);
+
+            blocks = responseFuture.join();
+        }
 
     log.fine("Request successful " + blocks.getFirst().getHeader().getHash());
     return blocks.getFirst();
