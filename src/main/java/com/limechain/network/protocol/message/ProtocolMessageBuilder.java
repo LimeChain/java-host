@@ -7,17 +7,21 @@ import com.limechain.rpc.server.AppBean;
 import com.limechain.state.StateManager;
 import lombok.experimental.UtilityClass;
 
+import java.math.BigInteger;
+
 @UtilityClass
 public class ProtocolMessageBuilder {
     private final int NEIGHBOUR_MESSAGE_VERSION = 1;
 
     public NeighbourMessage buildNeighbourMessage() {
         StateManager stateManager = AppBean.getBean(StateManager.class);
+        GrandpaSetState grandpaSetState = AppBean.getBean(GrandpaSetState.class);
+        BigInteger setId = grandpaSetState.getSetId();
 
         return new NeighbourMessage(
                 NEIGHBOUR_MESSAGE_VERSION,
-                stateManager.getRoundState().getRoundNumber(),
-                stateManager.getRoundState().getSetId(),
+                stateManager.getGrandpaSetState().getRoundCache().getLatestRoundNumber(setId),
+                setId,
                 stateManager.getSyncState().getLastFinalizedBlockNumber()
         );
     }

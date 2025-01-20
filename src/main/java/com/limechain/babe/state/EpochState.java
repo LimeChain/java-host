@@ -24,7 +24,7 @@ public class EpochState extends AbstractState implements ServiceConsensusState {
 
     private final KVRepository<String, Object> repository;
 
-    private long disabledAuthority;
+    private BigInteger disabledAuthority;
     private BigInteger slotDuration;
     private BigInteger epochLength;
     private BigInteger genesisSlotNumber;

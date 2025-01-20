@@ -1,7 +1,7 @@
 package com.limechain.sync;
 
 import com.limechain.chain.lightsyncstate.Authority;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.protocol.warp.dto.Precommit;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.hostapi.dto.Key;
@@ -27,9 +27,9 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class JustificationVerifier {
     public static boolean verify(Precommit[] precommits, BigInteger round) {
-        RoundState roundState = AppBean.getBean(RoundState.class);
-        Authority[] authorities = roundState.getAuthorities().toArray(new Authority[0]);
-        BigInteger authoritiesSetId = roundState.getSetId();
+        GrandpaSetState grandpaSetState = AppBean.getBean(GrandpaSetState.class);
+        Authority[] authorities = grandpaSetState.getAuthorities().toArray(new Authority[0]);
+        BigInteger authoritiesSetId = grandpaSetState.getSetId();
 
         // Implementation from: https://github.com/smol-dot/smoldot
         // lib/src/finality/justification/verify.rs

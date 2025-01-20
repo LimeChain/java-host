@@ -8,7 +8,7 @@ import com.limechain.cli.CliArguments;
 import com.limechain.config.HostConfig;
 import com.limechain.config.SystemInfo;
 import com.limechain.constants.GenesisBlockHash;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -81,6 +81,10 @@ public class CommonConfig {
     }
 
     @Bean
+    public GrandpaSetState grandpaSetState(KVRepository<String, Object> repository) {
+        return new GrandpaSetState(repository);
+    }
+
     public NetworkService networkService(ChainService chainService,
                                          HostConfig hostConfig,
                                          KVRepository<String, Object> repository,

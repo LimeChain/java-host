@@ -25,19 +25,28 @@ public class BabeConsensusMessageReader implements ScaleReader<BabeConsensusMess
         BabeConsensusMessage babeConsensusMessage = new BabeConsensusMessage();
         BabeConsensusMessageFormat format = BabeConsensusMessageFormat.fromFormat(reader.readByte());
         babeConsensusMessage.setFormat(format);
+
         switch (format) {
             case NEXT_EPOCH_DATA -> {
                 List<Authority> authorities = reader.read(new ListReader<>(new AuthorityReader()));
                 byte[] randomness = reader.readUint256();
                 babeConsensusMessage.setNextEpochData(new EpochData(authorities, randomness));
             }
-            case DISABLED_AUTHORITY -> babeConsensusMessage.setDisabledAuthority(reader.readUint32());
+
+            case DISABLED_AUTHORITY ->
+                    babeConsensusMessage.setDisabledAuthority(BigInteger.valueOf(reader.readUint32()));
+
             case NEXT_EPOCH_DESCRIPTOR -> {
-                Pair<BigInteger, BigInteger> constant = new PairReader<>(new UInt64Reader(), new UInt64Reader()).read(reader);
-                BabeEpoch.BabeAllowedSlots secondarySlot = new EnumReader<>(BabeEpoch.BabeAllowedSlots.values()).read(reader);
+                Pair<BigInteger, BigInteger> constant = new PairReader<>(new UInt64Reader(), new UInt64Reader())
+                        .read(reader);
+
+                BabeEpoch.BabeAllowedSlots secondarySlot = new EnumReader<>(BabeEpoch.BabeAllowedSlots.values())
+                        .read(reader);
+
                 babeConsensusMessage.setNextEpochDescriptor(new EpochDescriptor(constant, secondarySlot));
             }
         }
+
         return babeConsensusMessage;
     }
 }

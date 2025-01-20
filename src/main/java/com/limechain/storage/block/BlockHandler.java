@@ -2,7 +2,7 @@ package com.limechain.storage.block;
 
 import com.limechain.babe.BlockProductionVerifier;
 import com.limechain.babe.state.EpochState;
-import com.limechain.grandpa.state.RoundState;
+import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
@@ -120,9 +120,9 @@ public class BlockHandler {
 
         RoundState roundState = stateManager.getRoundState();
         DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                .ifPresent(cm -> roundState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+                .ifPresent(cm -> grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
-        roundState.handleAuthoritySetChange(header.getBlockNumber());
+        grandpaSetState.handleAuthoritySetChange(header.getBlockNumber());
 
         asyncExecutor.executeAndForget(() -> transactionProcessor.maintainTransactionPool(block));
     }
