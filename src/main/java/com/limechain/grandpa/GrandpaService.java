@@ -344,18 +344,11 @@ public class GrandpaService {
             return 0L;
         }
 
-        //TODO
-        int equivocationCount = switch (subround) {
-            case Subround.PREVOTE -> grandpaRound.getPvEquivocations().size();
-            case Subround.PRECOMMIT -> grandpaRound.getPcEquivocations().size();
+        long equivocationCount = switch (subround) {
+            case Subround.PREVOTE -> grandpaRound.getPvEquivocationsCount();
+            case Subround.PRECOMMIT -> grandpaRound.getPcEquivocationsCount();
             default -> 0;
         };
-
-//        long equivocationCount = switch (subround) {
-//            case Subround.PREVOTE -> roundState.getPvEquivocationsCount();
-//            case Subround.PRECOMMIT -> roundState.getPcEquivocationsCount();
-//            default -> 0;
-//        };
 
         return votesForBlock + equivocationCount;
     }
