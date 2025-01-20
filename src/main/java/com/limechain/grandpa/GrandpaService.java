@@ -37,7 +37,6 @@ public class GrandpaService {
      * 2) Retrieves the best final candidate for the current round, archives it,
      * and compares it to the previous round’s candidate.
      *
-     * @param roundNumber
      * @return if given round is finalizable
      */
     private boolean isFinalizable(GrandpaRound grandpaRound) {
@@ -78,7 +77,6 @@ public class GrandpaService {
      * 2. [TotalPcVotes - TotalPcEquivocations - (Votes where B` > Ghost) > 2/3 * totalValidators]
      * Second calculation should be done for all Ghost descendants
      *
-     * @param grandpaRound
      * @return if the current round is completable
      */
     private boolean isCompletable(GrandpaRound grandpaRound) {
@@ -103,14 +101,14 @@ public class GrandpaService {
 
         for (Vote vote : ghostDescendents) {
 
-            var currentBlockHash = vote.getBlockHash();
-            var observedVotesForCurrentBlock = getObservedVotesForBlock(
+            var descendantBlockHash = vote.getBlockHash();
+            var observedVotesForDescendantBlock = getObservedVotesForBlock(
                     grandpaRound,
-                    currentBlockHash,
+                    descendantBlockHash,
                     Subround.PRECOMMIT
             );
 
-            if (votesCount - equivocationsCount - observedVotesForCurrentBlock <= threshold) {
+            if (votesCount - equivocationsCount - observedVotesForDescendantBlock <= threshold) {
                 return false;
             }
         }
