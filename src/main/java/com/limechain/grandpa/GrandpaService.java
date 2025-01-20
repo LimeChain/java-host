@@ -49,7 +49,7 @@ public class GrandpaService {
 
         grandpaRound.setPreVotedBlock(preVoteCandidate);
 
-        if (!isCompletable(grandpaRound, preVoteCandidate)) {
+        if (!isCompletable(grandpaRound)) {
             return false;
         }
 
@@ -60,10 +60,15 @@ public class GrandpaService {
 
         grandpaRound.setBestFinalCandidate(bestFinalCandidate);
 
-        Vote previousBestFinalCandidate = grandpaRound.getPrevious().getBestFinalCandidate();
+        var prevGrandpaRound = grandpaRound.getPrevious();
+        if (prevGrandpaRound == null) {
+            return false;
+        }
 
-        return previousBestFinalCandidate != null
-                && previousBestFinalCandidate.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) <= 0
+        Vote prevBestFinalCandidate = prevGrandpaRound.getBestFinalCandidate();
+
+        return prevBestFinalCandidate != null
+                && prevBestFinalCandidate.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) <= 0
                 && bestFinalCandidate.getBlockNumber().compareTo(preVoteCandidate.getBlockNumber()) <= 0;
     }
 
@@ -73,10 +78,10 @@ public class GrandpaService {
      * 2. [TotalPcVotes - TotalPcEquivocations - (Votes where B` > Ghost) > 2/3 * totalValidators]
      * Second calculation should be done for all Ghost descendants
      *
-     * @param preVoteCandidate Ghost Vote
+     * @param grandpaRound
      * @return if the current round is completable
      */
-    private boolean isCompletable(GrandpaRound grandpaRound, Vote preVoteCandidate) {
+    private boolean isCompletable(GrandpaRound grandpaRound) {
 
         Map<Vote, Long> votes = getDirectVotes(grandpaRound, Subround.PRECOMMIT);
         long votesCount = votes.values().stream()
@@ -91,7 +96,10 @@ public class GrandpaService {
             return false;
         }
 
-        List<Vote> ghostDescendents = getBlockDescendents(preVoteCandidate, new ArrayList<>(votes.keySet()));
+        List<Vote> ghostDescendents = getBlockDescendents(
+                grandpaRound.getPreVotedBlock(),
+                new ArrayList<>(votes.keySet())
+        );
 
         for (Vote vote : ghostDescendents) {
 
