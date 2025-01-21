@@ -9,6 +9,7 @@ import com.limechain.exception.sync.BlockExecutionException;
 import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.sync.BlockRequestField;
 import com.limechain.network.protocol.sync.pb.SyncMessage;
 import com.limechain.network.protocol.warp.dto.Block;
@@ -41,6 +42,7 @@ import lombok.extern.java.Log;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -103,14 +105,12 @@ public class FullSyncMachine {
 
         stateManager.getBlockState().storeRuntime(lastFinalizedBlockHash, runtime);
 
-        if (syncState.getLastFinalizedBlockNumber().equals(BigInteger.ZERO)) {
-            stateManager.getEpochState().populateDataFromRuntime(runtime);
-            stateManager.getGrandpaSetState().populateDataFromRuntime(runtime);
-        }
-
         int startNumber = syncState.getLastFinalizedBlockNumber()
                 .add(BigInteger.ONE)
                 .intValueExact();
+
+        messageCoordinator.handshakeBootNodes();
+        messageCoordinator.handshakePeers();
 
         int blocksToFetch = 100;
         List<Block> receivedBlocks = requester.requestBlocks(BlockRequestField.ALL, startNumber, blocksToFetch).join();
@@ -127,13 +127,16 @@ public class FullSyncMachine {
     }
 
     private void finishFullSync() {
-        slotCoordinator.start(List.of(
-                AppBean.getBean(BabeService.class)
-        ));
+        stateManager.getEpochState().populateDataFromRuntime(runtime);
+        stateManager.getGrandpaSetState().populateDataFromRuntime(runtime);
+
+        if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
+            slotCoordinator.start(List.of(
+                    AppBean.getBean(BabeService.class)
+            ));
+        }
 
         AbstractState.setSyncMode(SyncMode.HEAD);
-        messageCoordinator.handshakeBootNodes();
-        messageCoordinator.handshakePeers();
     }
 
     private TrieStructure<NodeData> loadStateAtBlockFromPeer(Hash256 lastFinalizedBlockHash) {
@@ -192,7 +195,7 @@ public class FullSyncMachine {
             log.fine("Block number to be executed is " + block.getHeader().getBlockNumber());
 
             try {
-                blockState.addBlock(block);
+                blockHandler.addBlockToTree(block, Instant.now());
             } catch (BlockNodeNotFoundException ex) {
                 log.fine("Executing block with number " + block.getHeader().getBlockNumber() + " which has no parent in block state.");
             }
