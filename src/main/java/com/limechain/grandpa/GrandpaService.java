@@ -31,6 +31,36 @@ public class GrandpaService {
         this.blockState = blockState;
     }
 
+    private void attemptToFinalizeAt(GrandpaRound grandpaRound) {
+        BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
+
+        Vote bestFinalCandidate = grandpaRound.getBestFinalCandidate();
+        if (bestFinalCandidate == null) {
+            return;
+        }
+
+        var bestFinalCandidateVotesCount = getObservedVotesForBlock(
+                grandpaRound,
+                bestFinalCandidate.getBlockHash(),
+                Subround.PRECOMMIT
+        );
+
+        long totalVoters = grandpaSetState.getAuthorities().size();
+        long threshold = (2 * totalVoters) / 3;
+
+        // L - last finalized block
+        // E - best final candidate
+        // The spec defines E >= L, but here E > L ensures E is new and not already received.
+        if (bestFinalCandidate.getBlockNumber().compareTo(lastFinalizedBlockNumber) > 0 &&
+                bestFinalCandidateVotesCount > threshold) {
+
+            BlockHeader header = blockState.getHeader(bestFinalCandidate.getBlockHash());
+            blockState.setFinalizedHash(header, grandpaRound.getRoundNumber(), grandpaSetState.getSetId());
+
+            //TODO: broadcast
+        }
+    }
+
     /**
      * Determines if the specified round can be finalized.
      * 1) Checks for a valid preVote candidate and ensures it's completable.
