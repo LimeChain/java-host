@@ -105,11 +105,6 @@ public class FullSyncMachine {
 
         stateManager.getBlockState().storeRuntime(lastFinalizedBlockHash, runtime);
 
-        if (syncState.getLastFinalizedBlockNumber().equals(BigInteger.ZERO)) {
-            stateManager.getEpochState().populateDataFromRuntime(runtime);
-            stateManager.getGrandpaSetState().populateDataFromRuntime(runtime);
-        }
-
         int startNumber = syncState.getLastFinalizedBlockNumber()
                 .add(BigInteger.ONE)
                 .intValueExact();
@@ -132,9 +127,14 @@ public class FullSyncMachine {
     }
 
     private void finishFullSync() {
-        slotCoordinator.start(List.of(
-                AppBean.getBean(BabeService.class)
-        ));
+        stateManager.getEpochState().populateDataFromRuntime(runtime);
+        stateManager.getGrandpaSetState().populateDataFromRuntime(runtime);
+
+        if (NodeRole.AUTHORING.equals(hostConfig.getNodeRole())) {
+            slotCoordinator.start(List.of(
+                    AppBean.getBean(BabeService.class)
+            ));
+        }
 
         AbstractState.setSyncMode(SyncMode.HEAD);
     }
