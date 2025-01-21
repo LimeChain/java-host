@@ -76,8 +76,6 @@ public class GrandpaService {
             return false;
         }
 
-        grandpaRound.setPreVotedBlock(preVoteCandidate);
-
         if (!isCompletable(grandpaRound)) {
             return false;
         }
@@ -86,8 +84,6 @@ public class GrandpaService {
         if (bestFinalCandidate == null) {
             return false;
         }
-
-        grandpaRound.setBestFinalCandidate(bestFinalCandidate);
 
         var prevGrandpaRound = grandpaRound.getPrevious();
         if (prevGrandpaRound == null) {
@@ -201,6 +197,8 @@ public class GrandpaService {
             }
         }
 
+        grandpaRound.setBestFinalCandidate(bestFinalCandidate);
+
         return bestFinalCandidate;
     }
 
@@ -224,7 +222,10 @@ public class GrandpaService {
             throw new GhostExecutionException("GHOST not found");
         }
 
-        return selectBlockWithMostVotes(blocks);
+        Vote grandpaGhost = selectBlockWithMostVotes(blocks);
+        grandpaRound.setPreVotedBlock(grandpaGhost);
+
+        return grandpaGhost;
     }
 
     /**
