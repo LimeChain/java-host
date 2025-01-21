@@ -13,6 +13,8 @@ import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import com.limechain.storage.crypto.KeyStore;
+import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
@@ -50,11 +52,14 @@ public class GrandpaSetState {
     private BigInteger setId;
     private RoundCache roundCache;
 
+    private KeyStore keyStore;
+
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges = new PriorityQueue<>(AuthoritySetChange.getComparator());
 
     public void initialize() {
         loadPersistedState();
         roundCache = AppBean.getBean(RoundCache.class);
+        keyStore = AppBean.getBean(KeyStore.class);
     }
 
     /**
@@ -228,6 +233,11 @@ public class GrandpaSetState {
             }
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
+    }
+
+    public boolean participatesAsVoter() {
+        return authorities.stream()
+                .anyMatch(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()).isPresent());
     }
 
 }

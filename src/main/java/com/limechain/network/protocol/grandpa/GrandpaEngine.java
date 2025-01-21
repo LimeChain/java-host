@@ -152,7 +152,10 @@ public class GrandpaEngine {
     private void handleCommitMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         CommitMessage commitMessage = reader.read(CommitMessageScaleReader.getInstance());
-        warpSyncState.syncCommit(commitMessage, peerId);
+
+        if (!grandpaSetState.participatesAsVoter()) {
+            warpSyncState.syncCommit(commitMessage, peerId);
+        }
     }
 
     private void handleCatchupRequestMessage(byte[] message, PeerId peerId) {

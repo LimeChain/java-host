@@ -48,10 +48,7 @@ public class GrandpaService {
         long totalVoters = grandpaSetState.getAuthorities().size();
         long threshold = (2 * totalVoters) / 3;
 
-        // L - last finalized block
-        // E - best final candidate
-        // The spec defines E >= L, but here E > L ensures E is new and not already received.
-        if (bestFinalCandidate.getBlockNumber().compareTo(lastFinalizedBlockNumber) > 0 &&
+        if (bestFinalCandidate.getBlockNumber().compareTo(lastFinalizedBlockNumber) >= 0 &&
                 bestFinalCandidateVotesCount > threshold) {
 
             BlockHeader header = blockState.getHeader(bestFinalCandidate.getBlockHash());
