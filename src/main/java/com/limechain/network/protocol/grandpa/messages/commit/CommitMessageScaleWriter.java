@@ -13,7 +13,7 @@ public class CommitMessageScaleWriter implements ScaleWriter<CommitMessage> {
     private final VoteScaleWriter voteScaleWriter;
     private final CompactJustificationScaleWriter compactJustificationScaleWriter;
 
-    private CommitMessageScaleWriter() {
+    public CommitMessageScaleWriter() {
         uint64Writer = new UInt64Writer();
         voteScaleWriter = VoteScaleWriter.getInstance();
         compactJustificationScaleWriter = CompactJustificationScaleWriter.getInstance();

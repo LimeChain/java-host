@@ -3,7 +3,9 @@ package com.limechain.grandpa;
 import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
@@ -12,11 +14,13 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Method;
 import java.math.BigInteger;
@@ -31,6 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class GrandpaServiceTest {
@@ -47,14 +53,15 @@ class GrandpaServiceTest {
     private BlockState blockState;
     private GrandpaService grandpaService;
     private GrandpaRound grandpaRound;
+    private PeerMessageCoordinator peerMessageCoordinator;
 
     @BeforeEach
     void setUp() {
         grandpaSetState = mock(GrandpaSetState.class);
         blockState = mock(BlockState.class);
-        grandpaService = new GrandpaService(grandpaSetState, blockState);
+        peerMessageCoordinator = mock(PeerMessageCoordinator.class);
+        grandpaService = new GrandpaService(grandpaSetState, blockState, peerMessageCoordinator);
         grandpaRound = mock(GrandpaRound.class);
-        when(grandpaRound.getPrevious()).thenReturn(new GrandpaRound());
     }
 
     @Test
@@ -710,6 +717,48 @@ class GrandpaServiceTest {
         assertNotNull(result);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
+    }
+
+    @Test
+    void testPrimaryBroadcastCommitMessage() {
+        Hash256 authorityPublicKey = new Hash256(THREES_ARRAY);
+        Map<Hash256, SignedVote> signedVotes = new HashMap<>();
+        Vote vote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(123L));
+        SignedVote signedVote = new SignedVote(vote, Hash512.empty(), authorityPublicKey);
+        signedVotes.put(authorityPublicKey, signedVote);
+
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setRoundNumber(BigInteger.ZERO);
+        previousRound.setPreCommits(signedVotes);
+        BlockHeader blockHeader = createBlockHeader();
+
+        when(grandpaRound.getPrevious()).thenReturn(previousRound);
+        when(grandpaSetState.getThreshold()).thenReturn(BigInteger.ONE);
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
+
+        grandpaService.primaryBroadcastCommitMessage(grandpaRound);
+
+        ArgumentCaptor<CommitMessage> commitMessageCaptor = ArgumentCaptor.forClass(CommitMessage.class);
+        verify(peerMessageCoordinator).sendCommitMessageToPeers(commitMessageCaptor.capture());
+        CommitMessage commitMessage = commitMessageCaptor.getValue();
+
+        assertEquals(BigInteger.valueOf(42L), commitMessage.getSetId());
+        assertEquals(BigInteger.valueOf(0L), commitMessage.getRoundNumber());
+        assertEquals(blockHeader.getBlockNumber(), commitMessage.getVote().getBlockNumber());
+        assertEquals(blockHeader.getHash(), commitMessage.getVote().getBlockHash());
+        assertEquals(1, commitMessage.getPreCommits().length);
+
+        PreCommit precommit = commitMessage.getPreCommits()[0];
+        assertEquals(vote.getBlockHash(), precommit.getTargetHash());
+        assertEquals(BigInteger.valueOf(123L), precommit.getTargetNumber());
+        assertEquals(Hash512.empty(), precommit.getSignature());
+        assertEquals(signedVotes.get(authorityPublicKey).getAuthorityPublicKey(),
+                precommit.getAuthorityPublicKey()
+        );
+
+        verify(peerMessageCoordinator, times(1))
+                .sendCommitMessageToPeers(any(CommitMessage.class));
     }
 
     private BlockHeader createBlockHeader() {

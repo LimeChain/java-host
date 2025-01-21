@@ -4,10 +4,13 @@ import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.extern.java.Log;
@@ -25,10 +28,15 @@ public class GrandpaService {
 
     private final GrandpaSetState grandpaSetState;
     private final BlockState blockState;
+    private final PeerMessageCoordinator peerMessageCoordinator;
 
-    public GrandpaService(GrandpaSetState grandpaSetState, BlockState blockState) {
+
+    public GrandpaService(GrandpaSetState grandpaSetState,
+                          BlockState blockState,
+                          PeerMessageCoordinator peerMessageCoordinator) {
         this.grandpaSetState = grandpaSetState;
         this.blockState = blockState;
+        this.peerMessageCoordinator = peerMessageCoordinator;
     }
 
     /**
@@ -421,5 +429,36 @@ public class GrandpaService {
                 lastFinalizedBlockHeader.getHash(),
                 lastFinalizedBlockHeader.getBlockNumber()
         );
+    }
+
+    /**
+     * Broadcasts a commit message to network peers as the primary validator for the given round.
+     * It constructs a commit message based on the best final candidate determined from the previous round.
+     */
+    public void primaryBroadcastCommitMessage(GrandpaRound grandpaRound) {
+        GrandpaRound previousRound = grandpaRound.getPrevious();
+        Vote previousRoundBestCandidate = getBestFinalCandidate(previousRound);
+        PreCommit[] precommits = transformToCompactJustificationFormat(previousRound.getPreCommits());
+
+        CommitMessage commitMessage = new CommitMessage();
+        commitMessage.setSetId(grandpaSetState.getSetId());
+        commitMessage.setRoundNumber(previousRound.getRoundNumber());
+        commitMessage.setVote(previousRoundBestCandidate);
+        commitMessage.setPreCommits(precommits);
+
+        peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
+    }
+
+    private PreCommit[] transformToCompactJustificationFormat(Map<Hash256, SignedVote> signedVotes) {
+        return signedVotes.values().stream()
+                .map(signedVote -> {
+                    PreCommit precommit = new PreCommit();
+                    precommit.setTargetHash(signedVote.getVote().getBlockHash());
+                    precommit.setTargetNumber(signedVote.getVote().getBlockNumber());
+                    precommit.setSignature(signedVote.getSignature());
+                    precommit.setAuthorityPublicKey(signedVote.getAuthorityPublicKey());
+                    return precommit;
+                })
+                .toArray(PreCommit[]::new);
     }
 }

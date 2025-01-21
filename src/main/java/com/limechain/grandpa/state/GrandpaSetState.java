@@ -229,5 +229,4 @@ public class GrandpaSetState {
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
     }
-
 }

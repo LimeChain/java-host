@@ -4,6 +4,8 @@ import com.limechain.network.kad.KademliaService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
@@ -98,5 +100,14 @@ public class PeerMessageCoordinator {
 
     public void sendNeighbourMessageToPeer(PeerId peerId) {
         network.getGrandpaService().sendNeighbourMessage(network.getHost(), peerId);
+    }
+
+    public void sendCommitMessageToPeers(CommitMessage commitMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(new CommitMessageScaleWriter(), commitMessage);
+        sendMessageToActivePeers(peerId -> {
+            asyncExecutor.executeAndForget(() -> network.getGrandpaService().sendCommitMessage(
+                    network.getHost(), peerId, scaleMessage
+            ));
+        });
     }
 }

@@ -40,6 +40,9 @@ class GrandpaServiceTest {
     @Mock
     private Grandpa protocol;
 
+    private final byte[] encodedCommitMessage
+            = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+
     //setup method
     @BeforeEach
     public void setupEach() throws NoSuchFieldException, IllegalAccessException {
@@ -76,6 +79,39 @@ class GrandpaServiceTest {
             assertEquals(1, mock.constructed().size());
             GrandpaController controller = mock.constructed().get(0);
             verify(controller).sendNeighbourMessage();
+        }
+    }
+
+    @Test
+    void sendCommitMessageWhenNotConnectionShouldSendHandshake() {
+        AddressBook addressBook = mock(AddressBook.class);
+        GrandpaController grandpaController = mock(GrandpaController.class);
+        when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
+        when(peerInfo.getGrandpaStreams()).thenReturn(protocolStreams);
+        when(protocolStreams.getInitiator()).thenReturn(null);
+        when(host.getAddressBook()).thenReturn(addressBook);
+        when(protocol.dialPeer(host, peerId, addressBook)).thenReturn(grandpaController);
+
+        grandpaService.sendCommitMessage(host, peerId, encodedCommitMessage);
+
+        verify(grandpaController).sendHandshake();
+    }
+
+    @Test
+    void sendCommitMessageWhenExistingConnection() {
+        PeerInfo peerInfo = mock(PeerInfo.class);
+        ProtocolStreams protocolStreams = mock(ProtocolStreams.class);
+        Stream stream = mock(Stream.class);
+        when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
+        when(peerInfo.getGrandpaStreams()).thenReturn(protocolStreams);
+        when(protocolStreams.getInitiator()).thenReturn(stream);
+
+        try (MockedConstruction<GrandpaController> mock = mockConstruction(GrandpaController.class)) {
+            grandpaService.sendCommitMessage(host, peerId, encodedCommitMessage);
+
+            assertEquals(1, mock.constructed().size());
+            GrandpaController controller = mock.constructed().get(0);
+            verify(controller).sendCommitMessage(encodedCommitMessage);
         }
     }
 
