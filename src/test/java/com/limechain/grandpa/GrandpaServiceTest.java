@@ -20,9 +20,9 @@ import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 import java.lang.reflect.Method;
 import java.math.BigInteger;
@@ -37,12 +37,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-@Disabled
 class GrandpaServiceTest {
 
     private static final byte[] ZEROS_ARRAY = new byte[32];
@@ -733,7 +732,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testPrimaryBroadcastCommitMessage() {
+    void testBroadcastCommitMessageWhenPrimaryValidator() {
         Hash256 authorityPublicKey = new Hash256(THREES_ARRAY);
         Map<Hash256, SignedVote> signedVotes = new HashMap<>();
         Vote vote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(123L));
@@ -745,12 +744,11 @@ class GrandpaServiceTest {
         previousRound.setPreCommits(signedVotes);
         BlockHeader blockHeader = createBlockHeader();
 
-        when(grandpaRound.getPrevious()).thenReturn(previousRound);
         when(grandpaSetState.getThreshold()).thenReturn(BigInteger.ONE);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
 
-        grandpaService.broadcastCommitMessage(grandpaRound);
+        grandpaService.broadcastCommitMessage(previousRound);
 
         ArgumentCaptor<CommitMessage> commitMessageCaptor = ArgumentCaptor.forClass(CommitMessage.class);
         verify(peerMessageCoordinator).sendCommitMessageToPeers(commitMessageCaptor.capture());
