@@ -210,7 +210,7 @@ public class GrandpaEngine {
      * @param encodedCommitMessage scale encoded CommitMessage object
      */
     public void writeCommitMessage(Stream stream, byte[] encodedCommitMessage) {
-        log.log(Level.FINE, "Sending neighbour message to peer " + stream.remotePeerId());
+        log.log(Level.FINE, "Sending commit message to peer " + stream.remotePeerId());
         stream.writeAndFlush(encodedCommitMessage);
     }
 }

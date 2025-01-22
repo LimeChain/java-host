@@ -32,10 +32,9 @@ public class GrandpaService {
 
 
     public GrandpaService(GrandpaSetState grandpaSetState,
-                          BlockState blockState,
                           PeerMessageCoordinator peerMessageCoordinator) {
         this.grandpaSetState = grandpaSetState;
-        this.blockState = blockState;
+        this.blockState = BlockState.getInstance();
         this.peerMessageCoordinator = peerMessageCoordinator;
     }
 
@@ -432,18 +431,20 @@ public class GrandpaService {
     }
 
     /**
-     * Broadcasts a commit message to network peers as the primary validator for the given round.
-     * It constructs a commit message based on the best final candidate determined from the previous round.
+     * Broadcasts a commit message to network peers for the given round as part of the GRANDPA consensus process.
+     * <p>
+     * This method is used in two scenarios:
+     * 1. As the primary validator, broadcasting a commit message for the best candidate block of the previous round.
+     * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
      */
-    public void primaryBroadcastCommitMessage(GrandpaRound grandpaRound) {
-        GrandpaRound previousRound = grandpaRound.getPrevious();
-        Vote previousRoundBestCandidate = getBestFinalCandidate(previousRound);
-        PreCommit[] precommits = transformToCompactJustificationFormat(previousRound.getPreCommits());
+    public void broadcastCommitMessage(GrandpaRound grandpaRound) {
+        Vote bestCandidate = getBestFinalCandidate(grandpaRound);
+        PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
 
         CommitMessage commitMessage = new CommitMessage();
         commitMessage.setSetId(grandpaSetState.getSetId());
-        commitMessage.setRoundNumber(previousRound.getRoundNumber());
-        commitMessage.setVote(previousRoundBestCandidate);
+        commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
+        commitMessage.setVote(bestCandidate);
         commitMessage.setPreCommits(precommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
@@ -458,7 +459,6 @@ public class GrandpaService {
                     precommit.setSignature(signedVote.getSignature());
                     precommit.setAuthorityPublicKey(signedVote.getAuthorityPublicKey());
                     return precommit;
-                })
-                .toArray(PreCommit[]::new);
+                }).toArray(PreCommit[]::new);
     }
 }

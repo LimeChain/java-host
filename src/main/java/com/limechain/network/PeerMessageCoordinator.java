@@ -103,7 +103,7 @@ public class PeerMessageCoordinator {
     }
 
     public void sendCommitMessageToPeers(CommitMessage commitMessage) {
-        byte[] scaleMessage = ScaleUtils.Encode.encode(new CommitMessageScaleWriter(), commitMessage);
+        byte[] scaleMessage = ScaleUtils.Encode.encode(CommitMessageScaleWriter.getInstance(), commitMessage);
         sendMessageToActivePeers(peerId -> {
             asyncExecutor.executeAndForget(() -> network.getGrandpaService().sendCommitMessage(
                     network.getHost(), peerId, scaleMessage
