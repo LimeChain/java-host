@@ -39,17 +39,14 @@ public class GrandpaService {
             return;
         }
 
-        var bestFinalCandidateVotesCount = getObservedVotesForBlock(
-                grandpaRound,
-                bestFinalCandidate.getBlockHash(),
-                Subround.PRECOMMIT
+        var bestFinalCandidateVotesCount = BigInteger.valueOf(
+                getObservedVotesForBlock(grandpaRound, bestFinalCandidate.getBlockHash(), Subround.PRECOMMIT)
         );
 
-        long totalVoters = grandpaSetState.getAuthorities().size();
-        long threshold = (2 * totalVoters) / 3;
+        var threshold = grandpaSetState.getThreshold();
 
         if (bestFinalCandidate.getBlockNumber().compareTo(lastFinalizedBlockNumber) >= 0 &&
-                bestFinalCandidateVotesCount > threshold) {
+                bestFinalCandidateVotesCount.compareTo(threshold) >= 0) {
 
             BlockHeader header = blockState.getHeader(bestFinalCandidate.getBlockHash());
             blockState.setFinalizedHash(header, grandpaRound.getRoundNumber(), grandpaSetState.getSetId());
@@ -112,10 +109,10 @@ public class GrandpaService {
                 .sum();
 
         long equivocationsCount = grandpaRound.getPcEquivocationsCount();
-        long totalVoters = grandpaSetState.getAuthorities().size();
-        long threshold = (2 * totalVoters) / 3;
+        var totalVotesIncludingEquivocations = BigInteger.valueOf(votesCount + equivocationsCount);
+        var threshold = grandpaSetState.getThreshold();
 
-        if (votesCount + equivocationsCount <= threshold) {
+        if (totalVotesIncludingEquivocations.compareTo(threshold) < 0) {
             return false;
         }
 
@@ -133,7 +130,11 @@ public class GrandpaService {
                     Subround.PRECOMMIT
             );
 
-            if (votesCount - equivocationsCount - observedVotesForDescendantBlock <= threshold) {
+            var validVotesForThresholdCheck = BigInteger.valueOf(
+                    votesCount - equivocationsCount - observedVotesForDescendantBlock
+            );
+
+            if (validVotesForThresholdCheck.compareTo(threshold) < 0) {
                 return false;
             }
         }
@@ -158,7 +159,11 @@ public class GrandpaService {
         }
 
         var threshold = grandpaSetState.getThreshold();
-        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PRECOMMIT);
+        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(
+                grandpaRound,
+                threshold,
+                Subround.PRECOMMIT
+        );
 
         if (possibleSelectedBlocks.isEmpty()) {
             return preVoteCandidate;
@@ -288,7 +293,10 @@ public class GrandpaService {
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return blocks that exceed the required vote threshold
      */
-    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(GrandpaRound grandpaRound, BigInteger threshold, Subround subround) {
+    private Map<Hash256, BigInteger> getPossibleSelectedBlocks(GrandpaRound grandpaRound,
+                                                               BigInteger threshold,
+                                                               Subround subround) {
+
         var votes = getDirectVotes(grandpaRound, subround);
         var blocks = new HashMap<Hash256, BigInteger>();
 
@@ -307,7 +315,13 @@ public class GrandpaService {
         List<Vote> allVotes = getVotes(grandpaRound, subround);
         for (Vote vote : votes.keySet()) {
             blocks = new HashMap<>(
-                    getPossibleSelectedAncestors(grandpaRound, allVotes, vote.getBlockHash(), blocks, subround, threshold)
+                    getPossibleSelectedAncestors(grandpaRound,
+                            allVotes,
+                            vote.getBlockHash(),
+                            blocks,
+                            subround,
+                            threshold
+                    )
             );
         }
 
@@ -358,7 +372,13 @@ public class GrandpaService {
 
             } else {
                 // Recursively process ancestors
-                selected = getPossibleSelectedAncestors(grandpaRound, votes, ancestorBlockHash, selected, subround, threshold);
+                selected = getPossibleSelectedAncestors(grandpaRound,
+                        votes,
+                        ancestorBlockHash,
+                        selected,
+                        subround,
+                        threshold
+                );
             }
         }
 
