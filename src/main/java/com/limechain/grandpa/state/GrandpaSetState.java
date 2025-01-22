@@ -10,7 +10,6 @@ import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensu
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
@@ -52,10 +51,10 @@ public class GrandpaSetState {
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
     private BigInteger setId;
-    private RoundCache roundCache;
 
+    private final RoundCache roundCache;
+    private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
-    private KeyStore keyStore;
 
     private final Map<BigInteger, List<CommitMessage>> commitMessagesArchive = new HashMap<>();
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
@@ -63,8 +62,6 @@ public class GrandpaSetState {
 
     public void initialize() {
         loadPersistedState();
-        roundCache = AppBean.getBean(RoundCache.class);
-        keyStore = AppBean.getBean(KeyStore.class);
     }
 
     /**
@@ -137,8 +134,8 @@ public class GrandpaSetState {
     }
 
     private void loadPersistedState() {
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
         this.setId = fetchAuthoritiesSetId();
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 
     public void persistState() {

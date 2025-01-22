@@ -7,10 +7,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SignedVote {
+public class SignedVote implements Serializable {
     private Vote vote;
     private Hash512 signature;
     private Hash256 authorityPublicKey;

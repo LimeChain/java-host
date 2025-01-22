@@ -26,9 +26,9 @@ public class GrandpaService {
     private final GrandpaSetState grandpaSetState;
     private final BlockState blockState;
 
-    public GrandpaService(GrandpaSetState grandpaSetState, BlockState blockState) {
+    public GrandpaService(GrandpaSetState grandpaSetState) {
         this.grandpaSetState = grandpaSetState;
-        this.blockState = blockState;
+        this.blockState = BlockState.getInstance();
     }
 
     private void attemptToFinalizeAt(GrandpaRound grandpaRound) {

@@ -8,6 +8,7 @@ import com.limechain.config.HostConfig;
 import com.limechain.config.SystemInfo;
 import com.limechain.constants.GenesisBlockHash;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.grandpa.state.RoundCache;
 import com.limechain.network.Network;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -17,6 +18,7 @@ import com.limechain.storage.DBInitializer;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.SyncState;
+import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.sync.fullsync.FullSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncMachine;
@@ -88,8 +90,10 @@ public class CommonConfig {
     }
 
     @Bean
-    public GrandpaSetState grandpaSetState(KVRepository<String, Object> repository) {
-        return new GrandpaSetState(repository);
+    public GrandpaSetState grandpaSetState(RoundCache roundCache,
+                                           KeyStore keyStore,
+                                           KVRepository<String, Object> repository) {
+        return new GrandpaSetState(roundCache, keyStore, repository);
     }
 
     @Bean
