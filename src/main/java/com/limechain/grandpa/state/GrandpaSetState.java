@@ -4,6 +4,7 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
@@ -26,8 +27,10 @@ import lombok.Setter;
 import lombok.extern.java.Log;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -45,16 +48,18 @@ import java.util.logging.Level;
 public class GrandpaSetState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
-    private final KVRepository<String, Object> repository;
 
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
     private BigInteger setId;
     private RoundCache roundCache;
 
+    private final KVRepository<String, Object> repository;
     private KeyStore keyStore;
 
-    private final PriorityQueue<AuthoritySetChange> authoritySetChanges = new PriorityQueue<>(AuthoritySetChange.getComparator());
+    private final Map<BigInteger, List<CommitMessage>> commitMessagesArchive = new HashMap<>();
+    private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
+            new PriorityQueue<>(AuthoritySetChange.getComparator());
 
     public void initialize() {
         loadPersistedState();
@@ -151,6 +156,8 @@ public class GrandpaSetState {
         roundCache.addRound(setId, grandpaRound);
         this.authorities = authorities;
 
+        cleanCommitMessagesArchive();
+
         log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
 
@@ -198,7 +205,6 @@ public class GrandpaSetState {
                     currentBlockNumber
             ));
             case GRANDPA_ON_DISABLED -> disabledAuthority = consensusMessage.getDisabledAuthority();
-            //TODO: Implement later
             case GRANDPA_PAUSE -> log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
             case GRANDPA_RESUME -> log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
         }
@@ -240,4 +246,18 @@ public class GrandpaSetState {
                 .anyMatch(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()).isPresent());
     }
 
+    public void addCommitMessageToArchive(CommitMessage message) {
+        commitMessagesArchive.putIfAbsent(setId, new ArrayList<>());
+        List<CommitMessage> commitMessages = commitMessagesArchive.get(setId);
+        commitMessages.add(message);
+    }
+
+    public void cleanCommitMessagesArchive() {
+        commitMessagesArchive.remove(setId.subtract(BigInteger.TWO));
+    }
+
+    public boolean isCommitMessageInArchive(Vote vote) {
+        return commitMessagesArchive.get(setId).stream()
+                .noneMatch(cm -> cm.getVote().equals(vote));
+    }
 }

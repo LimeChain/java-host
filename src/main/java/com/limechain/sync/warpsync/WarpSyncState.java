@@ -143,7 +143,9 @@ public class WarpSyncState {
             return;
         }
 
-        if (warpSyncFinished) {
+        grandpaSetState.addCommitMessageToArchive(commitMessage);
+
+        if (warpSyncFinished && !grandpaSetState.participatesAsVoter()) {
             updateState(commitMessage);
         }
     }
