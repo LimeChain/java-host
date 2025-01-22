@@ -54,7 +54,7 @@ public class GrandpaService {
             BlockHeader header = blockState.getHeader(bestFinalCandidate.getBlockHash());
             blockState.setFinalizedHash(header, grandpaRound.getRoundNumber(), grandpaSetState.getSetId());
 
-            if (grandpaSetState.isCommitMessageInArchive(bestFinalCandidate)) {
+            if (!grandpaSetState.isCommitMessageInArchive(bestFinalCandidate)) {
                 //TODO: broadcast
             }
         }

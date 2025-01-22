@@ -258,6 +258,6 @@ public class GrandpaSetState {
 
     public boolean isCommitMessageInArchive(Vote vote) {
         return commitMessagesArchive.get(setId).stream()
-                .noneMatch(cm -> cm.getVote().equals(vote));
+                .anyMatch(cm -> cm.getVote().equals(vote));
     }
 }
