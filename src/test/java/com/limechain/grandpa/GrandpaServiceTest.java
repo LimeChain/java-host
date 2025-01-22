@@ -254,6 +254,11 @@ class GrandpaServiceTest {
                 currentVoteAuthorityHash, currentSignedVote
         ));
 
+        Vote bfc = new Vote(new Hash256(THREES_ARRAY), BigInteger.ONE);
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setBestFinalCandidate(bfc);
+        when(grandpaRound.getPrevious()).thenReturn(previousRound);
+
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
 
@@ -285,6 +290,11 @@ class GrandpaServiceTest {
         when(grandpaRound.getPreVotes()).thenReturn(Map.of(
                 currentVoteAuthorityHash, currentSignedVote
         ));
+
+        Vote bfc = new Vote(new Hash256(THREES_ARRAY), BigInteger.ONE);
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setBestFinalCandidate(bfc);
+        when(grandpaRound.getPrevious()).thenReturn(previousRound);
 
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
