@@ -6,6 +6,7 @@ import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.Set;
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 @Setter
-public class GrandpaRound {
+public class GrandpaRound implements Serializable {
 
     private GrandpaRound previous;
     private BigInteger roundNumber;

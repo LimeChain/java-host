@@ -18,6 +18,7 @@ import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 @Disabled
@@ -53,6 +55,7 @@ class GrandpaServiceTest {
 
     private GrandpaSetState grandpaSetState;
     private BlockState blockState;
+    private MockedStatic<BlockState> mockedBlockState;
     private GrandpaService grandpaService;
     private GrandpaRound grandpaRound;
     private PeerMessageCoordinator peerMessageCoordinator;
@@ -61,9 +64,17 @@ class GrandpaServiceTest {
     void setUp() {
         grandpaSetState = mock(GrandpaSetState.class);
         blockState = mock(BlockState.class);
+        mockedBlockState = mockStatic(BlockState.class);
+        mockedBlockState.when(BlockState::getInstance).thenReturn(blockState);
         peerMessageCoordinator = mock(PeerMessageCoordinator.class);
         grandpaService = new GrandpaService(grandpaSetState, peerMessageCoordinator);
         grandpaRound = mock(GrandpaRound.class);
+        when(grandpaRound.getPrevious()).thenReturn(new GrandpaRound());
+    }
+
+    @AfterEach
+    void tearDown() {
+        mockedBlockState.close();
     }
 
     @Test
