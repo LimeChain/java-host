@@ -69,7 +69,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetBestFinalCandidateWithoutPreCommits() {
+    void testFindBestFinalCandidateWithoutPreCommits() {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
 
@@ -94,14 +94,14 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestFinalCandidate(grandpaRound);
+        Vote result = grandpaService.findBestFinalCandidate(grandpaRound);
 
         assertNotNull(result);
         assertEquals(firstVote.getBlockHash(), result.getBlockHash());
     }
 
     @Test
-    void testGetBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() {
+    void testFindBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
@@ -134,14 +134,14 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestFinalCandidate(grandpaRound);
+        Vote result = grandpaService.findBestFinalCandidate(grandpaRound);
 
         assertNotNull(result);
         assertEquals(thirdVote.getBlockHash(), result.getBlockHash());
     }
 
     @Test
-    void testGetBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() {
+    void testFindBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
@@ -175,26 +175,26 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), blockHeader.getHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestFinalCandidate(grandpaRound);
+        Vote result = grandpaService.findBestFinalCandidate(grandpaRound);
 
         assertNotNull(result);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
     }
 
     @Test
-    void testGetBestFinalCandidateWhereRoundNumberIsZero() {
+    void testFindBestFinalCandidateWhereRoundNumberIsZero() {
         BlockHeader blockHeader = createBlockHeader();
 
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
-        var result = grandpaService.getBestFinalCandidate(grandpaRound);
+        var result = grandpaService.findBestFinalCandidate(grandpaRound);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
 
     @Test
-    void testGetBestPreVoteCandidate_WithSignedMessage() {
+    void testFindBestPreVoteCandidate_WithSignedMessage() {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -225,7 +225,7 @@ class GrandpaServiceTest {
         when(signedMessage.getBlockNumber()).thenReturn(BigInteger.valueOf(4));
         when(signedMessage.getBlockHash()).thenReturn(new Hash256(TWOS_ARRAY));
 
-        Vote result = grandpaService.getBestPreVoteCandidate(grandpaRound);
+        Vote result = grandpaService.findBestPreVoteCandidate(grandpaRound);
 
 
         assertNotNull(result);
@@ -234,7 +234,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetBestPreVoteCandidate_WithoutSignedMessage() {
+    void testFindBestPreVoteCandidate_WithoutSignedMessage() {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -257,7 +257,7 @@ class GrandpaServiceTest {
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestPreVoteCandidate(grandpaRound);
+        Vote result = grandpaService.findBestPreVoteCandidate(grandpaRound);
 
         assertNotNull(result);
         assertEquals(currentVote.getBlockHash(), result.getBlockHash());
@@ -265,7 +265,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetBestPreVoteCandidate_WithSignedMessageAndBlockNumberLessThanCurrentVote() {
+    void testFindBestPreVoteCandidate_WithSignedMessageAndBlockNumberLessThanCurrentVote() {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -291,7 +291,7 @@ class GrandpaServiceTest {
         when(signedMessage.getBlockNumber()).thenReturn(BigInteger.valueOf(3));
         when(signedMessage.getBlockHash()).thenReturn(new Hash256(TWOS_ARRAY));
 
-        Vote result = grandpaService.getBestPreVoteCandidate(grandpaRound);
+        Vote result = grandpaService.findBestPreVoteCandidate(grandpaRound);
 
         assertNotNull(result);
         assertEquals(currentVote.getBlockHash(), result.getBlockHash());
@@ -299,27 +299,27 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
+    void testFindGrandpaGHOSTWhereNoBlocksPassThreshold() {
         when(grandpaSetState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
         when(grandpaRound.getPreVotes()).thenReturn(Map.of());
-        assertThrows(GhostExecutionException.class, () -> grandpaService.getGrandpaGhost(grandpaRound));
+        assertThrows(GhostExecutionException.class, () -> grandpaService.findGrandpaGhost(grandpaRound));
     }
 
     @Test
-    void testGetGrandpaGHOSTWhereRoundNumberIsZero() {
+    void testFindGrandpaGHOSTWhereRoundNumberIsZero() {
         BlockHeader blockHeader = createBlockHeader();
 
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
-        var result = grandpaService.getGrandpaGhost(grandpaRound);
+        var result = grandpaService.findGrandpaGhost(grandpaRound);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
 
     @Test
-    void testGetGrandpaGHOSTWithBlockPassingThreshold() {
+    void testFindGrandpaGHOSTWithBlockPassingThreshold() {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
 
@@ -343,7 +343,7 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getGrandpaGhost(grandpaRound);
+        Vote result = grandpaService.findGrandpaGhost(grandpaRound);
         assertNotNull(result);
         assertEquals(firstVote.getBlockHash(), result.getBlockHash());
     }

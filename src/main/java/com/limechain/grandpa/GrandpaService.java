@@ -35,9 +35,6 @@ public class GrandpaService {
         BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
 
         Vote bestFinalCandidate = grandpaRound.getBestFinalCandidate();
-        if (bestFinalCandidate == null) {
-            return;
-        }
 
         var bestFinalCandidateVotesCount = BigInteger.valueOf(
                 getObservedVotesForBlock(grandpaRound, bestFinalCandidate.getBlockHash(), Subround.PRECOMMIT)
@@ -67,7 +64,7 @@ public class GrandpaService {
      */
     private boolean isFinalizable(GrandpaRound grandpaRound) {
 
-        Vote preVoteCandidate = getGrandpaGhost(grandpaRound);
+        Vote preVoteCandidate = findGrandpaGhost(grandpaRound);
         if (preVoteCandidate == null) {
             return false;
         }
@@ -76,7 +73,7 @@ public class GrandpaService {
             return false;
         }
 
-        Vote bestFinalCandidate = getBestFinalCandidate(grandpaRound);
+        Vote bestFinalCandidate = findBestFinalCandidate(grandpaRound);
         if (bestFinalCandidate == null) {
             return false;
         }
@@ -150,9 +147,9 @@ public class GrandpaService {
      *
      * @return the best final candidate block
      */
-    public Vote getBestFinalCandidate(GrandpaRound grandpaRound) {
+    public Vote findBestFinalCandidate(GrandpaRound grandpaRound) {
 
-        Vote preVoteCandidate = getGrandpaGhost(grandpaRound);
+        Vote preVoteCandidate = findGrandpaGhost(grandpaRound);
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
             return preVoteCandidate;
@@ -213,7 +210,7 @@ public class GrandpaService {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    public Vote getGrandpaGhost(GrandpaRound grandpaRound) {
+    public Vote findGrandpaGhost(GrandpaRound grandpaRound) {
         var threshold = grandpaSetState.getThreshold();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
@@ -241,12 +238,13 @@ public class GrandpaService {
      *
      * @return the best pre-voted block
      */
-    public Vote getBestPreVoteCandidate(GrandpaRound grandpaRound) {
+    public Vote findBestPreVoteCandidate(GrandpaRound grandpaRound) {
+
         Vote previousBestFinalCandidate = grandpaRound.getPrevious() != null
                 ? grandpaRound.getPrevious().getBestFinalCandidate()
                 : new Vote(null, BigInteger.ZERO);
-        Vote currentVote = getGrandpaGhost(grandpaRound);
 
+        Vote currentVote = findGrandpaGhost(grandpaRound);
         SignedVote primaryVote = grandpaRound.getPrimaryVote();
 
         if (primaryVote != null) {

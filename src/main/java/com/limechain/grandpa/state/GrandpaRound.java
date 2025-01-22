@@ -1,5 +1,6 @@
 package com.limechain.grandpa.state;
 
+import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import io.emeraldpay.polkaj.types.Hash256;
@@ -28,6 +29,16 @@ public class GrandpaRound implements Serializable {
 
     private Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
+
+    public Vote getPreVotedBlock() {
+        if (preVotedBlock == null) throw new GrandpaGenericException("Pre-voted block has not been set");
+        return preVotedBlock;
+    }
+
+    public Vote getBestFinalCandidate() {
+        if (bestFinalCandidate == null) throw new GrandpaGenericException("Best final candidate has not been set");
+        return bestFinalCandidate;
+    }
 
     public long getPvEquivocationsCount() {
         return this.pvEquivocations.values().stream()
