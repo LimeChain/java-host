@@ -249,6 +249,8 @@ public class GrandpaSetState {
         commitMessages.add(message);
     }
 
+    // Removes commit messages two SetIds behind the current one,
+    // keeping only those received in the current and previous set.
     public void cleanCommitMessagesArchive() {
         commitMessagesArchive.remove(setId.subtract(BigInteger.TWO));
     }
