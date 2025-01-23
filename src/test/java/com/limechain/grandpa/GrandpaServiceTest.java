@@ -77,7 +77,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testFindBestFinalCandidateWithoutPreCommits() {
+    void testFindBestFinalCandidateWithoutPreCommits() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
 
@@ -102,14 +102,18 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.findBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
 
         assertNotNull(result);
         assertEquals(firstVote.getBlockHash(), result.getBlockHash());
     }
 
     @Test
-    void testFindBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() {
+    void testFindBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
@@ -142,14 +146,19 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.findBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
 
         assertNotNull(result);
         assertEquals(thirdVote.getBlockHash(), result.getBlockHash());
     }
 
     @Test
-    void testFindBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() {
+    void testFindBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
@@ -183,20 +192,30 @@ class GrandpaServiceTest {
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), blockHeader.getHash())).thenReturn(true);
 
-        Vote result = grandpaService.findBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
 
         assertNotNull(result);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
     }
 
     @Test
-    void testFindBestFinalCandidateWhereRoundNumberIsZero() {
+    void testFindBestFinalCandidateWhereRoundNumberIsZero() throws Exception {
         BlockHeader blockHeader = createBlockHeader();
 
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
-        var result = grandpaService.findBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
@@ -234,7 +253,6 @@ class GrandpaServiceTest {
         when(signedMessage.getBlockHash()).thenReturn(new Hash256(TWOS_ARRAY));
 
         Vote result = grandpaService.findBestPreVoteCandidate(grandpaRound);
-
 
         assertNotNull(result);
         assertEquals(new Hash256(TWOS_ARRAY), result.getBlockHash());

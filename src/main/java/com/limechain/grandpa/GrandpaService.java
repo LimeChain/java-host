@@ -154,7 +154,7 @@ public class GrandpaService {
      *
      * @return the best final candidate block
      */
-    public Vote findBestFinalCandidate(GrandpaRound grandpaRound) {
+    private Vote findBestFinalCandidate(GrandpaRound grandpaRound) {
 
         Vote preVoteCandidate = findGrandpaGhost(grandpaRound);
 
