@@ -217,7 +217,7 @@ public class GrandpaService {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    public Vote findGrandpaGhost(GrandpaRound grandpaRound) {
+    private Vote findGrandpaGhost(GrandpaRound grandpaRound) {
         var threshold = grandpaSetState.getThreshold();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
@@ -245,7 +245,7 @@ public class GrandpaService {
      *
      * @return the best pre-voted block
      */
-    public Vote findBestPreVoteCandidate(GrandpaRound grandpaRound) {
+    private Vote findBestPreVoteCandidate(GrandpaRound grandpaRound) {
 
         Vote previousBestFinalCandidate = grandpaRound.getPrevious() != null
                 ? grandpaRound.getPrevious().getBestFinalCandidate()
