@@ -29,6 +29,6 @@ public class CommitMessageScaleWriter implements ScaleWriter<CommitMessage> {
         uint64Writer.write(writer, commitMessage.getRoundNumber());
         uint64Writer.write(writer, commitMessage.getSetId());
         voteScaleWriter.write(writer, commitMessage.getVote());
-        compactJustificationScaleWriter.write(writer, commitMessage.getPrecommits());
+        compactJustificationScaleWriter.write(writer, commitMessage.getPreCommits());
     }
 }

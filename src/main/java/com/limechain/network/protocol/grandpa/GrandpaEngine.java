@@ -1,6 +1,7 @@
 package com.limechain.network.protocol.grandpa;
 
 import com.limechain.exception.scale.ScaleEncodingException;
+import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
@@ -209,5 +210,16 @@ public class GrandpaEngine {
 
         log.log(Level.FINE, "Sending neighbour message to peer " + peerId);
         stream.writeAndFlush(buf.toByteArray());
+    }
+
+    /**
+     * Send our GRANDPA commit message from {@link GrandpaService} on a given <b>responder</b> stream.
+     *
+     * @param stream               <b>responder</b> stream to write the message to
+     * @param encodedCommitMessage scale encoded CommitMessage object
+     */
+    public void writeCommitMessage(Stream stream, byte[] encodedCommitMessage) {
+        log.log(Level.FINE, "Sending commit message to peer " + stream.remotePeerId());
+        stream.writeAndFlush(encodedCommitMessage);
     }
 }

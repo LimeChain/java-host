@@ -37,6 +37,23 @@ public class GrandpaService extends NetworkService<Grandpa> {
                 );
     }
 
+    /**
+     * Sends a commit message to a peer. If there is no initiator stream opened with the peer,
+     * sends a handshake instead.
+     *
+     * @param us                   our host object
+     * @param peerId               message receiver
+     * @param encodedCommitMessage scale encoded representation of the CommitMessage object
+     */
+    public void sendCommitMessage(Host us, PeerId peerId, byte[] encodedCommitMessage) {
+        Optional.ofNullable(connectionManager.getPeerInfo(peerId))
+                .map(p -> p.getGrandpaStreams().getInitiator())
+                .ifPresentOrElse(
+                        stream -> new GrandpaController(stream).sendCommitMessage(encodedCommitMessage),
+                        () -> sendHandshake(us, peerId)
+                );
+    }
+
     private void sendNeighbourMessage(Stream stream) {
         GrandpaController controller = new GrandpaController(stream);
         controller.sendNeighbourMessage();

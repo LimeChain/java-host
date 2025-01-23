@@ -3,7 +3,9 @@ package com.limechain.grandpa;
 import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
@@ -12,11 +14,18 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
+import com.limechain.network.protocol.warp.dto.PreCommit;
+import com.limechain.storage.block.BlockState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -35,6 +44,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,8 +71,28 @@ class GrandpaServiceTest {
     @Mock
     private GrandpaRound grandpaRound;
 
+    @Mock
+    private PeerMessageCoordinator peerMessageCoordinator;
+
     @InjectMocks
     private GrandpaService grandpaService;
+
+    @BeforeEach
+    void setUp() {
+        grandpaSetState = mock(GrandpaSetState.class);
+        blockState = mock(BlockState.class);
+        mockedBlockState = mockStatic(BlockState.class);
+        mockedBlockState.when(BlockState::getInstance).thenReturn(blockState);
+        peerMessageCoordinator = mock(PeerMessageCoordinator.class);
+        grandpaService = new GrandpaService(grandpaSetState, peerMessageCoordinator);
+        grandpaRound = mock(GrandpaRound.class);
+        when(grandpaRound.getPrevious()).thenReturn(new GrandpaRound());
+    }
+
+    @AfterEach
+    void tearDown() {
+        mockedBlockState.close();
+    }
 
     @Test
     void testGetBestFinalCandidateWithoutPreCommits() {
@@ -354,7 +386,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetDirectVotesForPrevotes() throws Exception {
+    void testGetDirectVotesForPreVotes() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
@@ -362,12 +394,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getDirectVotes", GrandpaRound.class, Subround.class);
@@ -380,7 +412,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetDirectVotesWithMultipleVotesForSingleBlockForPrevotes() throws Exception {
+    void testGetDirectVotesWithMultipleVotesForSingleBlockForPreVotes() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
@@ -388,12 +420,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
 
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getDirectVotes", GrandpaRound.class, Subround.class);
@@ -410,11 +442,11 @@ class GrandpaServiceTest {
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
 
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getVotes", GrandpaRound.class, Subround.class);
@@ -434,12 +466,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
         Method method = GrandpaService.class.getDeclaredMethod("getVotes", GrandpaRound.class, Subround.class);
@@ -460,12 +492,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
@@ -492,12 +524,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
@@ -525,16 +557,16 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         Hash256 thirdVoteAuthorityHash = new Hash256(ONES_ARRAY);
 
         Map<Hash256, Set<SignedVote>> pvEquivocations = new HashMap<>();
         pvEquivocations.put(thirdVoteAuthorityHash, Set.of(new SignedVote()));
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
@@ -563,11 +595,11 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(grandpaRound.getPvEquivocations()).thenReturn(new HashMap<>());
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
@@ -597,17 +629,12 @@ class GrandpaServiceTest {
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
         SignedVote secondSignedVote = new SignedVote(secondVote, Hash512.empty(), secondVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
-        prevotes.put(secondVoteAuthorityHash, secondSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
+        preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        Hash256 thirdVoteAuthorityHash = new Hash256(ONES_ARRAY);
-
-        Map<Hash256, Set<SignedVote>> pvEquivocations = new HashMap<>();
-        pvEquivocations.put(thirdVoteAuthorityHash, Set.of(new SignedVote()));
-
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
-        when(grandpaRound.getPvEquivocations()).thenReturn(pvEquivocations);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
+        when(grandpaRound.getPvEquivocationsCount()).thenReturn(1L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
@@ -639,11 +666,11 @@ class GrandpaServiceTest {
         Hash256 firstVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote firstSignedVote = new SignedVote(firstVote, Hash512.empty(), firstVoteAuthorityHash);
 
-        Map<Hash256, SignedVote> prevotes = new HashMap<>();
-        prevotes.put(firstVoteAuthorityHash, firstSignedVote);
+        Map<Hash256, SignedVote> preVotes = new HashMap<>();
+        preVotes.put(firstVoteAuthorityHash, firstSignedVote);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
-        when(grandpaRound.getPreVotes()).thenReturn(prevotes);
+        when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(grandpaRound.getPvEquivocations()).thenReturn(new HashMap<>());
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
@@ -749,6 +776,47 @@ class GrandpaServiceTest {
         assertNotNull(result);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
+    }
+
+    @Test
+    void testBroadcastCommitMessageWhenPrimaryValidator() {
+        Hash256 authorityPublicKey = new Hash256(THREES_ARRAY);
+        Map<Hash256, SignedVote> signedVotes = new HashMap<>();
+        Vote vote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(123L));
+        SignedVote signedVote = new SignedVote(vote, Hash512.empty(), authorityPublicKey);
+        signedVotes.put(authorityPublicKey, signedVote);
+
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setRoundNumber(BigInteger.ZERO);
+        previousRound.setPreCommits(signedVotes);
+        BlockHeader blockHeader = createBlockHeader();
+
+        when(grandpaSetState.getThreshold()).thenReturn(BigInteger.ONE);
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
+
+        grandpaService.broadcastCommitMessage(previousRound);
+
+        ArgumentCaptor<CommitMessage> commitMessageCaptor = ArgumentCaptor.forClass(CommitMessage.class);
+        verify(peerMessageCoordinator).sendCommitMessageToPeers(commitMessageCaptor.capture());
+        CommitMessage commitMessage = commitMessageCaptor.getValue();
+
+        assertEquals(BigInteger.valueOf(42L), commitMessage.getSetId());
+        assertEquals(BigInteger.valueOf(0L), commitMessage.getRoundNumber());
+        assertEquals(blockHeader.getBlockNumber(), commitMessage.getVote().getBlockNumber());
+        assertEquals(blockHeader.getHash(), commitMessage.getVote().getBlockHash());
+        assertEquals(1, commitMessage.getPreCommits().length);
+
+        PreCommit precommit = commitMessage.getPreCommits()[0];
+        assertEquals(vote.getBlockHash(), precommit.getTargetHash());
+        assertEquals(BigInteger.valueOf(123L), precommit.getTargetNumber());
+        assertEquals(Hash512.empty(), precommit.getSignature());
+        assertEquals(signedVotes.get(authorityPublicKey).getAuthorityPublicKey(),
+                precommit.getAuthorityPublicKey()
+        );
+
+        verify(peerMessageCoordinator, times(1))
+                .sendCommitMessageToPeers(any(CommitMessage.class));
     }
 
     private BlockHeader createBlockHeader() {

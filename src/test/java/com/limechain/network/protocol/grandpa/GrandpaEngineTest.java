@@ -36,7 +36,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigInteger;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @SuppressWarnings("unused")
 @ExtendWith(MockitoExtension.class)
@@ -59,6 +65,9 @@ class GrandpaEngineTest {
     private final NeighbourMessage neighbourMessage =
             new NeighbourMessage(1, BigInteger.ONE, BigInteger.TWO, BigInteger.TEN);
     private final byte[] encodedNeighbourMessage
+            = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+
+    private final byte[] encodedCommitMessage
             = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
 
 
@@ -302,5 +311,11 @@ class GrandpaEngineTest {
 
             verify(stream).writeAndFlush(encodedNeighbourMessage);
         }
+    }
+
+    @Test
+    void writeCommitMessage() {
+        grandpaEngine.writeCommitMessage(stream, encodedCommitMessage);
+        verify(stream).writeAndFlush(encodedCommitMessage);
     }
 }

@@ -4,13 +4,17 @@ import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
@@ -22,13 +26,11 @@ import java.util.Map;
 
 @Log
 @Component
+@RequiredArgsConstructor
 public class GrandpaService {
 
     private final StateManager stateManager;
-
-    public GrandpaService(StateManager stateManager) {
-        this.stateManager = stateManager;
-    }
+    private final PeerMessageCoordinator peerMessageCoordinator;
 
     /**
      * Finds and returns the best final candidate block for the current round.
@@ -42,17 +44,17 @@ public class GrandpaService {
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         BlockState blockState = stateManager.getBlockState();
 
-        Vote prevoteCandidate = getGrandpaGhost(grandpaRound);
+        Vote preVoteCandidate = getGrandpaGhost(grandpaRound);
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
-            return prevoteCandidate;
+            return preVoteCandidate;
         }
 
         var threshold = grandpaSetState.getThreshold();
         Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PRECOMMIT);
 
         if (possibleSelectedBlocks.isEmpty()) {
-            return prevoteCandidate;
+            return preVoteCandidate;
         }
 
         var bestFinalCandidate = getLastFinalizedBlockAsVote();
@@ -62,13 +64,13 @@ public class GrandpaService {
             var blockHash = block.getKey();
             var blockNumber = block.getValue();
 
-            boolean isDescendant = blockState.isDescendantOf(blockHash, prevoteCandidate.getBlockHash());
+            boolean isDescendant = blockState.isDescendantOf(blockHash, preVoteCandidate.getBlockHash());
 
             if (!isDescendant) {
 
                 Hash256 lowestCommonAncestor;
                 try {
-                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, prevoteCandidate.getBlockHash());
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, preVoteCandidate.getBlockHash());
                 } catch (IllegalArgumentException e) {
                     log.warning("Error finding the lowest common ancestor: " + e.getMessage());
                     continue;
@@ -91,7 +93,7 @@ public class GrandpaService {
     }
 
     /**
-     * Finds and returns the block with the most votes in the GRANDPA prevote stage.
+     * Finds and returns the block with the most votes in the GRANDPA pre-vote stage.
      * If there are multiple blocks with the same number of votes, selects the block with the highest number.
      * If no block meets the criteria, throws an exception indicating no valid GHOST candidate.
      *
@@ -267,9 +269,9 @@ public class GrandpaService {
             return 0L;
         }
 
-        int equivocationCount = switch (subround) {
-            case Subround.PREVOTE -> grandpaRound.getPvEquivocations().size();
-            case Subround.PRECOMMIT -> grandpaRound.getPcEquivocations().size();
+        long equivocationCount = switch (subround) {
+            case Subround.PREVOTE -> grandpaRound.getPvEquivocationsCount();
+            case Subround.PRECOMMIT -> grandpaRound.getPcEquivocationsCount();
             default -> 0;
         };
 
@@ -326,6 +328,12 @@ public class GrandpaService {
         return new ArrayList<>(votes.keySet());
     }
 
+    private List<Vote> getBlockDescendents(Vote vote, List<Vote> votes) {
+        return votes.stream()
+                .filter(v -> v.getBlockNumber().compareTo(vote.getBlockNumber()) > 0)
+                .toList();
+    }
+
     private Vote getLastFinalizedBlockAsVote() {
         var lastFinalizedBlockHeader = stateManager.getBlockState().getHighestFinalizedHeader();
 
@@ -333,5 +341,37 @@ public class GrandpaService {
                 lastFinalizedBlockHeader.getHash(),
                 lastFinalizedBlockHeader.getBlockNumber()
         );
+    }
+
+    /**
+     * Broadcasts a commit message to network peers for the given round as part of the GRANDPA consensus process.
+     * <p>
+     * This method is used in two scenarios:
+     * 1. As the primary validator, broadcasting a commit message for the best candidate block of the previous round.
+     * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
+     */
+    public void broadcastCommitMessage(GrandpaRound grandpaRound) {
+        Vote bestCandidate = getBestFinalCandidate(grandpaRound);
+        PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
+
+        CommitMessage commitMessage = new CommitMessage();
+        commitMessage.setSetId(grandpaSetState.getSetId());
+        commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
+        commitMessage.setVote(bestCandidate);
+        commitMessage.setPreCommits(precommits);
+
+        peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
+    }
+
+    private PreCommit[] transformToCompactJustificationFormat(Map<Hash256, SignedVote> signedVotes) {
+        return signedVotes.values().stream()
+                .map(signedVote -> {
+                    PreCommit precommit = new PreCommit();
+                    precommit.setTargetHash(signedVote.getVote().getBlockHash());
+                    precommit.setTargetNumber(signedVote.getVote().getBlockNumber());
+                    precommit.setSignature(signedVote.getSignature());
+                    precommit.setAuthorityPublicKey(signedVote.getAuthorityPublicKey());
+                    return precommit;
+                }).toArray(PreCommit[]::new);
     }
 }

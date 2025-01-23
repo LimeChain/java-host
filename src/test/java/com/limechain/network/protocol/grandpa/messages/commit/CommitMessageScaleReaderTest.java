@@ -1,6 +1,6 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
-import com.limechain.network.protocol.warp.dto.Precommit;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.types.Hash256;
@@ -24,8 +24,8 @@ class CommitMessageScaleReaderTest {
                     Hash256.from("0x40ab4c691adf667e76d01f91a3b9f6966bbe731c76d13c7e88d5321947e154bc"),
                     BigInteger.valueOf(14)
             ),
-            new Precommit[]{
-                    new Precommit(
+            new PreCommit[]{
+                    new PreCommit(
                             Hash256.from("0x40ab4c691adf667e76d01f91a3b9f6966bbe731c76d13c7e88d5321947e154bc"),
                             BigInteger.valueOf(14),
                             Hash512.from("0xefc92540389c72b9c7cfb6fef8c5bff982e3dc689bc43adbfb8609231628957e08f717e933ecc7f4f015652bdef7381368d10590c7ca12f2c7755d423d3f4201"),

@@ -29,12 +29,12 @@ public class StateUtil {
         return prepareKey(authorityKey, setId.toString());
     }
 
-    public String generatePrevotesKey(String grandpaPrevotes, BigInteger roundNumber, BigInteger setId) {
-        return prepareKey(grandpaPrevotes, roundNumber.toString(), setId.toString());
+    public String generatePreVotesKey(String grandpaPreVotes, BigInteger roundNumber, BigInteger setId) {
+        return prepareKey(grandpaPreVotes, roundNumber.toString(), setId.toString());
     }
 
-    public String generatePrecommitsKey(String precommitsKey, BigInteger roundNumber, BigInteger setId) {
-        return prepareKey(precommitsKey, roundNumber.toString(), setId.toString());
+    public String generatePreCommitsKey(String preCommitsKey, BigInteger roundNumber, BigInteger setId) {
+        return prepareKey(preCommitsKey, roundNumber.toString(), setId.toString());
     }
 
 }
