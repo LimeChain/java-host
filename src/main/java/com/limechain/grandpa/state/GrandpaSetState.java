@@ -12,6 +12,8 @@ import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import com.limechain.storage.crypto.KeyStore;
+import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
@@ -42,14 +44,17 @@ import java.util.logging.Level;
 public class GrandpaSetState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
-    private final KVRepository<String, Object> repository;
-    private final RoundCache roundCache;
 
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
     private BigInteger setId;
 
-    private final PriorityQueue<AuthoritySetChange> authoritySetChanges = new PriorityQueue<>(AuthoritySetChange.getComparator());
+    private final RoundCache roundCache;
+    private final KeyStore keyStore;
+    private final KVRepository<String, Object> repository;
+
+    private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
+            new PriorityQueue<>(AuthoritySetChange.getComparator());
 
     public void initialize() {
         loadPersistedState();
@@ -191,7 +196,6 @@ public class GrandpaSetState {
                     currentBlockNumber
             ));
             case GRANDPA_ON_DISABLED -> disabledAuthority = consensusMessage.getDisabledAuthority();
-            //TODO: Implement later
             case GRANDPA_PAUSE -> log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
             case GRANDPA_RESUME -> log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
         }
@@ -226,5 +230,10 @@ public class GrandpaSetState {
             }
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
+    }
+
+    public boolean participatesAsVoter() {
+        return authorities.stream()
+                .anyMatch(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()).isPresent());
     }
 }

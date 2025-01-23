@@ -18,6 +18,7 @@ import com.limechain.storage.DBInitializer;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.block.BlockHandler;
 import com.limechain.storage.block.SyncState;
+import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.trie.TrieStorage;
 import com.limechain.sync.fullsync.FullSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncMachine;
@@ -89,8 +90,10 @@ public class CommonConfig {
     }
 
     @Bean
-    public GrandpaSetState grandpaSetState(KVRepository<String, Object> repository, RoundCache roundCache) {
-        return new GrandpaSetState(repository, roundCache);
+    public GrandpaSetState grandpaSetState(RoundCache roundCache,
+                                           KeyStore keyStore,
+                                           KVRepository<String, Object> repository) {
+        return new GrandpaSetState(roundCache, keyStore, repository);
     }
 
     @Bean
