@@ -144,8 +144,7 @@ public class GrandpaEngine {
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
 
         // If peer has the same voter set id
-        BigInteger currentSetId = grandpaSetState.getSetId();
-        if (neighbourMessage.getSetId().equals(currentSetId)) {
+        if (neighbourMessage.getSetId().equals(grandpaSetState.getSetId())) {
             sendCatchUpRequest(neighbourMessage, peerId, stream);
         }
     }
