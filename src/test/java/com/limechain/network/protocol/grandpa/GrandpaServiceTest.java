@@ -18,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,6 +31,8 @@ class GrandpaServiceTest {
     @Mock
     private ProtocolStreams protocolStreams;
     @Mock
+    private Stream stream;
+    @Mock
     private Host host;
     @Mock
     private PeerId peerId;
@@ -39,6 +40,13 @@ class GrandpaServiceTest {
     private ConnectionManager connectionManager;
     @Mock
     private Grandpa protocol;
+    @Mock
+    private AddressBook addressBook;
+    @Mock
+    private GrandpaController grandpaController;
+
+    private final byte[] encodedCommitMessage
+            = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
 
     //setup method
     @BeforeEach
@@ -48,8 +56,6 @@ class GrandpaServiceTest {
 
     @Test
     void sendNeighbourMessageWhenNotConnectionShouldSendHandshake() {
-        AddressBook addressBook = mock(AddressBook.class);
-        GrandpaController grandpaController = mock(GrandpaController.class);
         when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
         when(peerInfo.getGrandpaStreams()).thenReturn(protocolStreams);
         when(protocolStreams.getInitiator()).thenReturn(null);
@@ -63,9 +69,6 @@ class GrandpaServiceTest {
 
     @Test
     void sendNeighbourMessageWhenExistingConnection() {
-        PeerInfo peerInfo = mock(PeerInfo.class);
-        ProtocolStreams protocolStreams = mock(ProtocolStreams.class);
-        Stream stream = mock(Stream.class);
         when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
         when(peerInfo.getGrandpaStreams()).thenReturn(protocolStreams);
         when(protocolStreams.getInitiator()).thenReturn(stream);
@@ -76,6 +79,34 @@ class GrandpaServiceTest {
             assertEquals(1, mock.constructed().size());
             GrandpaController controller = mock.constructed().get(0);
             verify(controller).sendNeighbourMessage();
+        }
+    }
+
+    @Test
+    void sendCommitMessageWhenNotConnectionShouldSendHandshake() {
+        when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
+        when(peerInfo.getGrandpaStreams()).thenReturn(protocolStreams);
+        when(protocolStreams.getInitiator()).thenReturn(null);
+        when(host.getAddressBook()).thenReturn(addressBook);
+        when(protocol.dialPeer(host, peerId, addressBook)).thenReturn(grandpaController);
+
+        grandpaService.sendCommitMessage(host, peerId, encodedCommitMessage);
+
+        verify(grandpaController).sendHandshake();
+    }
+
+    @Test
+    void sendCommitMessageWhenExistingConnection() {
+        when(connectionManager.getPeerInfo(peerId)).thenReturn(peerInfo);
+        when(peerInfo.getGrandpaStreams()).thenReturn(protocolStreams);
+        when(protocolStreams.getInitiator()).thenReturn(stream);
+
+        try (MockedConstruction<GrandpaController> mock = mockConstruction(GrandpaController.class)) {
+            grandpaService.sendCommitMessage(host, peerId, encodedCommitMessage);
+
+            assertEquals(1, mock.constructed().size());
+            GrandpaController controller = mock.constructed().get(0);
+            verify(controller).sendCommitMessage(encodedCommitMessage);
         }
     }
 

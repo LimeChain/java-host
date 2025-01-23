@@ -25,19 +25,27 @@ class GrandpaControllerTest {
 
     @BeforeEach
     void setup() {
-        when(stream.remotePeerId()).thenReturn(peerId);
         grandpaController.engine = engine;
     }
 
     @Test
     void sendHandshake() {
+        when(stream.remotePeerId()).thenReturn(peerId);
         grandpaController.sendHandshake();
         verify(engine).writeHandshakeToStream(stream, peerId);
     }
 
     @Test
     void sendNeighbourMessage() {
+        when(stream.remotePeerId()).thenReturn(peerId);
         grandpaController.sendNeighbourMessage();
         verify(engine).writeNeighbourMessage(stream, peerId);
+    }
+
+    @Test
+    void sendCommitMessage() {
+        byte[] encodedCommitMessage = {1, 0, 0, 0, 2, 0, 1, 1, 1, 1, 0, 0, 0, 1, 2, 0};
+        grandpaController.sendCommitMessage(encodedCommitMessage);
+        verify(engine).writeCommitMessage(stream, encodedCommitMessage);
     }
 }
