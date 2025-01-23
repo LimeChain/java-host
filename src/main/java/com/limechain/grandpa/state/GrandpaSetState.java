@@ -4,7 +4,6 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
-import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
@@ -26,10 +25,8 @@ import lombok.Setter;
 import lombok.extern.java.Log;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
