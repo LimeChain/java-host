@@ -7,6 +7,7 @@ import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.storage.HeaderNotFoundException;
 import com.limechain.exception.storage.LowerThanRootException;
 import com.limechain.exception.storage.RoundAndSetIdNotFoundException;
+import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockBody;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
@@ -891,6 +892,15 @@ public class BlockState {
         }
 
         return helper.bytesToRoundAndSetId(data);
+    }
+
+    public Vote getLastFinalizedBlockAsVote() {
+        var lastFinalizedBlockHeader = getHighestFinalizedHeader();
+
+        return new Vote(
+                lastFinalizedBlockHeader.getHash(),
+                lastFinalizedBlockHeader.getBlockNumber()
+        );
     }
 
     /**

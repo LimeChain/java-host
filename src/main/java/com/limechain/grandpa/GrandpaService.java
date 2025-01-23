@@ -55,6 +55,9 @@ public class GrandpaService {
             BlockHeader header = blockState.getHeader(bestFinalCandidate.getBlockHash());
             blockState.setFinalizedHash(header, grandpaRound.getRoundNumber(), grandpaSetState.getSetId());
 
+            // Persisting into the database when the round is finished
+            grandpaSetState.persistState();
+
             if (!grandpaRound.isCommitMessageInArchive(bestFinalCandidate)) {
                 broadcastCommitMessage(grandpaRound);
             }
@@ -173,7 +176,7 @@ public class GrandpaService {
             return preVoteCandidate;
         }
 
-        var bestFinalCandidate = getLastFinalizedBlockAsVote();
+        var bestFinalCandidate = blockState.getLastFinalizedBlockAsVote();
 
         for (Map.Entry<Hash256, BigInteger> block : possibleSelectedBlocks.entrySet()) {
 
@@ -221,7 +224,7 @@ public class GrandpaService {
         var threshold = grandpaSetState.getThreshold();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
-            return getLastFinalizedBlockAsVote();
+            return blockState.getLastFinalizedBlockAsVote();
         }
 
         Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PREVOTE);
@@ -274,7 +277,7 @@ public class GrandpaService {
      * @return the block with the most votes from the provided map
      */
     private Vote selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks) {
-        Vote highest = getLastFinalizedBlockAsVote();
+        Vote highest = blockState.getLastFinalizedBlockAsVote();
 
         for (Map.Entry<Hash256, BigInteger> entry : blocks.entrySet()) {
             Hash256 hash = entry.getKey();
@@ -466,15 +469,6 @@ public class GrandpaService {
         return votes.stream()
                 .filter(v -> v.getBlockNumber().compareTo(vote.getBlockNumber()) > 0)
                 .toList();
-    }
-
-    private Vote getLastFinalizedBlockAsVote() {
-        var lastFinalizedBlockHeader = blockState.getHighestFinalizedHeader();
-
-        return new Vote(
-                lastFinalizedBlockHeader.getHash(),
-                lastFinalizedBlockHeader.getBlockNumber()
-        );
     }
 
     /**
