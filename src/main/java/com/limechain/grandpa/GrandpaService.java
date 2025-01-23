@@ -265,7 +265,6 @@ public class GrandpaService {
         return currentVote;
     }
 
-
     /**
      * Selects the block with the most votes from the provided map of blocks.
      * If multiple blocks have the same number of votes, it returns the one with the highest block number.
@@ -485,7 +484,7 @@ public class GrandpaService {
      * 1. As the primary validator, broadcasting a commit message for the best candidate block of the previous round.
      * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
      */
-    public void broadcastCommitMessage(GrandpaRound grandpaRound) {
+    private void broadcastCommitMessage(GrandpaRound grandpaRound) {
         Vote bestCandidate = findBestFinalCandidate(grandpaRound);
         PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
 

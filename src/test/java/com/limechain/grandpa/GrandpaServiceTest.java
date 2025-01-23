@@ -791,7 +791,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testBroadcastCommitMessageWhenPrimaryValidator() {
+    void testBroadcastCommitMessageWhenPrimaryValidator() throws Exception {
         Hash256 authorityPublicKey = new Hash256(THREES_ARRAY);
         Map<Hash256, SignedVote> signedVotes = new HashMap<>();
         Vote vote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(123L));
@@ -807,7 +807,10 @@ class GrandpaServiceTest {
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
 
-        grandpaService.broadcastCommitMessage(previousRound);
+        Method method = GrandpaService.class.getDeclaredMethod("broadcastCommitMessage", GrandpaRound.class);
+        method.setAccessible(true);
+
+        method.invoke(grandpaService, previousRound);
 
         ArgumentCaptor<CommitMessage> commitMessageCaptor = ArgumentCaptor.forClass(CommitMessage.class);
         verify(peerMessageCoordinator).sendCommitMessageToPeers(commitMessageCaptor.capture());
