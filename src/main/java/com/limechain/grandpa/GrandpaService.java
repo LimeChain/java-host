@@ -56,7 +56,7 @@ public class GrandpaService {
             blockState.setFinalizedHash(header, grandpaRound.getRoundNumber(), grandpaSetState.getSetId());
 
             if (!grandpaSetState.isCommitMessageInArchive(bestFinalCandidate)) {
-                //TODO: broadcast
+                broadcastCommitMessage(grandpaRound);
             }
         }
     }
@@ -486,7 +486,7 @@ public class GrandpaService {
      * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
      */
     public void broadcastCommitMessage(GrandpaRound grandpaRound) {
-        Vote bestCandidate = getBestFinalCandidate(grandpaRound);
+        Vote bestCandidate = findBestFinalCandidate(grandpaRound);
         PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
 
         CommitMessage commitMessage = new CommitMessage();
