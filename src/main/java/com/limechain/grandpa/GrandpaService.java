@@ -355,7 +355,7 @@ public class GrandpaService {
         PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
 
         CommitMessage commitMessage = new CommitMessage();
-        commitMessage.setSetId(grandpaSetState.getSetId());
+        commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
         commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
         commitMessage.setVote(bestCandidate);
         commitMessage.setPreCommits(precommits);

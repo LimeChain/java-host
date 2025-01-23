@@ -15,18 +15,13 @@ import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.dto.PreCommit;
-import com.limechain.storage.block.BlockState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,7 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,8 +53,6 @@ class GrandpaServiceTest {
             new byte[]{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
     private static final byte[] THREES_ARRAY =
             new byte[]{3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-    @Mock
-    private StateManager stateManager;
 
     @Mock
     private GrandpaSetState grandpaSetState;
@@ -74,25 +66,11 @@ class GrandpaServiceTest {
     @Mock
     private PeerMessageCoordinator peerMessageCoordinator;
 
+    @Mock
+    private StateManager stateManager;
+
     @InjectMocks
     private GrandpaService grandpaService;
-
-    @BeforeEach
-    void setUp() {
-        grandpaSetState = mock(GrandpaSetState.class);
-        blockState = mock(BlockState.class);
-        mockedBlockState = mockStatic(BlockState.class);
-        mockedBlockState.when(BlockState::getInstance).thenReturn(blockState);
-        peerMessageCoordinator = mock(PeerMessageCoordinator.class);
-        grandpaService = new GrandpaService(grandpaSetState, peerMessageCoordinator);
-        grandpaRound = mock(GrandpaRound.class);
-        when(grandpaRound.getPrevious()).thenReturn(new GrandpaRound());
-    }
-
-    @AfterEach
-    void tearDown() {
-        mockedBlockState.close();
-    }
 
     @Test
     void testGetBestFinalCandidateWithoutPreCommits() {
@@ -600,7 +578,6 @@ class GrandpaServiceTest {
         preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
-        when(grandpaRound.getPvEquivocations()).thenReturn(new HashMap<>());
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
@@ -671,7 +648,6 @@ class GrandpaServiceTest {
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
-        when(grandpaRound.getPvEquivocations()).thenReturn(new HashMap<>());
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
@@ -791,9 +767,12 @@ class GrandpaServiceTest {
         previousRound.setPreCommits(signedVotes);
         BlockHeader blockHeader = createBlockHeader();
 
+        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaSetState.getThreshold()).thenReturn(BigInteger.ONE);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
         when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
+
+        when(stateManager.getBlockState()).thenReturn(blockState);
+        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
         grandpaService.broadcastCommitMessage(previousRound);
 

@@ -1,8 +1,8 @@
 package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.global.MissingObjectException;
-import com.limechain.network.protocol.warp.dto.WarpSyncResponse;
 import com.limechain.network.PeerRequester;
+import com.limechain.network.protocol.warp.dto.WarpSyncResponse;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
