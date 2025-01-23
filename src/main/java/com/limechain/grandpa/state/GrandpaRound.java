@@ -2,6 +2,7 @@ package com.limechain.grandpa.state;
 
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
@@ -9,6 +10,8 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +33,8 @@ public class GrandpaRound implements Serializable {
     private Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
 
+    private List<CommitMessage> commitMessagesArchive = new ArrayList<>();
+
     public Vote getPreVotedBlock() {
         if (preVotedBlock == null) throw new GrandpaGenericException("Pre-voted block has not been set");
         return preVotedBlock;
@@ -50,5 +55,14 @@ public class GrandpaRound implements Serializable {
         return this.pcEquivocations.values().stream()
                 .mapToInt(Set::size)
                 .sum();
+    }
+
+    public void addCommitMessageToArchive(CommitMessage message) {
+        commitMessagesArchive.add(message);
+    }
+
+    public boolean isCommitMessageInArchive(Vote vote) {
+        return commitMessagesArchive.stream()
+                .anyMatch(cm -> cm.getVote().equals(vote));
     }
 }

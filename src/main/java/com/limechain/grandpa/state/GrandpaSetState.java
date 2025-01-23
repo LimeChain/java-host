@@ -56,7 +56,6 @@ public class GrandpaSetState {
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
 
-    private final Map<BigInteger, List<CommitMessage>> commitMessagesArchive = new HashMap<>();
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
             new PriorityQueue<>(AuthoritySetChange.getComparator());
 
@@ -153,8 +152,6 @@ public class GrandpaSetState {
         roundCache.addRound(setId, grandpaRound);
         this.authorities = authorities;
 
-        cleanCommitMessagesArchive();
-
         log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
 
@@ -241,22 +238,5 @@ public class GrandpaSetState {
     public boolean participatesAsVoter() {
         return authorities.stream()
                 .anyMatch(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()).isPresent());
-    }
-
-    public void addCommitMessageToArchive(CommitMessage message) {
-        commitMessagesArchive.putIfAbsent(setId, new ArrayList<>());
-        List<CommitMessage> commitMessages = commitMessagesArchive.get(setId);
-        commitMessages.add(message);
-    }
-
-    // Removes commit messages two SetIds behind the current one,
-    // keeping only those received in the current and previous set.
-    public void cleanCommitMessagesArchive() {
-        commitMessagesArchive.remove(setId.subtract(BigInteger.TWO));
-    }
-
-    public boolean isCommitMessageInArchive(Vote vote) {
-        return commitMessagesArchive.get(setId).stream()
-                .anyMatch(cm -> cm.getVote().equals(vote));
     }
 }
