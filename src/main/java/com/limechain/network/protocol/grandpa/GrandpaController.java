@@ -26,4 +26,11 @@ public class GrandpaController {
     public void sendNeighbourMessage() {
         engine.writeNeighbourMessage(stream, stream.remotePeerId());
     }
+
+    /**
+     * Sends a commit message over the controller stream.
+     */
+    public void sendCommitMessage(byte[] encodedCommitMessage) {
+        engine.writeCommitMessage(stream, encodedCommitMessage);
+    }
 }

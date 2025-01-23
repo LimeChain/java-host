@@ -4,10 +4,13 @@ import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.storage.block.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.extern.java.Log;
@@ -25,10 +28,14 @@ public class GrandpaService {
 
     private final GrandpaSetState grandpaSetState;
     private final BlockState blockState;
+    private final PeerMessageCoordinator peerMessageCoordinator;
 
-    public GrandpaService(GrandpaSetState grandpaSetState) {
+
+    public GrandpaService(GrandpaSetState grandpaSetState,
+                          PeerMessageCoordinator peerMessageCoordinator) {
         this.grandpaSetState = grandpaSetState;
         this.blockState = BlockState.getInstance();
+        this.peerMessageCoordinator = peerMessageCoordinator;
     }
 
     /**
@@ -421,5 +428,37 @@ public class GrandpaService {
                 lastFinalizedBlockHeader.getHash(),
                 lastFinalizedBlockHeader.getBlockNumber()
         );
+    }
+
+    /**
+     * Broadcasts a commit message to network peers for the given round as part of the GRANDPA consensus process.
+     * <p>
+     * This method is used in two scenarios:
+     * 1. As the primary validator, broadcasting a commit message for the best candidate block of the previous round.
+     * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
+     */
+    public void broadcastCommitMessage(GrandpaRound grandpaRound) {
+        Vote bestCandidate = getBestFinalCandidate(grandpaRound);
+        PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
+
+        CommitMessage commitMessage = new CommitMessage();
+        commitMessage.setSetId(grandpaSetState.getSetId());
+        commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
+        commitMessage.setVote(bestCandidate);
+        commitMessage.setPreCommits(precommits);
+
+        peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
+    }
+
+    private PreCommit[] transformToCompactJustificationFormat(Map<Hash256, SignedVote> signedVotes) {
+        return signedVotes.values().stream()
+                .map(signedVote -> {
+                    PreCommit precommit = new PreCommit();
+                    precommit.setTargetHash(signedVote.getVote().getBlockHash());
+                    precommit.setTargetNumber(signedVote.getVote().getBlockNumber());
+                    precommit.setSignature(signedVote.getSignature());
+                    precommit.setAuthorityPublicKey(signedVote.getAuthorityPublicKey());
+                    return precommit;
+                }).toArray(PreCommit[]::new);
     }
 }
