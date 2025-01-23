@@ -3,11 +3,13 @@ package com.limechain.network.protocol.grandpa;
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.grandpa.state.RoundCache;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleReader;
+import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
@@ -30,6 +32,7 @@ import lombok.extern.java.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.logging.Level;
 
 /**
@@ -109,7 +112,7 @@ public class GrandpaEngine {
             case HANDSHAKE -> handleHandshake(message, peerId, stream);
             case VOTE -> handleVoteMessage(message, peerId);
             case COMMIT -> handleCommitMessage(message, peerId);
-            case NEIGHBOUR -> handleNeighbourMessage(message, peerId);
+            case NEIGHBOUR -> handleNeighbourMessage(message, peerId, stream);
             case CATCH_UP_REQUEST -> handleCatchupRequestMessage(message, peerId);
             case CATCH_UP_RESPONSE -> handleCatchupResponseMessage(message, peerId);
         }
@@ -134,11 +137,28 @@ public class GrandpaEngine {
         }
     }
 
-    private void handleNeighbourMessage(byte[] message, PeerId peerId) {
+    private void handleNeighbourMessage(byte[] message, PeerId peerId, Stream stream) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
+
+        // If peer has the same voter set id
+        BigInteger currentSetId = grandpaSetState.getSetId();
+        if (neighbourMessage.getSetId().equals(currentSetId)) {
+            sendCatchUpRequest(neighbourMessage, peerId, stream);
+        }
+    }
+
+    private void sendCatchUpRequest(NeighbourMessage neighbourMessage, PeerId peerId, Stream stream) {
+        RoundCache roundCache = grandpaSetState.getRoundCache();
+        BigInteger latestRound = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
+
+        // Check if needed to catch-up peer
+        if (neighbourMessage.getRound().compareTo(latestRound) > 0) {
+            log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
+            writeCatchUpRequest(stream, peerId);
+        }
     }
 
     private void handleVoteMessage(byte[] message, PeerId peerId) {
@@ -212,5 +232,26 @@ public class GrandpaEngine {
     public void writeCommitMessage(Stream stream, byte[] encodedCommitMessage) {
         log.log(Level.FINE, "Sending commit message to peer " + stream.remotePeerId());
         stream.writeAndFlush(encodedCommitMessage);
+    }
+
+    /**
+     * Send our GRANDPA catch-up request message on a given <b>responder</b> stream.
+     *
+     * @param stream <b>responder</b> stream to write the message to
+     * @param peerId peer to send to
+     */
+    private void writeCatchUpRequest(Stream stream, PeerId peerId) {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
+            writer.write(
+                    CatchUpReqMessageScaleWriter.getInstance(),
+                    ProtocolMessageBuilder.buildCatchUpRequestMessage(grandpaSetState)
+            );
+        } catch (IOException e) {
+            throw new ScaleEncodingException(e);
+        }
+
+        log.log(Level.FINE, "Sending catch up request to Peer " + peerId);
+        stream.writeAndFlush(buf.toByteArray());
     }
 }
