@@ -4,6 +4,7 @@ import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
@@ -110,7 +111,7 @@ public class GrandpaEngine {
             case HANDSHAKE -> handleHandshake(message, peerId, stream);
             case VOTE -> handleVoteMessage(message, peerId);
             case COMMIT -> handleCommitMessage(message, peerId);
-            case NEIGHBOUR -> handleNeighbourMessage(message, peerId, stream);
+            case NEIGHBOUR -> handleNeighbourMessage(message, peerId);
             case CATCH_UP_REQUEST -> handleCatchupRequestMessage(message, peerId);
             case CATCH_UP_RESPONSE -> handleCatchupResponseMessage(message, peerId);
         }
@@ -135,11 +136,15 @@ public class GrandpaEngine {
         }
     }
 
-    private void handleNeighbourMessage(byte[] message, PeerId peerId, Stream stream) {
+    private void handleNeighbourMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
+
+        if (NodeRole.AUTHORING.getValue().equals(connectionManager.getPeerInfo(peerId).getNodeRole())) {
+            warpSyncState.checkAndInitiateCatchUp(neighbourMessage, peerId);
+        }
     }
 
     private void handleVoteMessage(byte[] message, PeerId peerId) {
