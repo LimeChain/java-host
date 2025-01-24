@@ -4,10 +4,12 @@ import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleReader;
+import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
@@ -139,6 +141,10 @@ public class GrandpaEngine {
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
+
+        if (NodeRole.AUTHORING.getValue().equals(connectionManager.getPeerInfo(peerId).getNodeRole())) {
+            warpSyncState.checkAndInitiateCatchUp(neighbourMessage, peerId);
+        }
     }
 
     private void handleVoteMessage(byte[] message, PeerId peerId) {
@@ -212,5 +218,26 @@ public class GrandpaEngine {
     public void writeCommitMessage(Stream stream, byte[] encodedCommitMessage) {
         log.log(Level.FINE, "Sending commit message to peer " + stream.remotePeerId());
         stream.writeAndFlush(encodedCommitMessage);
+    }
+
+    /**
+     * Send our GRANDPA catch-up request message on a given <b>responder</b> stream.
+     *
+     * @param stream <b>responder</b> stream to write the message to
+     * @param peerId peer to send to
+     */
+    public void writeCatchUpRequest(Stream stream, PeerId peerId) {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
+            writer.write(
+                    CatchUpReqMessageScaleWriter.getInstance(),
+                    ProtocolMessageBuilder.buildCatchUpRequestMessage()
+            );
+        } catch (IOException e) {
+            throw new ScaleEncodingException(e);
+        }
+
+        log.log(Level.FINE, "Sending catch up request to Peer " + peerId);
+        stream.writeAndFlush(buf.toByteArray());
     }
 }
