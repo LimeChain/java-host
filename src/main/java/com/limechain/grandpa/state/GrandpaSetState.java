@@ -156,6 +156,7 @@ public class GrandpaSetState {
         initGrandpaRound.setBestFinalCandidate(lastFinalizedBlock);
 
         roundCache.addRound(setId, initGrandpaRound);
+        // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
         persistState();
 
         GrandpaRound grandpaRound = new GrandpaRound();
