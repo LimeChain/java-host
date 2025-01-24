@@ -12,10 +12,10 @@ import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
+import com.limechain.state.StateManager;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
-import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
@@ -55,7 +55,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     private BigInteger disabledAuthority;
     private BigInteger setId;
 
-    private final BlockState blockState = BlockState.getInstance();
+    private final StateManager stateManager;
     private final RoundCache roundCache;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
@@ -160,7 +160,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         this.setId = setId.add(BigInteger.ONE);
         this.authorities = authorities;
 
-        var lastFinalizedBlock = blockState.getLastFinalizedBlockAsVote();
+        var lastFinalizedBlock = stateManager.getBlockState().getLastFinalizedBlockAsVote();
 
         GrandpaRound initGrandpaRound = new GrandpaRound();
         initGrandpaRound.setRoundNumber(BigInteger.ZERO);

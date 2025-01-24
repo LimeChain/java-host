@@ -846,7 +846,6 @@ class GrandpaServiceTest {
         when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
 
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
         Method method = GrandpaService.class.getDeclaredMethod("broadcastCommitMessage", GrandpaRound.class);
         method.setAccessible(true);
