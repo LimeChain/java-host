@@ -67,4 +67,18 @@ public class GrandpaService extends NetworkService<Grandpa> {
             log.warning("Failed to send Grandpa handshake to " + peerId);
         }
     }
+
+    public void sendCatchUpRequest(Host us, PeerId peerId) {
+        Optional.ofNullable(connectionManager.getPeerInfo(peerId))
+                .map(p -> p.getGrandpaStreams().getInitiator())
+                .ifPresentOrElse(
+                        this::sendCatchUpRequest,
+                        () -> sendHandshake(us, peerId)
+                );
+    }
+
+    private void sendCatchUpRequest(Stream stream) {
+        GrandpaController controller = new GrandpaController(stream);
+        controller.sendCatchUpRequest();
+    }
 }

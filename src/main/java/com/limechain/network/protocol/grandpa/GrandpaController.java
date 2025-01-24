@@ -33,4 +33,8 @@ public class GrandpaController {
     public void sendCommitMessage(byte[] encodedCommitMessage) {
         engine.writeCommitMessage(stream, encodedCommitMessage);
     }
+
+    public void sendCatchUpRequest() {
+        engine.writeCatchUpRequest(stream, stream.remotePeerId());
+    }
 }

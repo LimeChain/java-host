@@ -3,7 +3,6 @@ package com.limechain.network.protocol.grandpa;
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.grandpa.state.RoundCache;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
@@ -32,7 +31,6 @@ import lombok.extern.java.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.logging.Level;
 
 /**
@@ -142,22 +140,6 @@ public class GrandpaEngine {
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
-
-        // If peer has the same voter set id
-        if (neighbourMessage.getSetId().equals(grandpaSetState.getSetId())) {
-            sendCatchUpRequest(neighbourMessage, peerId, stream);
-        }
-    }
-
-    private void sendCatchUpRequest(NeighbourMessage neighbourMessage, PeerId peerId, Stream stream) {
-        RoundCache roundCache = grandpaSetState.getRoundCache();
-        BigInteger latestRound = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
-
-        // Check if needed to catch-up peer
-        if (neighbourMessage.getRound().compareTo(latestRound) > 0) {
-            log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
-            writeCatchUpRequest(stream, peerId);
-        }
     }
 
     private void handleVoteMessage(byte[] message, PeerId peerId) {
@@ -239,12 +221,12 @@ public class GrandpaEngine {
      * @param stream <b>responder</b> stream to write the message to
      * @param peerId peer to send to
      */
-    private void writeCatchUpRequest(Stream stream, PeerId peerId) {
+    public void writeCatchUpRequest(Stream stream, PeerId peerId) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
             writer.write(
                     CatchUpReqMessageScaleWriter.getInstance(),
-                    ProtocolMessageBuilder.buildCatchUpRequestMessage(grandpaSetState)
+                    ProtocolMessageBuilder.buildCatchUpRequestMessage()
             );
         } catch (IOException e) {
             throw new ScaleEncodingException(e);

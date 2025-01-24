@@ -68,7 +68,7 @@ public class PeerMessageCoordinator {
      * those specified in the provided set. The excluded peers are typically the ones that
      * originally sent the transaction to our node.
      *
-     * @param extrinsic    the transaction data to encode and propagate to peers.
+     * @param extrinsic     the transaction data to encode and propagate to peers.
      * @param peersToIgnore a set of peer IDs that should not receive the transaction
      */
     public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> peersToIgnore) {
@@ -109,5 +109,9 @@ public class PeerMessageCoordinator {
                     network.getHost(), peerId, scaleMessage
             ));
         });
+    }
+
+    public void sendCatchUpRequestToPeer(PeerId peerId) {
+        network.getGrandpaService().sendCatchUpRequest(network.getHost(), peerId);
     }
 }

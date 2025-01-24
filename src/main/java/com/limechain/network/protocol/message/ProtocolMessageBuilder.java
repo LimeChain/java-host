@@ -35,7 +35,9 @@ public class ProtocolMessageBuilder {
         );
     }
 
-    public CatchUpReqMessage buildCatchUpRequestMessage(GrandpaSetState grandpaSetState) {
+    public CatchUpReqMessage buildCatchUpRequestMessage() {
+        GrandpaSetState grandpaSetState = AppBean.getBean(GrandpaSetState.class);
+
         BigInteger setId = grandpaSetState.getSetId();
         BigInteger roundNumber = grandpaSetState.getRoundCache().getLatestRoundNumber(setId);
 
