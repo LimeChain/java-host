@@ -1,6 +1,6 @@
 package com.limechain.grandpa;
 
-import com.limechain.exception.grandpa.GhostExecutionException;
+import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.grandpa.state.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
@@ -26,6 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -34,8 +35,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.limechain.utils.TestUtils.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -73,7 +74,7 @@ class GrandpaServiceTest {
     private GrandpaService grandpaService;
 
     @Test
-    void testGetBestFinalCandidateWithoutPreCommits() {
+    void testFindBestFinalCandidateWithoutPreCommits() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
 
@@ -96,18 +97,23 @@ class GrandpaServiceTest {
         ));
 
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
 
         assertNotNull(result);
         assertEquals(firstVote.getBlockHash(), result.getBlockHash());
     }
 
     @Test
-    void testGetBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() {
+    void testFindBestFinalCandidateWithPreCommitBlockNumberBiggerThatPreVoteBlockNumber() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
@@ -136,20 +142,26 @@ class GrandpaServiceTest {
         ));
 
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
 
         assertNotNull(result);
         assertEquals(thirdVote.getBlockHash(), result.getBlockHash());
     }
 
     @Test
-    void testGetBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() {
+    void testFindBestFinalCandidateWithPreCommitBlockNumberLessThatPreVoteBlockNumber() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Vote thirdVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(5));
@@ -178,34 +190,46 @@ class GrandpaServiceTest {
         ));
 
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), thirdVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(thirdVote.getBlockHash(), blockHeader.getHash())).thenReturn(true);
 
-        Vote result = grandpaService.getBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
 
         assertNotNull(result);
         assertEquals(blockHeader.getHash(), result.getBlockHash());
     }
 
     @Test
-    void testGetBestFinalCandidateWhereRoundNumberIsZero() {
+    void testFindBestFinalCandidateWhereRoundNumberIsZero() throws Exception {
         BlockHeader blockHeader = createBlockHeader();
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
 
-        var result = grandpaService.getBestFinalCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestFinalCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
 
     @Test
-    void testGetBestPreVoteCandidate_WithSignedMessage() {
+    void testFindBestPreVoteCandidate_WithSignedMessage() throws Exception {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -229,13 +253,18 @@ class GrandpaServiceTest {
         previousRound.setBestFinalCandidate(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(2)));
         when(grandpaRound.getPrevious()).thenReturn(previousRound);
 
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(stateManager.getBlockState()).thenReturn(blockState);
-        Vote result = grandpaService.getBestPreVoteCandidate(grandpaRound);
 
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestPreVoteCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
 
         assertNotNull(result);
         assertEquals(new Hash256(TWOS_ARRAY), result.getBlockHash());
@@ -243,7 +272,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetBestPreVoteCandidate_WithoutSignedMessage() {
+    void testFindBestPreVoteCandidate_WithoutSignedMessage() throws Exception  {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -262,12 +291,23 @@ class GrandpaServiceTest {
                 currentVoteAuthorityHash, currentSignedVote
         ));
 
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        Vote bfc = new Vote(new Hash256(THREES_ARRAY), BigInteger.ONE);
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setBestFinalCandidate(bfc);
+        when(grandpaRound.getPrevious()).thenReturn(previousRound);
+
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(stateManager.getBlockState()).thenReturn(blockState);
-        Vote result = grandpaService.getBestPreVoteCandidate(grandpaRound);
+
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestPreVoteCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
 
         assertNotNull(result);
         assertEquals(currentVote.getBlockHash(), result.getBlockHash());
@@ -275,7 +315,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetBestPreVoteCandidate_WithSignedMessageAndBlockNumberLessThanCurrentVote() {
+    void testFindBestPreVoteCandidate_WithSignedMessageAndBlockNumberLessThanCurrentVote() throws Exception {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(4));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -295,13 +335,23 @@ class GrandpaServiceTest {
                 currentVoteAuthorityHash, currentSignedVote
         ));
 
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        Vote bfc = new Vote(new Hash256(THREES_ARRAY), BigInteger.ONE);
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setBestFinalCandidate(bfc);
+        when(grandpaRound.getPrevious()).thenReturn(previousRound);
+
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(stateManager.getBlockState()).thenReturn(blockState);
 
-        Vote result = grandpaService.getBestPreVoteCandidate(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findBestPreVoteCandidate", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
 
         assertNotNull(result);
         assertEquals(currentVote.getBlockHash(), result.getBlockHash());
@@ -309,30 +359,44 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testGetGrandpaGHOSTWhereNoBlocksPassThreshold() {
+    void testFindGrandpaGHOSTWhereNoBlocksPassThreshold() throws Exception {
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaSetState.getThreshold()).thenReturn(BigInteger.valueOf(10));
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
         when(grandpaRound.getPreVotes()).thenReturn(Map.of());
-        assertThrows(GhostExecutionException.class, () -> grandpaService.getGrandpaGhost(grandpaRound));
+
+        Method method = GrandpaService.class.getDeclaredMethod("findGrandpaGhost", GrandpaRound.class);
+        method.setAccessible(true);
+
+        try {
+            method.invoke(grandpaService, grandpaRound);
+        } catch (InvocationTargetException e) {
+            assertInstanceOf(GrandpaGenericException.class, e.getCause());
+        }
     }
 
     @Test
-    void testGetGrandpaGHOSTWhereRoundNumberIsZero() {
+    void testFindGrandpaGHOSTWhereRoundNumberIsZero() throws Exception {
         BlockHeader blockHeader = createBlockHeader();
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(0));
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
 
-        var result = grandpaService.getGrandpaGhost(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findGrandpaGhost", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
         assertEquals(blockHeader.getHash(), result.getBlockHash());
         assertEquals(blockHeader.getBlockNumber(), result.getBlockNumber());
     }
 
     @Test
-    void testGetGrandpaGHOSTWithBlockPassingThreshold() {
+    void testFindGrandpaGHOSTWithBlockPassingThreshold() throws Exception {
         Vote firstVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Vote secondVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
 
@@ -354,11 +418,17 @@ class GrandpaServiceTest {
         ));
 
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(blockState.isDescendantOf(firstVote.getBlockHash(), firstVote.getBlockHash())).thenReturn(true);
         when(blockState.isDescendantOf(secondVote.getBlockHash(), secondVote.getBlockHash())).thenReturn(true);
 
-        Vote result = grandpaService.getGrandpaGhost(grandpaRound);
+        // Call the private method via reflection
+        Method method = GrandpaService.class.getDeclaredMethod("findGrandpaGhost", GrandpaRound.class);
+        method.setAccessible(true);
+
+        Vote result = (Vote) method.invoke(grandpaService, grandpaRound);
+
         assertNotNull(result);
         assertEquals(firstVote.getBlockHash(), result.getBlockHash());
     }
@@ -723,7 +793,8 @@ class GrandpaServiceTest {
 
         BlockHeader blockHeader = createBlockHeader();
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
 
         Method method = GrandpaService.class.getDeclaredMethod("selectBlockWithMostVotes", Map.class);
         method.setAccessible(true);
@@ -742,7 +813,8 @@ class GrandpaServiceTest {
 
         BlockHeader blockHeader = createBlockHeader();
         when(stateManager.getBlockState()).thenReturn(blockState);
-        when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
 
         Method method = GrandpaService.class.getDeclaredMethod("selectBlockWithMostVotes", Map.class);
         method.setAccessible(true);
@@ -755,7 +827,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testBroadcastCommitMessageWhenPrimaryValidator() {
+    void testBroadcastCommitMessageWhenPrimaryValidator() throws Exception {
         Hash256 authorityPublicKey = new Hash256(THREES_ARRAY);
         Map<Hash256, SignedVote> signedVotes = new HashMap<>();
         Vote vote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(123L));
@@ -769,12 +841,17 @@ class GrandpaServiceTest {
 
         when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaSetState.getThreshold()).thenReturn(BigInteger.ONE);
+        when(blockState.getLastFinalizedBlockAsVote())
+                .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
         when(grandpaSetState.getSetId()).thenReturn(BigInteger.valueOf(42L));
 
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.getHighestFinalizedHeader()).thenReturn(blockHeader);
 
-        grandpaService.broadcastCommitMessage(previousRound);
+        Method method = GrandpaService.class.getDeclaredMethod("broadcastCommitMessage", GrandpaRound.class);
+        method.setAccessible(true);
+
+        method.invoke(grandpaService, previousRound);
 
         ArgumentCaptor<CommitMessage> commitMessageCaptor = ArgumentCaptor.forClass(CommitMessage.class);
         verify(peerMessageCoordinator).sendCommitMessageToPeers(commitMessageCaptor.capture());

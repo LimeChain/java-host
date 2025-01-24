@@ -110,4 +110,8 @@ public class PeerMessageCoordinator {
             ));
         });
     }
+
+    public void sendCatchUpRequestToPeer(PeerId peerId) {
+        network.getGrandpaService().sendCatchUpRequest(network.getHost(), peerId);
+    }
 }

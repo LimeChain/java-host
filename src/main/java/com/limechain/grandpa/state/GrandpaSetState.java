@@ -15,6 +15,9 @@ import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import com.limechain.storage.block.BlockState;
+import com.limechain.storage.crypto.KeyStore;
+import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
@@ -47,14 +50,18 @@ import java.util.logging.Level;
 public class GrandpaSetState extends AbstractState implements ServiceConsensusState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
-    private final KVRepository<String, Object> repository;
-    private final RoundCache roundCache;
 
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
     private BigInteger setId;
 
-    private final PriorityQueue<AuthoritySetChange> authoritySetChanges = new PriorityQueue<>(AuthoritySetChange.getComparator());
+    private final BlockState blockState = BlockState.getInstance();
+    private final RoundCache roundCache;
+    private final KeyStore keyStore;
+    private final KVRepository<String, Object> repository;
+
+    private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
+            new PriorityQueue<>(AuthoritySetChange.getComparator());
 
     @Override
     public void populateDataFromRuntime(Runtime runtime) {
@@ -151,10 +158,23 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
     public void startNewSet(List<Authority> authorities) {
         this.setId = setId.add(BigInteger.ONE);
-        GrandpaRound grandpaRound = new GrandpaRound();
-        grandpaRound.setRoundNumber(BigInteger.ZERO);
-        roundCache.addRound(setId, grandpaRound);
         this.authorities = authorities;
+
+        var lastFinalizedBlock = blockState.getLastFinalizedBlockAsVote();
+
+        GrandpaRound initGrandpaRound = new GrandpaRound();
+        initGrandpaRound.setRoundNumber(BigInteger.ZERO);
+        initGrandpaRound.setPreVotedBlock(lastFinalizedBlock);
+        initGrandpaRound.setBestFinalCandidate(lastFinalizedBlock);
+
+        roundCache.addRound(setId, initGrandpaRound);
+        // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
+        persistState();
+
+        GrandpaRound grandpaRound = new GrandpaRound();
+        grandpaRound.setRoundNumber(BigInteger.ONE);
+
+        roundCache.addRound(setId, grandpaRound);
 
         log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
@@ -203,7 +223,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                     currentBlockNumber
             ));
             case GRANDPA_ON_DISABLED -> disabledAuthority = consensusMessage.getDisabledAuthority();
-            //TODO: Implement later
             case GRANDPA_PAUSE -> log.log(Level.SEVERE, "'PAUSE' grandpa message not implemented");
             case GRANDPA_RESUME -> log.log(Level.SEVERE, "'RESUME' grandpa message not implemented");
         }
@@ -238,5 +257,10 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             }
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
+    }
+
+    public boolean participatesAsVoter() {
+        return authorities.stream()
+                .anyMatch(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()).isPresent());
     }
 }
