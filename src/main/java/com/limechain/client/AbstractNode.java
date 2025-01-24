@@ -19,7 +19,7 @@ import java.math.BigInteger;
 import java.util.logging.Level;
 
 @Log
-public abstract class AbstractNode implements HostNode{
+public abstract class AbstractNode implements HostNode {
 
     /**
      * Starts the light client by instantiating all dependencies and services

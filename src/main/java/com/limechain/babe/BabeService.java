@@ -20,7 +20,6 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
 import com.limechain.storage.block.BlockHandler;
@@ -161,8 +160,11 @@ public class BabeService implements SlotChangeListener {
 
         Authority auth = epochState.getCurrentEpochData().getAuthorities()
                 .get((int) digest.getAuthorityIndex());
+
         Schnorrkel.KeyPair keyPair = keyStore.getKeyPair(KeyType.BABE, auth.getPublicKey())
+                .map(keyStore::convertToSchnorrKeypair)
                 .orElseThrow(() -> new KeyStoreException("No KeyPair found for provided pub key."));
+
         newDigests[length + 2] = DigestHelper.buildSealHeaderDigest(header, keyPair);
 
         return newDigests;
