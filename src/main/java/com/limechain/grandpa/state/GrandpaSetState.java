@@ -12,6 +12,7 @@ import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
+import com.limechain.storage.block.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
@@ -49,6 +50,7 @@ public class GrandpaSetState {
     private BigInteger disabledAuthority;
     private BigInteger setId;
 
+    private final BlockState blockState = BlockState.getInstance();
     private final RoundCache roundCache;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
@@ -144,10 +146,23 @@ public class GrandpaSetState {
 
     public void startNewSet(List<Authority> authorities) {
         this.setId = setId.add(BigInteger.ONE);
-        GrandpaRound grandpaRound = new GrandpaRound();
-        grandpaRound.setRoundNumber(BigInteger.ZERO);
-        roundCache.addRound(setId, grandpaRound);
         this.authorities = authorities;
+
+        var lastFinalizedBlock = blockState.getLastFinalizedBlockAsVote();
+
+        GrandpaRound initGrandpaRound = new GrandpaRound();
+        initGrandpaRound.setRoundNumber(BigInteger.ZERO);
+        initGrandpaRound.setPreVotedBlock(lastFinalizedBlock);
+        initGrandpaRound.setBestFinalCandidate(lastFinalizedBlock);
+
+        roundCache.addRound(setId, initGrandpaRound);
+        // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
+        persistState();
+
+        GrandpaRound grandpaRound = new GrandpaRound();
+        grandpaRound.setRoundNumber(BigInteger.ONE);
+
+        roundCache.addRound(setId, grandpaRound);
 
         log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
