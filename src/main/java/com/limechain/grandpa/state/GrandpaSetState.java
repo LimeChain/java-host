@@ -4,12 +4,16 @@ import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
+import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
+import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
@@ -22,6 +26,7 @@ import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
 import io.emeraldpay.polkaj.types.Hash256;
+import io.libp2p.core.PeerId;
 import io.libp2p.core.crypto.PubKey;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.logging.Level;
 
 /**
@@ -52,6 +58,7 @@ import java.util.logging.Level;
 public class GrandpaSetState extends AbstractState implements ServiceConsensusState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
+    private static final BigInteger CATCH_UP_THRESHOLD = BigInteger.TWO;
 
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
@@ -59,6 +66,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
     private final BlockState blockState;
     private final RoundCache roundCache;
+    private GrandpaRound lastFinalizedRound;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
 
@@ -271,5 +279,56 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .findFirst();
 
         keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::clearAuthorityStatus);
+    }
+
+    public CatchUpReqMessage initiateCatchUpRequestMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
+        CatchUpReqMessage catchUpReqMessage = null;
+
+        // If peer has the same voter set id
+        if (neighbourMessage.getSetId().equals(setId)) {
+            BigInteger latestRound = roundCache.getLatestRoundNumber(setId);
+
+            // Check if needed to catch-up peer
+            if (neighbourMessage.getRound().compareTo(latestRound.add(CATCH_UP_THRESHOLD)) >= 0) {
+                log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
+
+                catchUpReqMessage = CatchUpReqMessage.builder()
+                        .round(neighbourMessage.getRound())
+                        .setId(neighbourMessage.getSetId()).build();
+            }
+        }
+        return catchUpReqMessage;
+    }
+
+    public CatchUpMessage initiateCatchUpResponseMessage(PeerId peerId,
+                                                         CatchUpReqMessage catchUpReqMessage,
+                                                         Set<PeerId> peerIds) {
+
+        if (!peerIds.contains(peerId)) {
+            throw new GrandpaGenericException("Requesting catching up from a non-peer.");
+        }
+
+        if (!catchUpReqMessage.getSetId().equals(setId)) {
+            throw new GrandpaGenericException("Catch up message has a different setId.");
+        }
+
+        BigInteger lastFinalizedRoundNumber = lastFinalizedRound.getRoundNumber();
+        if (catchUpReqMessage.getRound().compareTo(lastFinalizedRoundNumber) > 0) {
+            throw new GrandpaGenericException("Catching up on a round in the future.");
+        }
+
+        GrandpaRound latestRound = roundCache.getLatestRound(setId);
+        BlockHeader blockHeader = blockState.getHighestFinalizedHeader();
+        SignedVote[] preCommits = latestRound.getPreCommits().values().toArray(SignedVote[]::new);
+        SignedVote[] preVotes = latestRound.getPreVotes().values().toArray(SignedVote[]::new);
+
+        return CatchUpMessage.builder()
+                .round(latestRound.getRoundNumber())
+                .setId(setId)
+                .preCommits(preCommits)
+                .preVotes(preVotes)
+                .blockHash(blockHeader.getHash())
+                .blockNumber(blockHeader.getBlockNumber())
+                .build();
     }
 }

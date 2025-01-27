@@ -2,7 +2,6 @@ package com.limechain.network.protocol.message;
 
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.server.AppBean;
@@ -32,18 +31,6 @@ public class ProtocolMessageBuilder {
         return new BlockAnnounceMessage(
                 blockHeader,
                 isBestBlock
-        );
-    }
-
-    public CatchUpReqMessage buildCatchUpRequestMessage() {
-        GrandpaSetState grandpaSetState = AppBean.getBean(GrandpaSetState.class);
-
-        BigInteger setId = grandpaSetState.getSetId();
-        BigInteger roundNumber = grandpaSetState.getRoundCache().getLatestRoundNumber(setId);
-
-        return new CatchUpReqMessage(
-                roundNumber,
-                setId
         );
     }
 }

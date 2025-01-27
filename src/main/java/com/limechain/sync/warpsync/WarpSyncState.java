@@ -3,10 +3,10 @@ package com.limechain.sync.warpsync;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.grandpa.state.RoundCache;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
@@ -41,7 +41,9 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
@@ -277,20 +279,21 @@ public class WarpSyncState {
         }
     }
 
-    public void checkAndInitiateCatchUp(NeighbourMessage neighbourMessage, PeerId peerId) {
+    public void initiateAndSendCatchUpRequest(NeighbourMessage neighbourMessage, PeerId peerId) {
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        // If peer has the same voter set id
-        if (neighbourMessage.getSetId().equals(grandpaSetState.getSetId())) {
-            RoundCache roundCache = grandpaSetState.getRoundCache();
-            BigInteger latestRound = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
+        var catchUpRequest = grandpaSetState.initiateCatchUpRequestMessage(neighbourMessage, peerId);
+        Optional.ofNullable(catchUpRequest)
+                .ifPresent(msg -> messageCoordinator.sendCatchUpRequestToPeer(peerId, msg));
+    }
 
-            // Check if needed to catch-up peer
-            if (neighbourMessage.getRound().compareTo(latestRound) > 0) {
-                log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
-                messageCoordinator.sendCatchUpRequestToPeer(peerId);
-            }
-        }
+    public void initiateAndSendCatchUpResponse(PeerId peerId,
+                                               CatchUpReqMessage catchUpReqMessage,
+                                               Supplier<Set<PeerId>> peerIds) {
+
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+        var catchUpResponse = grandpaSetState.initiateCatchUpResponseMessage(peerId, catchUpReqMessage, peerIds.get());
+        messageCoordinator.sendCatchUpResponseToPeer(peerId, catchUpResponse);
     }
 
     private void updateSetData(BigInteger setChangeBlock) {

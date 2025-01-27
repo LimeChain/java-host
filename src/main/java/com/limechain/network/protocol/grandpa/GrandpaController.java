@@ -37,7 +37,14 @@ public class GrandpaController {
     /**
      * Sends a catch-up request message over the controller stream.
      */
-    public void sendCatchUpRequest() {
-        engine.writeCatchUpRequest(stream, stream.remotePeerId());
+    public void sendCatchUpRequest(byte[] encodedCatchUpReqMessage) {
+        engine.writeCatchUpRequest(stream, encodedCatchUpReqMessage);
+    }
+
+    /**
+     * Sends a catch-up response message over the controller stream.
+     */
+    public void sendCatchUpResponse(byte[] encodedCatchUpResMessage) {
+        engine.writeCatchUpResponse(stream, encodedCatchUpResMessage);
     }
 }
