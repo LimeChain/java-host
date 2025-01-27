@@ -1,7 +1,7 @@
 plugins {
     id("java")
-    id("io.freefair.lombok") version "8.11"
-    id("org.springframework.boot") version "3.4.1"
+    id("io.freefair.lombok") version "8.12"
+    id("org.springframework.boot") version "3.4.2"
     id("io.spring.dependency-management") version "1.1.7"
     id("application")
 }
@@ -22,7 +22,7 @@ repositories {
 
 dependencies {
     implementation("net.openhft:zero-allocation-hashing:0.27ea0")
-    implementation("org.rocksdb:rocksdbjni:9.8.4")
+    implementation("org.rocksdb:rocksdbjni:9.10.0")
     compileOnly("org.projectlombok:lombok:1.18.36")
     implementation("org.projectlombok:lombok:1.18.36")
     implementation("org.web3j:crypto:4.12.3")
