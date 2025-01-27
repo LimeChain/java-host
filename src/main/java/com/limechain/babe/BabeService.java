@@ -161,8 +161,11 @@ public class BabeService implements SlotChangeListener {
 
         Authority auth = stateManager.getEpochState().getCurrentEpochData().getAuthorities()
                 .get((int) digest.getAuthorityIndex());
+
         Schnorrkel.KeyPair keyPair = keyStore.getKeyPair(KeyType.BABE, auth.getPublicKey())
+                .map(keyStore::convertToSchnorrKeypair)
                 .orElseThrow(() -> new KeyStoreException("No KeyPair found for provided pub key."));
+
         newDigests[length + 2] = DigestHelper.buildSealHeaderDigest(header, keyPair);
 
         return newDigests;

@@ -3,6 +3,7 @@ package com.limechain.storage.crypto;
 import com.limechain.storage.KVRepository;
 import io.emeraldpay.polkaj.schnorrkel.Schnorrkel;
 import lombok.extern.java.Log;
+import org.javatuples.Pair;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -50,17 +51,20 @@ public class KeyStore {
      *
      * @param type      the algorithm type that the key is used for.
      * @param publicKey the pubKey used as a key to retrieve a privKey from the store.
-     * @return the {@link io.emeraldpay.polkaj.schnorrkel.Schnorrkel.KeyPair}.
+     * @return Pair of (publicKey, privateKey)
      */
-    public Optional<Schnorrkel.KeyPair> getKeyPair(KeyType type, byte[] publicKey) {
+    public Optional<Pair<byte[], byte[]>> getKeyPair(KeyType type, byte[] publicKey) {
         var privateKey = get(type, publicKey);
         if (privateKey != null) {
-            Schnorrkel.PublicKey schnorrkelPubKey = new Schnorrkel.PublicKey(publicKey);
-            Schnorrkel.KeyPair keyPair = new Schnorrkel.KeyPair(schnorrkelPubKey, privateKey);
-            return Optional.of(keyPair);
+            return Optional.of(new Pair<>(publicKey, privateKey));
         }
 
         return Optional.empty();
+    }
+
+    public Schnorrkel.KeyPair convertToSchnorrKeypair(Pair<byte[], byte[]> pair) {
+        Schnorrkel.PublicKey pubKey = new Schnorrkel.PublicKey(pair.getValue0());
+        return new Schnorrkel.KeyPair(pubKey, pair.getValue1());
     }
 
     private byte[] removeKeyTypeFromKey(byte[] key) {

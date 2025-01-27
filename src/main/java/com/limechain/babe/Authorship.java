@@ -241,7 +241,9 @@ public class Authorship {
         Map<Integer, Schnorrkel.KeyPair> indexKeyPairMap = new LinkedMap<>();
 
         authorities.forEach(a -> keyStore.getKeyPair(KeyType.BABE, a.getPublicKey())
-                .ifPresent(keyPair -> indexKeyPairMap.put(authorities.indexOf(a), keyPair)));
+                .ifPresent(keyPair -> {
+                    indexKeyPairMap.put(authorities.indexOf(a), keyStore.convertToSchnorrKeypair(keyPair));
+                }));
 
         return indexKeyPairMap;
     }

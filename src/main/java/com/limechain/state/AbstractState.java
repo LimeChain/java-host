@@ -3,13 +3,19 @@ package com.limechain.state;
 import com.limechain.ServiceState;
 import com.limechain.sync.SyncMode;
 import lombok.Getter;
+import org.javatuples.Pair;
 
 public abstract class AbstractState implements ServiceState {
 
     @Getter
+    protected boolean initialized;
+
+    @Getter
     private static SyncMode syncMode;
     @Getter
-    protected boolean initialized;
+    private static boolean isActiveAuthority = false;
+    @Getter
+    private static Pair<byte[], byte[]> grandpaKeyPair = null;
 
     public static void setSyncMode(SyncMode mode) {
         if (syncMode != null && syncMode.ordinal() > mode.ordinal()) {
@@ -17,6 +23,16 @@ public abstract class AbstractState implements ServiceState {
         }
 
         syncMode = mode;
+    }
+
+    public static void setAuthorityStatus(Pair<byte[], byte[]> keyPair) {
+        isActiveAuthority = true;
+        grandpaKeyPair = keyPair;
+    }
+
+    public static void clearAuthorityStatus() {
+        isActiveAuthority = false;
+        grandpaKeyPair = null;
     }
 
     @Override
