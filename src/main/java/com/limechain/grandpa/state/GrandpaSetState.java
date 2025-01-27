@@ -1,5 +1,6 @@
 package com.limechain.grandpa.state;
 
+import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
@@ -9,10 +10,12 @@ import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensu
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
+import com.limechain.runtime.Runtime;
+import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
 import com.limechain.storage.StateUtil;
-import com.limechain.storage.block.BlockState;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
@@ -24,6 +27,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.java.Log;
+import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -41,8 +45,9 @@ import java.util.logging.Level;
 @Log
 @Getter
 @Setter //TODO: remove it when initialize() method is implemented
+@Component
 @RequiredArgsConstructor
-public class GrandpaSetState {
+public class GrandpaSetState extends AbstractState implements ServiceConsensusState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
 
@@ -50,7 +55,7 @@ public class GrandpaSetState {
     private BigInteger disabledAuthority;
     private BigInteger setId;
 
-    private final BlockState blockState = BlockState.getInstance();
+    private final BlockState blockState;
     private final RoundCache roundCache;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
@@ -58,7 +63,13 @@ public class GrandpaSetState {
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
             new PriorityQueue<>(AuthoritySetChange.getComparator());
 
-    public void initialize() {
+    @Override
+    public void populateDataFromRuntime(Runtime runtime) {
+        this.authorities = runtime.getGrandpaApiAuthorities();
+    }
+
+    @Override
+    public void initializeFromDatabase() {
         loadPersistedState();
     }
 
@@ -136,6 +147,7 @@ public class GrandpaSetState {
         this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 
+    @Override
     public void persistState() {
         saveGrandpaAuthorities();
         saveAuthoritySetId();

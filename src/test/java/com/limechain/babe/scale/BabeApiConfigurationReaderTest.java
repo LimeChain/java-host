@@ -1,8 +1,8 @@
 package com.limechain.babe.scale;
 
+import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.api.scale.BabeApiConfigurationReader;
 import com.limechain.chain.lightsyncstate.BabeEpoch;
-import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.utils.StringUtils;
 import com.limechain.utils.scale.ScaleUtils;
 import org.junit.jupiter.api.Test;

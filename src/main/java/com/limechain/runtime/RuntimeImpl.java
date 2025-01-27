@@ -6,6 +6,8 @@ import com.limechain.babe.api.OpaqueKeyOwnershipProof;
 import com.limechain.babe.api.scale.BabeApiConfigurationReader;
 import com.limechain.babe.api.scale.BlockEquivocationProofWriter;
 import com.limechain.babe.api.scale.OpaqueKeyOwnershipProofReader;
+import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.chain.lightsyncstate.scale.AuthorityReader;
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
@@ -20,7 +22,11 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.runtime.version.scale.RuntimeVersionReader;
 import com.limechain.sync.fullsync.inherents.InherentData;
 import com.limechain.sync.fullsync.inherents.scale.InherentDataWriter;
-import com.limechain.transaction.dto.*;
+import com.limechain.transaction.dto.ApplyExtrinsicResult;
+import com.limechain.transaction.dto.Extrinsic;
+import com.limechain.transaction.dto.ExtrinsicArray;
+import com.limechain.transaction.dto.TransactionValidationRequest;
+import com.limechain.transaction.dto.TransactionValidationResponse;
 import com.limechain.trie.structure.nibble.Nibbles;
 import com.limechain.utils.ByteArrayUtils;
 import com.limechain.utils.LittleEndianUtils;
@@ -32,6 +38,7 @@ import com.limechain.utils.scale.writers.BlockInherentsWriter;
 import com.limechain.utils.scale.writers.TransactionValidationWriter;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
+import io.emeraldpay.polkaj.scale.reader.ListReader;
 import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -268,5 +275,13 @@ public class RuntimeImpl implements Runtime {
     private Optional<byte[]> findStorageValue(Nibbles key) {
         return this.context.trieAccessor.findStorageValue(key);
     }
+
+    @Override
+    public List<Authority> getGrandpaApiAuthorities() {
+        return ScaleUtils.Decode.decode(
+                call(RuntimeEndpoint.GRANDPA_API_GRANDPA_AUTHORITIES), new ListReader<>(new AuthorityReader())
+        );
+    }
+
 }
 

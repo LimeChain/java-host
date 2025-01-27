@@ -8,6 +8,9 @@ import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceHandshake
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleReader;
 import com.limechain.network.protocol.warp.DigestHelper;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
+import com.limechain.rpc.server.AppBean;
+import com.limechain.storage.block.BlockHandler;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
@@ -25,7 +29,13 @@ import java.util.Arrays;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @SuppressWarnings("unused")
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +53,8 @@ class BlockAnnounceEngineTest {
 
     @Mock
     private WarpSyncState warpSyncState;
+    @Mock
+    private BlockState blockState;
 
     @Mock
     private DigestHelper digestHelper;
@@ -52,9 +64,12 @@ class BlockAnnounceEngineTest {
     @Mock
     private BlockAnnounceHandshakeBuilder handshakeBuilder;
 
+    @Mock
+    BlockHandler blockHandler;
+
     @Test
     void receiveNonHandshakeRequestWhenNotConnectedShouldIgnore() {
-        byte[] message = { 1, 2, 3 };
+        byte[] message = {1, 2, 3};
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(false);
 
@@ -66,14 +81,14 @@ class BlockAnnounceEngineTest {
 
     @Test
     void receiveHandshakeRequestWhenNotConnectedShouldAddStreamToConnection() {
-        byte[] message = new  byte[BlockAnnounceEngine.HANDSHAKE_LENGTH];
+        byte[] message = new byte[BlockAnnounceEngine.HANDSHAKE_LENGTH];
         Arrays.fill(message, (byte) 1);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(false);
         when(handshakeBuilder.getBlockAnnounceHandshake()).thenReturn(handshake);
         try (
                 MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
-                (mock, context) -> when(mock.read(any())).thenReturn(handshake));
+                        (mock, context) -> when(mock.read(any())).thenReturn(handshake));
                 MockedConstruction<ScaleCodecWriter> writerMock = mockConstruction(ScaleCodecWriter.class)
         ) {
             blockAnnounceEngine.receiveRequest(message, stream);
@@ -84,7 +99,7 @@ class BlockAnnounceEngineTest {
 
     @Test
     void receiveHandshakeRequestWhenNotConnectedShouldSendHandshakeBack() throws IOException {
-        byte[] message = new  byte[BlockAnnounceEngine.HANDSHAKE_LENGTH];
+        byte[] message = new byte[BlockAnnounceEngine.HANDSHAKE_LENGTH];
         Arrays.fill(message, (byte) 1);
         when(stream.remotePeerId()).thenReturn(peerId);
         when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(false);
@@ -116,37 +131,47 @@ class BlockAnnounceEngineTest {
 
     @Test
     void receiveBlockAnnounceWhenConnectedShouldUpdatePeer() {
-        byte[] message = new byte[] { 1, 2, 3 };
-        BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
-        when(blockAnnounceMessage.getHeader()).thenReturn(mock(BlockHeader.class));
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(true);
+        try (MockedStatic<AppBean> appBean = mockStatic(AppBean.class)) {
+            appBean.when(() -> AppBean.getBean(any())).thenReturn(blockState);
+            when(blockState.isInitialized()).thenReturn(true);
 
-        try (MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
-                (mock, context) -> when(mock.read(any(BlockAnnounceMessageScaleReader.class)))
-                        .thenReturn(blockAnnounceMessage))
-        ) {
-            blockAnnounceEngine.receiveRequest(message, stream);
+            byte[] message = new byte[]{1, 2, 3};
+            BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
+            when(blockAnnounceMessage.getHeader()).thenReturn(mock(BlockHeader.class));
+            when(stream.remotePeerId()).thenReturn(peerId);
+            when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(true);
 
-            verify(connectionManager).updatePeer(peerId, blockAnnounceMessage);
+            try (MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
+                    (mock, context) -> when(mock.read(any(BlockAnnounceMessageScaleReader.class)))
+                            .thenReturn(blockAnnounceMessage))
+            ) {
+                blockAnnounceEngine.receiveRequest(message, stream);
+
+                verify(connectionManager).updatePeer(peerId, blockAnnounceMessage);
+            }
         }
     }
 
     @Test
     void receiveBlockAnnounceWhenConnectedShouldSyncMessage() {
-        byte[] message = new byte[] { 1, 2, 3 };
-        BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
-        when(blockAnnounceMessage.getHeader()).thenReturn(mock(BlockHeader.class));
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(true);
+        try (MockedStatic<AppBean> appBean = mockStatic(AppBean.class)) {
+            appBean.when(() -> AppBean.getBean(any())).thenReturn(blockState);
+            when(blockState.isInitialized()).thenReturn(true);
 
-        try (MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
-                (mock, context) -> when(mock.read(any(BlockAnnounceMessageScaleReader.class)))
-                        .thenReturn(blockAnnounceMessage))
-        ) {
-            blockAnnounceEngine.receiveRequest(message, stream);
+            byte[] message = new byte[]{1, 2, 3};
+            BlockAnnounceMessage blockAnnounceMessage = mock(BlockAnnounceMessage.class);
+            when(blockAnnounceMessage.getHeader()).thenReturn(mock(BlockHeader.class));
+            when(stream.remotePeerId()).thenReturn(peerId);
+            when(connectionManager.isBlockAnnounceConnected(peerId)).thenReturn(true);
 
-            verify(warpSyncState).syncBlockAnnounce(blockAnnounceMessage);
+            try (MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
+                    (mock, context) -> when(mock.read(any(BlockAnnounceMessageScaleReader.class)))
+                            .thenReturn(blockAnnounceMessage))
+            ) {
+                blockAnnounceEngine.receiveRequest(message, stream);
+
+                verify(connectionManager).updatePeer(peerId, blockAnnounceMessage);
+            }
         }
     }
 

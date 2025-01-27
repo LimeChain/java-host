@@ -1,8 +1,12 @@
 package com.limechain.babe.state;
 
-import com.limechain.babe.api.BabeApiConfiguration;
+import com.limechain.ServiceConsensusState;
 import com.limechain.babe.consensus.BabeConsensusMessage;
+import com.limechain.runtime.Runtime;
+import com.limechain.state.AbstractState;
+import com.limechain.storage.KVRepository;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
@@ -15,9 +19,10 @@ import java.time.Instant;
  */
 @Getter
 @Component
-public class EpochState {
+@RequiredArgsConstructor
+public class EpochState extends AbstractState implements ServiceConsensusState {
 
-    private boolean isInitialized = false;
+    private final KVRepository<String, Object> repository;
 
     private BigInteger disabledAuthority;
     private BigInteger slotDuration;
@@ -30,14 +35,26 @@ public class EpochState {
     private EpochData nextEpochData;
     private EpochDescriptor nextEpochDescriptor;
 
-    public void initialize(BabeApiConfiguration babeApiConfiguration) {
+    @Override
+    public void populateDataFromRuntime(Runtime runtime) {
+        var babeApiConfiguration = runtime.getBabeApiConfiguration();
         this.slotDuration = babeApiConfiguration.getSlotDuration();
         this.epochLength = babeApiConfiguration.getEpochLength();
         this.currentEpochData = new EpochData(
                 babeApiConfiguration.getAuthorities(), babeApiConfiguration.getRandomness());
         this.currentEpochDescriptor = new EpochDescriptor(
                 babeApiConfiguration.getConstant(), babeApiConfiguration.getAllowedSlots());
-        this.isInitialized = true;
+        setGenesisSlotNumber(runtime.getGenesisSlotNumber());
+    }
+
+    @Override
+    public void initializeFromDatabase() {
+        //TODO: Add methods to load epoch state data.
+    }
+
+    @Override
+    public void persistState() {
+        //TODO: Add methods to store epoch state data.
     }
 
     public void updateNextEpochConfig(BabeConsensusMessage message) {

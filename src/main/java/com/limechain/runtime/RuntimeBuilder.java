@@ -1,7 +1,7 @@
 package com.limechain.runtime;
 
 import com.limechain.config.HostConfig;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.runtime.hostapi.dto.OffchainNetworkState;
 import com.limechain.storage.KVRepository;
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 public class RuntimeBuilder {
     private final KVRepository<String, Object> db;
     private final KeyStore keyStore;
-    private final Network network;
+    private final NetworkService network;
     private final HostConfig hostConfig;
 
     /**
@@ -52,8 +52,8 @@ public class RuntimeBuilder {
     public Runtime copyRuntime(Runtime original) {
         TrieAccessor trieAccessor = ((RuntimeImpl) original).context.getTrieAccessor();
         return trieAccessor.findStorageValue(Nibbles.fromBytes(":code".getBytes()))
-            .map(wasm -> buildRuntime(wasm, new DiskTrieAccessor(trieAccessor)))
-            .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
+                .map(wasm -> buildRuntime(wasm, new DiskTrieAccessor(trieAccessor)))
+                .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
     }
 
     /**
@@ -63,7 +63,7 @@ public class RuntimeBuilder {
      * @param trieAccessor provides access to the trie storage for a given block
      * @return a ready to execute `Runtime` instance
      */
-    public Runtime buildRuntime(byte[] code, @Nullable TrieAccessor trieAccessor) {
+    private Runtime buildRuntime(byte[] code, @Nullable TrieAccessor trieAccessor) {
         var localStorage = new OffchainStore(db, StorageKind.LOCAL);
         var persistentStorage = new OffchainStore(db, StorageKind.PERSISTENT);
         // TODO:
@@ -79,13 +79,20 @@ public class RuntimeBuilder {
         boolean isValidator = nodeRole == NodeRole.AUTHORING;
 
         RuntimeFactory.Config cfg = new RuntimeFactory.Config(
-            trieAccessor,
-            keyStore,
-            offchainStorages,
-            offchainNetworkState,
-            isValidator
+                trieAccessor,
+                keyStore,
+                offchainStorages,
+                offchainNetworkState,
+                isValidator
         );
 
         return RuntimeFactory.buildRuntime(code, cfg);
+    }
+
+    public Runtime buildRuntimeFromState(TrieAccessor trieAccessor) {
+        return trieAccessor
+                .findStorageValue(Nibbles.fromBytes(":code".getBytes()))
+                .map(wasm -> buildRuntime(wasm, trieAccessor))
+                .orElseThrow(() -> new RuntimeException("Runtime code not found in the trie"));
     }
 }

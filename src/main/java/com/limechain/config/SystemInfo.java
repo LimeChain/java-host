@@ -1,8 +1,8 @@
 package com.limechain.config;
 
 import com.limechain.chain.Chain;
-import com.limechain.network.Network;
-import com.limechain.storage.block.SyncState;
+import com.limechain.network.NetworkService;
+import com.limechain.sync.state.SyncState;
 import lombok.Getter;
 import lombok.extern.java.Log;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +27,7 @@ public class SystemInfo {
     private String hostVersion;
     private final BigInteger highestBlock;
 
-    public SystemInfo(HostConfig hostConfig, Network network, SyncState syncState) {
+    public SystemInfo(HostConfig hostConfig, NetworkService network, SyncState syncState) {
         this.role = network.getNodeRole().name();
         this.chain = hostConfig.getChain();
         this.dbPath = hostConfig.getRocksDbPath();

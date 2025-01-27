@@ -2,6 +2,7 @@ package com.limechain.babe.state;
 
 
 import com.limechain.babe.api.BabeApiConfiguration;
+import com.limechain.runtime.Runtime;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,11 +24,15 @@ public class EpochStateTest {
     @Mock
     private BabeApiConfiguration babeApiConfiguration;
 
+    @Mock
+    private Runtime runtime;
+
     @Test
     public void testGetCurrentSlotNumber() {
         BigInteger slotDuration = BigInteger.valueOf(6000);
+        when(runtime.getBabeApiConfiguration()).thenReturn(babeApiConfiguration);
         when(babeApiConfiguration.getSlotDuration()).thenReturn(slotDuration);
-        epochState.initialize(babeApiConfiguration);
+        epochState.populateDataFromRuntime(runtime);
 
         Instant now = Instant.now();
         long expectedSlotNumber = now.toEpochMilli() / slotDuration.longValue();

@@ -2,18 +2,19 @@ package com.limechain.sync.warpsync;
 
 import com.google.protobuf.ByteString;
 import com.limechain.exception.global.RuntimeCodeException;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
+import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.network.PeerRequester;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
-import com.limechain.storage.block.SyncState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.trie.decoded.Trie;
 import com.limechain.trie.decoded.TrieVerifier;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
@@ -51,13 +52,13 @@ class WarpSyncActionTest {
     @Mock
     private Set<BigInteger> scheduledRuntimeUpdateBlocks;
     @Mock
-    private SyncState syncState;
+    private StateManager stateManager;
     @Mock
     private RuntimeBuilder runtimeBuilder;
     @Mock
     private KVRepository<String, Object> repository;
     @Mock
-    private Network network;
+    private NetworkService network;
     @Mock
     private Hash256 lastFinalizedBlockHash;
     @Mock
@@ -79,6 +80,8 @@ class WarpSyncActionTest {
         String[] codeKey = new String[]{WarpSyncState.CODE_KEY};
         String stateRootString = "state root";
         byte[] runtimeCode = new byte[]{1, 2};
+        SyncState syncState = mock(SyncState.class);
+        when(stateManager.getSyncState()).thenReturn(syncState);
         when(syncState.getLastFinalizedBlockHash()).thenReturn(lastFinalizedBlockHash);
         when(lastFinalizedBlockHash.toString()).thenReturn(blockHashString);
         when(syncState.getStateRoot()).thenReturn(stateRoot);

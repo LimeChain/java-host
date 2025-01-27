@@ -12,7 +12,9 @@ import java.math.BigInteger;
 
 import static io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof.OUTPUT_BYTE_LEN;
 import static io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof.PROOF_BYTE_LEN;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class PreDigestScaleTest {
 

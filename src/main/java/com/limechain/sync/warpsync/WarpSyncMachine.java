@@ -4,10 +4,11 @@ import com.limechain.chain.ChainService;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.network.Network;
+import com.limechain.network.NetworkService;
 import com.limechain.network.protocol.warp.dto.WarpSyncFragment;
-import com.limechain.storage.block.BlockState;
-import com.limechain.storage.block.SyncState;
+import com.limechain.state.StateManager;
+import com.limechain.storage.block.state.BlockState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.action.FinishedAction;
 import com.limechain.sync.warpsync.action.RequestFragmentsAction;
 import com.limechain.sync.warpsync.action.WarpSyncAction;
@@ -39,21 +40,18 @@ public class WarpSyncMachine {
     private final ExecutorService executor;
     private WarpSyncAction warpSyncAction;
     private final WarpSyncState warpState;
-    private final Network networkService;
-    private final SyncState syncState;
-    private final GrandpaSetState grandpaSetState;
+    private final StateManager stateManager;
+    private final NetworkService networkService;
     private final List<Runnable> onFinishCallbacks;
 
-    public WarpSyncMachine(Network network,
+    public WarpSyncMachine(NetworkService network,
                            ChainService chainService,
-                           SyncState syncState,
                            WarpSyncState warpSyncState,
-                           GrandpaSetState grandpaSetState) {
+                           StateManager stateManager) {
         this.networkService = network;
         this.chainService = chainService;
-        this.syncState = syncState;
         this.warpState = warpSyncState;
-        this.grandpaSetState = grandpaSetState;
+        this.stateManager = stateManager;
         this.executor = Executors.newSingleThreadExecutor();
         this.scheduledAuthorityChanges = new PriorityQueue<>(Comparator.comparing(Pair::getValue0));
         this.chainInformation = new ChainInformation();
@@ -73,19 +71,21 @@ public class WarpSyncMachine {
     }
 
     public void start() {
+        SyncState syncState = stateManager.getSyncState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+
         if (this.chainService.getChainSpec().getLightSyncState() != null) {
             LightSyncState initState = LightSyncState.decode(this.chainService.getChainSpec().getLightSyncState());
-            if (this.syncState.getLastFinalizedBlockNumber()
+            if (syncState.getLastFinalizedBlockNumber()
                     .compareTo(initState.getFinalizedBlockHeader().getBlockNumber()) < 0) {
-                this.syncState.setLightSyncState(initState);
-                this.grandpaSetState.setLightSyncState(initState);
+                syncState.setLightSyncState(initState);
+                grandpaSetState.setLightSyncState(initState);
             }
         }
-        final Hash256 initStateHash = this.syncState.getLastFinalizedBlockHash();
+        final Hash256 initStateHash = syncState.getLastFinalizedBlockHash();
 
         // Always start with requesting fragments
         log.log(Level.INFO, "Requesting fragments...");
-        this.networkService.updateCurrentSelectedPeerWithNextBootnode();
         this.warpSyncAction = new RequestFragmentsAction(initStateHash);
 
         executor.submit(() -> {
@@ -106,20 +106,21 @@ public class WarpSyncMachine {
     }
 
     private void finishWarpSync() {
-        this.warpState.setWarpSyncFinished(true);
-        this.syncState.persistState();
-        this.grandpaSetState.persistState();
+        SyncState syncState = stateManager.getSyncState();
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+        BlockState blockState = stateManager.getBlockState();
 
-        BlockState.getInstance().initializeAfterWarpSync(
-                syncState.getLastFinalizedBlockHash(),
-                syncState.getLastFinalizedBlockNumber()
-        );
+        this.warpState.setWarpSyncFinished(true);
+        syncState.persistState();
+        grandpaSetState.persistState();
+
+        blockState.setupPostWarpSync(syncState.getLastFinalizedBlockHash(), syncState.getLastFinalizedBlockNumber());
 
         log.info("Warp sync finished.");
         this.onFinishCallbacks.forEach(executor::submit);
     }
 
-    public void onFinish(Runnable function) {
-        onFinishCallbacks.add(function);
+    public void onFinish(Runnable... function) {
+        onFinishCallbacks.addAll(List.of(function));
     }
 }

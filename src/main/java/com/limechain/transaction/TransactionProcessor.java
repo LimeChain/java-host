@@ -7,7 +7,8 @@ import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.version.ApiVersionName;
-import com.limechain.storage.block.BlockState;
+import com.limechain.state.StateManager;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.TransactionSource;
 import com.limechain.transaction.dto.TransactionValidationRequest;
@@ -28,15 +29,12 @@ import java.util.stream.Collectors;
 @Log
 @Component
 public class TransactionProcessor {
-
-    private final TransactionState transactionState;
+    private final StateManager stateManager;
     private final PeerMessageCoordinator messageCoordinator;
-    private final BlockState blockState;
 
-    public TransactionProcessor(TransactionState transactionState, PeerMessageCoordinator messageCoordinator) {
-        this.transactionState = transactionState;
+    public TransactionProcessor(StateManager stateManager, PeerMessageCoordinator messageCoordinator) {
+        this.stateManager = stateManager;
         this.messageCoordinator = messageCoordinator;
-        this.blockState = BlockState.getInstance();
     }
 
     public void handleExternalTransactions(Extrinsic[] extrinsics, PeerId peerId) {
@@ -59,6 +57,7 @@ public class TransactionProcessor {
     // Removes any transaction that was included in the new block, also revalidate the transactions in the pool and
     // add them to the queue if necessary
     public synchronized void maintainTransactionPool(Block block) {
+        TransactionState transactionState = stateManager.getTransactionState();
         if (!transactionState.isInitialized()) return;
 
         List<Extrinsic> newBlockExtrinsics = block.getBody().getExtrinsics();
@@ -102,6 +101,7 @@ public class TransactionProcessor {
     }
 
     private byte[] processTransaction(Extrinsic extrinsic, PeerId peerId) {
+        TransactionState transactionState = stateManager.getTransactionState();
         TransactionValidationResponse response = validateExternalTransaction(extrinsic, peerId, Boolean.TRUE);
 
         ValidTransaction validTransaction = new ValidTransaction(
@@ -138,7 +138,7 @@ public class TransactionProcessor {
     private TransactionValidationResponse validateExternalTransaction(Extrinsic extrinsic,
                                                                       PeerId peerId,
                                                                       boolean validateExistenceInState) {
-
+        TransactionState transactionState = stateManager.getTransactionState();
         if (!transactionState.isInitialized()) {
             throw new TransactionValidationException("Transaction state is not initialized.");
         }
@@ -153,6 +153,7 @@ public class TransactionProcessor {
             throw new TransactionValidationException("Transaction already validated.");
         }
 
+        BlockState blockState = stateManager.getBlockState();
         final BlockHeader header = blockState.bestBlockHeader();
         if (header == null) {
             throw new TransactionValidationException("No best block header found while validating.");
