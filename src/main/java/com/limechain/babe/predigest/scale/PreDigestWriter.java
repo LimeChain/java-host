@@ -1,7 +1,7 @@
 package com.limechain.babe.predigest.scale;
 
-import com.limechain.babe.predigest.PreDigestType;
 import com.limechain.babe.predigest.BabePreDigest;
+import com.limechain.babe.predigest.PreDigestType;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
 import io.emeraldpay.polkaj.scale.writer.UInt64Writer;

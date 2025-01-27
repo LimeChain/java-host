@@ -6,7 +6,7 @@ import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMes
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.server.AppBean;
-import com.limechain.storage.block.SyncState;
+import com.limechain.state.StateManager;
 import lombok.experimental.UtilityClass;
 
 import java.math.BigInteger;
@@ -16,15 +16,15 @@ public class ProtocolMessageBuilder {
     private final int NEIGHBOUR_MESSAGE_VERSION = 1;
 
     public NeighbourMessage buildNeighbourMessage() {
-        SyncState syncState = AppBean.getBean(SyncState.class);
+        StateManager stateManager = AppBean.getBean(StateManager.class);
         GrandpaSetState grandpaSetState = AppBean.getBean(GrandpaSetState.class);
         BigInteger setId = grandpaSetState.getSetId();
 
         return new NeighbourMessage(
                 NEIGHBOUR_MESSAGE_VERSION,
-                grandpaSetState.getRoundCache().getLatestRoundNumber(setId),
+                stateManager.getGrandpaSetState().getRoundCache().getLatestRoundNumber(setId),
                 setId,
-                syncState.getLastFinalizedBlockNumber()
+                stateManager.getSyncState().getLastFinalizedBlockNumber()
         );
     }
 

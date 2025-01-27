@@ -11,8 +11,10 @@ import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.PreCommit;
-import com.limechain.storage.block.BlockState;
+import com.limechain.state.StateManager;
+import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
@@ -24,21 +26,15 @@ import java.util.Map;
 
 @Log
 @Component
+@RequiredArgsConstructor
 public class GrandpaService {
 
-    private final GrandpaSetState grandpaSetState;
-    private final BlockState blockState;
+    private final StateManager stateManager;
     private final PeerMessageCoordinator peerMessageCoordinator;
 
-
-    public GrandpaService(GrandpaSetState grandpaSetState,
-                          PeerMessageCoordinator peerMessageCoordinator) {
-        this.grandpaSetState = grandpaSetState;
-        this.blockState = BlockState.getInstance();
-        this.peerMessageCoordinator = peerMessageCoordinator;
-    }
-
     private void attemptToFinalizeAt(GrandpaRound grandpaRound) {
+
+        BlockState blockState = stateManager.getBlockState();
         BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
 
         Vote bestFinalCandidate = grandpaRound.getBestFinalCandidate();
@@ -47,6 +43,7 @@ public class GrandpaService {
                 getObservedVotesForBlock(grandpaRound, bestFinalCandidate.getBlockHash(), Subround.PRECOMMIT)
         );
 
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         var threshold = grandpaSetState.getThreshold();
 
         if (bestFinalCandidate.getBlockNumber().compareTo(lastFinalizedBlockNumber) >= 0 &&
@@ -117,7 +114,7 @@ public class GrandpaService {
 
         long equivocationsCount = grandpaRound.getPcEquivocationsCount();
         var totalVotesIncludingEquivocations = BigInteger.valueOf(votesCount + equivocationsCount);
-        var threshold = grandpaSetState.getThreshold();
+        var threshold = stateManager.getGrandpaSetState().getThreshold();
 
         if (totalVotesIncludingEquivocations.compareTo(threshold) < 0) {
             return false;
@@ -158,6 +155,8 @@ public class GrandpaService {
      * @return the best final candidate block
      */
     private Vote findBestFinalCandidate(GrandpaRound grandpaRound) {
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+        BlockState blockState = stateManager.getBlockState();
 
         Vote preVoteCandidate = findGrandpaGhost(grandpaRound);
 
@@ -221,10 +220,11 @@ public class GrandpaService {
      * @return GRANDPA GHOST block as a vote
      */
     private Vote findGrandpaGhost(GrandpaRound grandpaRound) {
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         var threshold = grandpaSetState.getThreshold();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
-            return blockState.getLastFinalizedBlockAsVote();
+            return stateManager.getBlockState().getLastFinalizedBlockAsVote();
         }
 
         Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PREVOTE);
@@ -277,7 +277,8 @@ public class GrandpaService {
      * @return the block with the most votes from the provided map
      */
     private Vote selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks) {
-        Vote highest = blockState.getLastFinalizedBlockAsVote();
+
+        Vote highest = stateManager.getBlockState().getLastFinalizedBlockAsVote();
 
         for (Map.Entry<Hash256, BigInteger> entry : blocks.entrySet()) {
             Hash256 hash = entry.getKey();
@@ -351,7 +352,7 @@ public class GrandpaService {
                                                                   Map<Hash256, BigInteger> selected,
                                                                   Subround subround,
                                                                   BigInteger threshold) {
-
+        BlockState blockState = stateManager.getBlockState();
         for (Vote vote : votes) {
             if (vote.getBlockHash().equals(currentBlockHash)) {
                 continue;
@@ -432,7 +433,7 @@ public class GrandpaService {
             var vote = entry.getKey();
             var count = entry.getValue();
 
-            if (blockState.isDescendantOf(blockHash, vote.getBlockHash())) {
+            if (stateManager.getBlockState().isDescendantOf(blockHash, vote.getBlockHash())) {
                 votesForBlock += count;
             }
         }
@@ -483,7 +484,7 @@ public class GrandpaService {
         PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
 
         CommitMessage commitMessage = new CommitMessage();
-        commitMessage.setSetId(grandpaSetState.getSetId());
+        commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
         commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
         commitMessage.setVote(bestCandidate);
         commitMessage.setPreCommits(precommits);

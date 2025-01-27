@@ -17,6 +17,8 @@ import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessag
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleReader;
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
+import com.limechain.state.AbstractState;
+import com.limechain.sync.SyncMode;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.libp2p.core.PeerId;
@@ -66,6 +68,7 @@ class GrandpaEngineTest {
 
     private final byte[] encodedCommitMessage
             = new byte[]{2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0};
+
 
     @Test
     void receiveRequestWithUnknownGrandpaTypeShouldLogAndIgnore() {
@@ -135,65 +138,78 @@ class GrandpaEngineTest {
 
     @Test
     void receiveHandshakeRequestOnResponderStreamWhenAlreadyConnectedShouldLogAndCloseStream() {
-        byte[] message = new byte[]{2};
-        when(stream.isInitiator()).thenReturn(false);
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(connectionManager.isGrandpaConnected(peerId)).thenReturn(true);
+        try (MockedStatic<AbstractState> mockedState = mockStatic(AbstractState.class)) {
+            mockedState.when(AbstractState::getSyncMode).thenReturn(SyncMode.HEAD);
+            byte[] message = new byte[]{2};
+            when(stream.isInitiator()).thenReturn(false);
+            when(stream.remotePeerId()).thenReturn(peerId);
+            when(connectionManager.isGrandpaConnected(peerId)).thenReturn(true);
 
-        grandpaEngine.receiveRequest(message, stream);
+            grandpaEngine.receiveRequest(message, stream);
 
-        verifyNoMoreInteractions(connectionManager);
-        verifyNoInteractions(warpSyncState);
-        verify(stream).close();
+            verifyNoMoreInteractions(connectionManager);
+            verifyNoInteractions(warpSyncState);
+            verify(stream).close();
+        }
     }
 
     @Test
     void receiveHandshakeRequestOnResponderStreamWhenNotConnectedShouldAddStreamToConnection() {
-        byte[] message = new byte[]{2};
-        when(stream.isInitiator()).thenReturn(false);
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(connectionManager.isGrandpaConnected(peerId)).thenReturn(false);
-        when(connectionManager.getPeerInfo(peerId)).thenReturn(mock(PeerInfo.class));
-        when(blockAnnounceHandshakeBuilder.getBlockAnnounceHandshake()).thenReturn(mock(BlockAnnounceHandshake.class));
+        try (MockedStatic<AbstractState> mockedState = mockStatic(AbstractState.class)) {
+            mockedState.when(AbstractState::getSyncMode).thenReturn(SyncMode.HEAD);
+            byte[] message = new byte[]{2};
+            when(stream.isInitiator()).thenReturn(false);
+            when(stream.remotePeerId()).thenReturn(peerId);
+            when(connectionManager.isGrandpaConnected(peerId)).thenReturn(false);
+            when(connectionManager.getPeerInfo(peerId)).thenReturn(mock(PeerInfo.class));
+            when(blockAnnounceHandshakeBuilder.getBlockAnnounceHandshake()).thenReturn(mock(BlockAnnounceHandshake.class));
 
-        grandpaEngine.receiveRequest(message, stream);
+            grandpaEngine.receiveRequest(message, stream);
 
-        verify(connectionManager).addGrandpaStream(stream);
+            verify(connectionManager).addGrandpaStream(stream);
+        }
     }
 
     @Test
     void receiveHandshakeRequestOnResponderStreamWhenNotConnectedShouldSendHandshakeBack() {
-        byte[] message = new byte[]{2};
-        Integer role = NodeRole.LIGHT.getValue();
+        try (MockedStatic<AbstractState> mockedState = mockStatic(AbstractState.class)) {
+            mockedState.when(AbstractState::getSyncMode).thenReturn(SyncMode.HEAD);
+            byte[] message = new byte[]{2};
+            Integer role = NodeRole.LIGHT.getValue();
 
-        when(stream.isInitiator()).thenReturn(false);
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(connectionManager.isGrandpaConnected(peerId)).thenReturn(false);
-        when(connectionManager.getPeerInfo(peerId)).thenReturn(mock(PeerInfo.class));
-        BlockAnnounceHandshake handshake = mock(BlockAnnounceHandshake.class);
-        when(blockAnnounceHandshakeBuilder.getBlockAnnounceHandshake()).thenReturn(handshake);
-        when(handshake.getNodeRole()).thenReturn(role);
+            when(stream.isInitiator()).thenReturn(false);
+            when(stream.remotePeerId()).thenReturn(peerId);
+            when(connectionManager.isGrandpaConnected(peerId)).thenReturn(false);
+            when(connectionManager.getPeerInfo(peerId)).thenReturn(mock(PeerInfo.class));
+            BlockAnnounceHandshake handshake = mock(BlockAnnounceHandshake.class);
+            when(blockAnnounceHandshakeBuilder.getBlockAnnounceHandshake()).thenReturn(handshake);
+            when(handshake.getNodeRole()).thenReturn(role);
 
-        grandpaEngine.receiveRequest(message, stream);
+            grandpaEngine.receiveRequest(message, stream);
 
-        verify(stream).writeAndFlush(new byte[]{role.byteValue()});
+            verify(stream).writeAndFlush(new byte[]{role.byteValue()});
+        }
     }
 
     @Test
     void receiveCommitMessageOnResponderStreamWhenShouldSyncCommit() {
-        byte[] message = new byte[]{1, 2, 3};
-        CommitMessage commitMessage = mock(CommitMessage.class);
+        try (MockedStatic<AbstractState> mockedState = mockStatic(AbstractState.class)) {
+            mockedState.when(AbstractState::getSyncMode).thenReturn(SyncMode.HEAD);
 
-        when(stream.isInitiator()).thenReturn(false);
-        when(stream.remotePeerId()).thenReturn(peerId);
-        when(connectionManager.isGrandpaConnected(peerId)).thenReturn(true);
+            byte[] message = new byte[]{1, 2, 3};
+            CommitMessage commitMessage = mock(CommitMessage.class);
 
-        try (MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
-                (mock, context) -> when(mock.read(any(CommitMessageScaleReader.class))).thenReturn(commitMessage))
-        ) {
-            grandpaEngine.receiveRequest(message, stream);
+            when(stream.isInitiator()).thenReturn(false);
+            when(stream.remotePeerId()).thenReturn(peerId);
+            when(connectionManager.isGrandpaConnected(peerId)).thenReturn(true);
 
-            verify(warpSyncState).syncCommit(commitMessage, peerId);
+            try (MockedConstruction<ScaleCodecReader> readerMock = mockConstruction(ScaleCodecReader.class,
+                    (mock, context) -> when(mock.read(any(CommitMessageScaleReader.class))).thenReturn(commitMessage))
+            ) {
+                grandpaEngine.receiveRequest(message, stream);
+
+                verify(warpSyncState).syncCommit(commitMessage, peerId);
+            }
         }
     }
 

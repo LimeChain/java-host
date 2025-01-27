@@ -1,7 +1,7 @@
 package com.limechain.sync.warpsync.action;
 
 import com.limechain.exception.global.RuntimeCodeException;
-import com.limechain.storage.block.SyncState;
+import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncMachine;
 import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.types.Hash256;

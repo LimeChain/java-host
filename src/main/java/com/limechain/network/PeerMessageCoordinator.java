@@ -23,9 +23,9 @@ import java.util.function.Consumer;
 public class PeerMessageCoordinator {
 
     private final AsyncExecutor asyncExecutor;
-    private final Network network;
+    private final NetworkService network;
 
-    public PeerMessageCoordinator(Network network) {
+    public PeerMessageCoordinator(NetworkService network) {
         this.network = network;
 
         asyncExecutor = AsyncExecutor.withPoolSize(50);

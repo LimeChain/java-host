@@ -20,10 +20,11 @@ import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.StateManager;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
-import com.limechain.storage.block.SyncState;
 import com.limechain.sync.JustificationVerifier;
+import com.limechain.sync.state.SyncState;
 import com.limechain.trie.decoded.Trie;
 import com.limechain.trie.decoded.TrieVerifier;
 import com.limechain.utils.LittleEndianUtils;
@@ -49,8 +50,7 @@ import java.util.logging.Level;
 @Setter
 public class WarpSyncState {
 
-    private final SyncState syncState;
-    private final GrandpaSetState grandpaSetState;
+    private final StateManager stateManager;
     private final PeerRequester requester;
     private final PeerMessageCoordinator messageCoordinator;
     private final KVRepository<String, Object> db;
@@ -71,14 +71,13 @@ public class WarpSyncState {
     //TODO Yordan: maybe we won't need this anymore.
     private final Set<BigInteger> scheduledRuntimeUpdateBlocks;
 
-    public WarpSyncState(SyncState syncState,
+    public WarpSyncState(StateManager stateManager,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder,
                          PeerRequester requester,
-                         PeerMessageCoordinator messageCoordinator,
-                         GrandpaSetState grandpaSetState) {
-        this(syncState,
-                grandpaSetState,
+                         PeerMessageCoordinator messageCoordinator) {
+
+        this(stateManager,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
@@ -87,14 +86,13 @@ public class WarpSyncState {
         );
     }
 
-    public WarpSyncState(SyncState syncState, GrandpaSetState grandpaSetState,
+    public WarpSyncState(StateManager stateManager,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
                          PeerRequester requester,
                          PeerMessageCoordinator messageCoordinator) {
 
-        this.syncState = syncState;
-        this.grandpaSetState = grandpaSetState;
+        this.stateManager = stateManager;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
@@ -126,7 +124,8 @@ public class WarpSyncState {
      * @param peerId        sender of the message
      */
     public synchronized void syncCommit(CommitMessage commitMessage, PeerId peerId) {
-        if (commitMessage.getVote().getBlockNumber().compareTo(syncState.getLastFinalizedBlockNumber()) <= 0) {
+        if (commitMessage.getVote().getBlockNumber().compareTo(
+                stateManager.getSyncState().getLastFinalizedBlockNumber()) <= 0) {
             log.log(Level.FINE, String.format("Received commit message for finalized block %d from peer %s",
                     commitMessage.getVote().getBlockNumber(), peerId));
             return;
@@ -144,6 +143,7 @@ public class WarpSyncState {
             return;
         }
 
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         grandpaSetState.getRoundCache()
                 .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber())
                 .addCommitMessageToArchive(commitMessage);
@@ -154,6 +154,7 @@ public class WarpSyncState {
     }
 
     private void updateState(CommitMessage commitMessage) {
+        SyncState syncState = stateManager.getSyncState();
         BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
         if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) < 1) {
             return;
@@ -168,7 +169,7 @@ public class WarpSyncState {
     private void updateRuntime() {
         updateRuntimeCode();
         buildRuntime();
-        BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
+        BigInteger lastFinalizedBlockNumber = stateManager.getSyncState().getLastFinalizedBlockNumber();
         scheduledRuntimeUpdateBlocks.remove(lastFinalizedBlockNumber);
     }
 
@@ -204,6 +205,7 @@ public class WarpSyncState {
      * Light Messages protocol.
      */
     public void updateRuntimeCode() {
+        SyncState syncState = stateManager.getSyncState();
         Hash256 lastFinalizedBlockHash = syncState.getLastFinalizedBlockHash();
         Hash256 stateRoot = syncState.getStateRoot();
 
@@ -268,12 +270,15 @@ public class WarpSyncState {
      */
     public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
         messageCoordinator.sendNeighbourMessageToPeer(peerId);
-        if (warpSyncFinished && neighbourMessage.getSetId().compareTo(grandpaSetState.getSetId()) > 0) {
+        if (warpSyncFinished && neighbourMessage.getSetId()
+                .compareTo(stateManager.getGrandpaSetState().getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
     }
 
     public void checkAndInitiateCatchUp(NeighbourMessage neighbourMessage, PeerId peerId) {
+
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         // If peer has the same voter set id
         if (neighbourMessage.getSetId().equals(grandpaSetState.getSetId())) {
             RoundCache roundCache = grandpaSetState.getRoundCache();
@@ -311,10 +316,11 @@ public class WarpSyncState {
         if (verified) {
             BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));
 
-            syncState.finalizeHeader(header);
+            stateManager.getSyncState().finalizeHeader(header);
 
             DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                    .ifPresent(cm -> grandpaSetState.handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+                    .ifPresent(cm -> stateManager.getGrandpaSetState()
+                            .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
 
             handleScheduledEvents();
         }
@@ -324,7 +330,8 @@ public class WarpSyncState {
      * Executes scheduled or forced authority changes for the last finalized block.
      */
     public void handleScheduledEvents() {
-        boolean updated = grandpaSetState.handleAuthoritySetChange(syncState.getLastFinalizedBlockNumber());
+        boolean updated = stateManager.getGrandpaSetState().handleAuthoritySetChange(
+                stateManager.getSyncState().getLastFinalizedBlockNumber());
 
         if (warpSyncFinished && updated) {
             new Thread(messageCoordinator::sendMessagesToPeers).start();
