@@ -20,6 +20,7 @@ import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
+import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
@@ -148,7 +149,7 @@ public class WarpSyncState {
                 .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber())
                 .addCommitMessageToArchive(commitMessage);
 
-        if (warpSyncFinished && !grandpaSetState.participatesAsVoter()) {
+        if (warpSyncFinished && !AbstractState.isActiveAuthority()) {
             updateState(commitMessage);
         }
     }

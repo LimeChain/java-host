@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.java.Log;
+import org.javatuples.Pair;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
@@ -34,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.logging.Level;
 
@@ -176,6 +178,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
         roundCache.addRound(setId, grandpaRound);
 
+        updateAuthorityStatus();
+
         log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
     }
 
@@ -259,8 +263,13 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         }
     }
 
-    public boolean participatesAsVoter() {
-        return authorities.stream()
-                .anyMatch(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()).isPresent());
+    private void updateAuthorityStatus() {
+        Optional<Pair<byte[], byte[]>> keyPair = authorities.stream()
+                .map(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+
+        keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::unsetAuthorityStatus);
     }
 }
