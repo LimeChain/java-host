@@ -15,6 +15,6 @@ import org.springframework.stereotype.Component;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class NodeRoleManager {
 
-    private boolean isAuthority;
+    private boolean isInAuthoritySet;
     private Pair<byte[], byte[]> grandpaKeyPair;
 }
