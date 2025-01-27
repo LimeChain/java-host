@@ -242,11 +242,8 @@ public class Authorship {
 
         authorities.forEach(a -> keyStore.getKeyPair(KeyType.BABE, a.getPublicKey())
                 .ifPresent(keyPair -> {
-                            indexKeyPairMap.put(
-                                    authorities.indexOf(a),
-                                    keyStore.convertToSchnorrKeypair(keyPair));
-                        }
-                ));
+                    indexKeyPairMap.put(authorities.indexOf(a), keyStore.convertToSchnorrKeypair(keyPair));
+                }));
 
         return indexKeyPairMap;
     }

@@ -51,20 +51,20 @@ public class KeyStore {
      *
      * @param type      the algorithm type that the key is used for.
      * @param publicKey the pubKey used as a key to retrieve a privKey from the store.
-     * @return Pair of (privateKey, publicKey)
+     * @return Pair of (publicKey, privateKey)
      */
     public Optional<Pair<byte[], byte[]>> getKeyPair(KeyType type, byte[] publicKey) {
         var privateKey = get(type, publicKey);
         if (privateKey != null) {
-            return Optional.of(new Pair<>(privateKey, publicKey));
+            return Optional.of(new Pair<>(publicKey, privateKey));
         }
 
         return Optional.empty();
     }
 
     public Schnorrkel.KeyPair convertToSchnorrKeypair(Pair<byte[], byte[]> pair) {
-        Schnorrkel.PublicKey pubKey = new Schnorrkel.PublicKey(pair.getValue1());
-        return new Schnorrkel.KeyPair(pubKey, pair.getValue0());
+        Schnorrkel.PublicKey pubKey = new Schnorrkel.PublicKey(pair.getValue0());
+        return new Schnorrkel.KeyPair(pubKey, pair.getValue1());
     }
 
     private byte[] removeKeyTypeFromKey(byte[] key) {
