@@ -74,7 +74,7 @@ public class BlockState extends AbstractState {
 
         setArrivalTime(genesisBlockHash, Instant.now());
         setHeader(genesisBlockHeader);
-        db.save(BlockStateHelper.headerHashKey(genesisBlockHeader.getBlockNumber()), genesisBlockHash.getBytes());
+        db.save(BlockStateHelper.headerHashKey(genesisBlockHeader.getBlockNumber()), genesisBlockHash);
         setBlockBody(genesisBlockHash, new BlockBody(new ArrayList<>()));
 
         //set the latest finalized head to the genesis header
@@ -783,7 +783,7 @@ public class BlockState extends AbstractState {
         }
 
         handleFinalizedBlock(hash);
-        db.save(BlockStateHelper.finalizedHashKey(round, setId), hash.getBytes());
+        db.save(BlockStateHelper.finalizedHashKey(round, setId), hash);
         setHighestRoundAndSetID(round, setId);
 
         if (round.compareTo(BigInteger.ZERO) > 0) {
@@ -849,7 +849,7 @@ public class BlockState extends AbstractState {
             throw new HeaderNotFoundException("Header not found in database");
         }
 
-        return new Hash256((byte[]) foundHash.get());
+        return (Hash256) foundHash.get();
     }
 
     /**
@@ -934,7 +934,7 @@ public class BlockState extends AbstractState {
             Instant arrivalTime = blockTree.getArrivalTime(subchainHash);
             setArrivalTime(subchainHash, arrivalTime);
 
-            db.save(BlockStateHelper.headerHashKey(block.getHeader().getBlockNumber()), subchainHash.getBytes());
+            db.save(BlockStateHelper.headerHashKey(block.getHeader().getBlockNumber()), subchainHash);
 
             // Delete from the unfinalizedBlockMap and delete reference to in-memory trie
             unfinalizedBlocks.remove(subchainHash);

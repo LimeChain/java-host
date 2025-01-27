@@ -3,6 +3,8 @@ package com.limechain.network.protocol.transaction;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.rpc.server.AppBean;
+import com.limechain.state.AbstractState;
+import com.limechain.sync.SyncMode;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.transaction.TransactionProcessor;
 import com.limechain.transaction.dto.ExtrinsicArray;
@@ -84,6 +86,11 @@ public class TransactionEngine {
         if (!connectedToPeer && !isHandshake(message)) {
             log.log(Level.WARNING, "No handshake for transactions message from Peer " + peerId);
             stream.close();
+            return;
+        }
+
+        if (!SyncMode.HEAD.equals(AbstractState.getSyncMode())) {
+            log.fine("Skipping transaction message before we reach head of chain.");
             return;
         }
 

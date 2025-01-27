@@ -109,15 +109,15 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     }
 
     public BigInteger fetchAuthoritiesSetId() {
-        return repository.find(DBConstants.SET_ID, BigInteger.ONE);
+        return repository.find(DBConstants.SET_ID, BigInteger.ZERO);
     }
 
     public void saveLatestRound() {
         repository.save(DBConstants.LATEST_ROUND, roundCache.getLatestRound(setId));
     }
 
-    public BigInteger fetchLatestRound() {
-        return repository.find(DBConstants.LATEST_ROUND, BigInteger.ONE);
+    public GrandpaRound fetchLatestRound() {
+        return repository.find(DBConstants.LATEST_ROUND, new GrandpaRound());
     }
 
     public void savePreVotes(BigInteger roundNumber) {

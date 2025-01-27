@@ -71,8 +71,8 @@ public class SyncState extends AbstractState {
     @Override
     public void persistState() {
         repository.save(DBConstants.LAST_FINALIZED_BLOCK_NUMBER, lastFinalizedBlockNumber);
-        repository.save(DBConstants.LAST_FINALIZED_BLOCK_HASH, lastFinalizedBlockHash.getBytes());
-        repository.save(DBConstants.STATE_ROOT, stateRoot.getBytes());
+        repository.save(DBConstants.LAST_FINALIZED_BLOCK_HASH, lastFinalizedBlockHash);
+        repository.save(DBConstants.STATE_ROOT, stateRoot);
     }
 
     public void finalizeHeader(BlockHeader header) {
