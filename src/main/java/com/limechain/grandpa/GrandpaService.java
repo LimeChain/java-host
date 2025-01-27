@@ -449,7 +449,6 @@ public class GrandpaService {
      */
     private HashMap<Vote, Long> getDirectVotes(GrandpaRound grandpaRound, Subround subround) {
         var voteCounts = new HashMap<Vote, Long>();
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
 
         Map<Hash256, SignedVote> votes = switch (subround) {
             case Subround.PREVOTE -> grandpaRound.getPreVotes();

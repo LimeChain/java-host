@@ -7,9 +7,7 @@ import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
-import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
-import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
@@ -39,7 +37,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -236,8 +233,6 @@ class GrandpaServiceTest {
         Vote primaryVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
         Hash256 primaryVoteAuthorityHash = new Hash256(TWOS_ARRAY);
         SignedVote primarySignedVote = new SignedVote(primaryVote, Hash512.empty(), primaryVoteAuthorityHash);
-        VoteMessage voteMessage = mock(VoteMessage.class);
-        SignedMessage signedMessage = mock(SignedMessage.class);
 
         when(grandpaRound.getPrimaryVote()).thenReturn(primarySignedVote);
         BlockHeader blockHeader = createBlockHeader();
@@ -272,7 +267,7 @@ class GrandpaServiceTest {
     }
 
     @Test
-    void testFindBestPreVoteCandidate_WithoutSignedMessage() throws Exception  {
+    void testFindBestPreVoteCandidate_WithoutSignedMessage() throws Exception {
         Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
         SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
@@ -322,7 +317,6 @@ class GrandpaServiceTest {
         Vote primaryVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
         Hash256 primaryVoteAuthorityHash = new Hash256(TWOS_ARRAY);
         SignedVote primarySignedVote = new SignedVote(primaryVote, Hash512.empty(), primaryVoteAuthorityHash);
-        SignedMessage signedMessage = mock(SignedMessage.class);
 
         when(grandpaRound.getPrimaryVote()).thenReturn(primarySignedVote);
         BlockHeader blockHeader = createBlockHeader();
@@ -446,7 +440,6 @@ class GrandpaServiceTest {
         preVotes.put(firstVoteAuthorityHash, firstSignedVote);
         preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
@@ -518,7 +511,6 @@ class GrandpaServiceTest {
         preVotes.put(firstVoteAuthorityHash, firstSignedVote);
         preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
 
         // Call the private method via reflection
@@ -544,7 +536,6 @@ class GrandpaServiceTest {
         preVotes.put(firstVoteAuthorityHash, firstSignedVote);
         preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
@@ -576,7 +567,6 @@ class GrandpaServiceTest {
         preVotes.put(firstVoteAuthorityHash, firstSignedVote);
         preVotes.put(secondVoteAuthorityHash, secondSignedVote);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
@@ -617,7 +607,6 @@ class GrandpaServiceTest {
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(blockState.isDescendantOf(any(), any())).thenReturn(false);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(stateManager.getBlockState()).thenReturn(blockState);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -650,7 +639,6 @@ class GrandpaServiceTest {
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(stateManager.getBlockState()).thenReturn(blockState);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -684,7 +672,6 @@ class GrandpaServiceTest {
         when(grandpaRound.getPvEquivocationsCount()).thenReturn(1L);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(stateManager.getBlockState()).thenReturn(blockState);
 
         Method method = GrandpaService.class.getDeclaredMethod(
@@ -716,7 +703,6 @@ class GrandpaServiceTest {
         Map<Hash256, SignedVote> preVotes = new HashMap<>();
         preVotes.put(firstVoteAuthorityHash, firstSignedVote);
 
-        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
         when(grandpaRound.getPreVotes()).thenReturn(preVotes);
         when(stateManager.getBlockState()).thenReturn(blockState);
         when(blockState.isDescendantOf(any(), any())).thenReturn(true);
