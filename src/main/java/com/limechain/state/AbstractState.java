@@ -30,7 +30,7 @@ public abstract class AbstractState implements ServiceState {
         grandpaKeyPair = keyPair;
     }
 
-    public static void unsetAuthorityStatus() {
+    public static void clearAuthorityStatus() {
         isActiveAuthority = false;
         grandpaKeyPair = null;
     }

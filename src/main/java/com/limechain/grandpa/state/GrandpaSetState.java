@@ -270,6 +270,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .map(Optional::get)
                 .findFirst();
 
-        keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::unsetAuthorityStatus);
+        keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::clearAuthorityStatus);
     }
 }
