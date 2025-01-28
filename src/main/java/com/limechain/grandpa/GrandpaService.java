@@ -481,13 +481,13 @@ public class GrandpaService {
      */
     private void broadcastCommitMessage(GrandpaRound grandpaRound) {
         Vote bestCandidate = findBestFinalCandidate(grandpaRound);
-        PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
+        PreCommit[] preCommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
 
         CommitMessage commitMessage = new CommitMessage();
         commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
         commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
         commitMessage.setVote(bestCandidate);
-        commitMessage.setPreCommits(precommits);
+        commitMessage.setPreCommits(preCommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
     }

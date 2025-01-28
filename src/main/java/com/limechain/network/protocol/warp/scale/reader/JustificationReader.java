@@ -12,7 +12,7 @@ public class JustificationReader implements ScaleReader<Justification> {
     @Override
     public Justification read(ScaleCodecReader reader) {
         Justification justification = new Justification();
-        justification.setRound(new UInt64Reader().read(reader));
+        justification.setRoundNumber(new UInt64Reader().read(reader));
 
         // Target hash and target block constitute the "GRANDPA Vote":
         // https://spec.polkadot.network/sect-finality#defn-vote
