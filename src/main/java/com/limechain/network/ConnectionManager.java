@@ -3,6 +3,7 @@ package com.limechain.network;
 import com.limechain.network.dto.PeerInfo;
 import com.limechain.network.dto.ProtocolStreamType;
 import com.limechain.network.dto.ProtocolStreams;
+import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshake;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
@@ -251,5 +252,9 @@ public class ConnectionManager {
         if (streams.getResponder() != null) {
             streams.getResponder().close();
         }
+    }
+
+    public boolean checkIfPeerIsAuthorNode(PeerId peerId) {
+        return NodeRole.AUTHORING.getValue().equals(getPeerInfo(peerId).getNodeRole());
     }
 }

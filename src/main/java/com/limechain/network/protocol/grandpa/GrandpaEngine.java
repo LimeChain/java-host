@@ -4,7 +4,6 @@ import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
-import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
@@ -150,7 +149,7 @@ public class GrandpaEngine {
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
 
-        if (NodeRole.AUTHORING.getValue().equals(connectionManager.getPeerInfo(peerId).getNodeRole())) {
+        if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
             warpSyncState.initiateAndSendCatchUpRequest(neighbourMessage, peerId);
         }
     }
@@ -175,7 +174,7 @@ public class GrandpaEngine {
         CatchUpReqMessage catchUpReqMessage = reader.read(CatchUpReqMessageScaleReader.getInstance());
         log.log(Level.INFO, "Received catch up request message from Peer " + peerId + "\n" + catchUpReqMessage);
 
-        if (NodeRole.AUTHORING.getValue().equals(connectionManager.getPeerInfo(peerId).getNodeRole())) {
+        if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
             warpSyncState.initiateAndSendCatchUpResponse(peerId, catchUpReqMessage, connectionManager::getPeerIds);
         }
     }
