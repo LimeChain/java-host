@@ -82,7 +82,7 @@ public class GrandpaService extends NetworkService<Grandpa> {
      *
      * @param us                       our host object
      * @param peerId                   message receiver
-     * @param encodedCatchUpResMessage scale encoded representation of the CatchUpMessage object
+     * @param encodedCatchUpResMessage scale encoded representation of the CatchUpResMessage object
      */
     public void sendCatchUpResponse(Host us, PeerId peerId, byte[] encodedCatchUpResMessage) {
         Optional.ofNullable(connectionManager.getPeerInfo(peerId))

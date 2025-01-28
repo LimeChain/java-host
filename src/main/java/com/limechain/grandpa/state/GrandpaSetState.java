@@ -5,7 +5,7 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
@@ -300,9 +300,9 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         return catchUpReqMessage;
     }
 
-    public CatchUpMessage initiateCatchUpResponseMessage(PeerId peerId,
-                                                         CatchUpReqMessage catchUpReqMessage,
-                                                         Set<PeerId> peerIds) {
+    public CatchUpResMessage initiateCatchUpResponseMessage(PeerId peerId,
+                                                            CatchUpReqMessage catchUpReqMessage,
+                                                            Set<PeerId> peerIds) {
 
         if (!peerIds.contains(peerId)) {
             throw new GrandpaGenericException("Requesting catching up from a non-peer.");
@@ -322,7 +322,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         SignedVote[] preCommits = latestRound.getPreCommits().values().toArray(SignedVote[]::new);
         SignedVote[] preVotes = latestRound.getPreVotes().values().toArray(SignedVote[]::new);
 
-        return CatchUpMessage.builder()
+        return CatchUpResMessage.builder()
                 .round(latestRound.getRoundNumber())
                 .setId(setId)
                 .preCommits(preCommits)

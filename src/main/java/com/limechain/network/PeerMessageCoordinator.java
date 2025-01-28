@@ -6,8 +6,8 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleWriter;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
@@ -120,8 +120,8 @@ public class PeerMessageCoordinator {
         network.getGrandpaService().sendCatchUpRequest(network.getHost(), peerId, scaleMessage);
     }
 
-    public void sendCatchUpResponseToPeer(PeerId peerId, CatchUpMessage catchUpResMessage) {
-        byte[] scaleMessage = ScaleUtils.Encode.encode(CatchUpMessageScaleWriter.getInstance(), catchUpResMessage);
+    public void sendCatchUpResponseToPeer(PeerId peerId, CatchUpResMessage catchUpResMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(CatchUpResMessageScaleWriter.getInstance(), catchUpResMessage);
         network.getGrandpaService().sendCatchUpResponse(network.getHost(), peerId, scaleMessage);
     }
 }

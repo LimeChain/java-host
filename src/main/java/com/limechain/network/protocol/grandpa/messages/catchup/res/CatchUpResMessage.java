@@ -12,7 +12,7 @@ import java.math.BigInteger;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder(toBuilder = true)
-public class CatchUpMessage {
+public class CatchUpResMessage {
     private BigInteger round;
     private BigInteger setId;
     private SignedVote[] preVotes;

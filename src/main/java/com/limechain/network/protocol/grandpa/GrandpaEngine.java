@@ -8,8 +8,8 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandsh
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleReader;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpMessageScaleReader;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleReader;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
@@ -181,9 +181,9 @@ public class GrandpaEngine {
 
     private void handleCatchupResponseMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
-        CatchUpMessage catchUpMessage = reader.read(CatchUpMessageScaleReader.getInstance());
+        CatchUpResMessage catchUpResMessage = reader.read(CatchUpResMessageScaleReader.getInstance());
         //todo: handle catchup res message (authoring node responsibility)
-        log.log(Level.INFO, "Received catch up message from Peer " + peerId + "\n" + catchUpMessage);
+        log.log(Level.INFO, "Received catch up response message from Peer " + peerId + "\n" + catchUpResMessage);
     }
 
     /**
@@ -245,7 +245,7 @@ public class GrandpaEngine {
      * Send our GRANDPA catch-up response message on a given <b>responder</b> stream.
      *
      * @param stream                   <b>responder</b> stream to write the message to
-     * @param encodedCatchUpResMessage scale encoded CatchUpMessage object
+     * @param encodedCatchUpResMessage scale encoded CatchUpResMessage object
      */
     public void writeCatchUpResponse(Stream stream, byte[] encodedCatchUpResMessage) {
         log.log(Level.FINE, "Sending catch up response to Peer " + stream.remotePeerId());
