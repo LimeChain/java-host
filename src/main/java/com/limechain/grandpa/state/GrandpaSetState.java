@@ -66,7 +66,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
     private final BlockState blockState;
     private final RoundCache roundCache;
-    private GrandpaRound lastFinalizedRound;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
 
@@ -289,7 +288,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
             // Check if needed to catch-up peer
             if (neighbourMessage.getRound().compareTo(
-                    lastFinalizedRound.getRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
+                    fetchLatestRound().getRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
                 log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
 
                 catchUpReqMessage = CatchUpReqMessage.builder()
@@ -312,23 +311,50 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             throw new GrandpaGenericException("Catch up message has a different setId.");
         }
 
-        BigInteger lastFinalizedRoundNumber = lastFinalizedRound.getRoundNumber();
-        if (catchUpReqMessage.getRound().compareTo(lastFinalizedRoundNumber) > 0) {
+        if (catchUpReqMessage.getRound().compareTo(fetchLatestRound().getRoundNumber()) > 0) {
             throw new GrandpaGenericException("Catching up on a round in the future.");
         }
 
-        GrandpaRound latestRound = roundCache.getLatestRound(setId);
-        BlockHeader blockHeader = blockState.getHighestFinalizedHeader();
-        SignedVote[] preCommits = latestRound.getPreCommits().values().toArray(SignedVote[]::new);
-        SignedVote[] preVotes = latestRound.getPreVotes().values().toArray(SignedVote[]::new);
+        GrandpaRound selectedGrandpaRound = selectRound(catchUpReqMessage.getRound(), catchUpReqMessage.getSetId())
+                .orElseThrow(() -> new GrandpaGenericException("Target round was no found."));
+
+        SignedVote[] preCommits = selectedGrandpaRound.getPreCommits().values().toArray(SignedVote[]::new);
+        SignedVote[] preVotes = selectedGrandpaRound.getPreVotes().values().toArray(SignedVote[]::new);
+
+        BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlockHeader();
+
+        // Not sure if we have to get the preVotes for the selectedGrandpaRound or for the
+        // last finalized block at the moment of round is created (that is how it is implemented in kagome).
 
         return CatchUpResMessage.builder()
-                .round(latestRound.getRoundNumber())
+                .round(selectedGrandpaRound.getRoundNumber())
                 .setId(setId)
                 .preCommits(preCommits)
                 .preVotes(preVotes)
-                .blockHash(blockHeader.getHash())
-                .blockNumber(blockHeader.getBlockNumber())
+                .blockHash(finalizedBlockHeader.getHash())
+                .blockNumber(finalizedBlockHeader.getBlockNumber())
                 .build();
+    }
+
+    private Optional<GrandpaRound> selectRound(BigInteger peerRoundNumber, BigInteger peerSetId) {
+        GrandpaRound round = roundCache.getLatestRound(setId);
+
+        while (round != null) {
+            // Probably came to the round with previous voter set
+            if (round.getRoundNumber().compareTo(peerRoundNumber) < 0) {
+                return Optional.empty();
+            }
+            // Round found
+            // Check voter set
+            if (round.getRoundNumber().equals(peerRoundNumber)) {
+                if (round.getCommitMessagesArchive().getFirst().getSetId().equals(peerSetId)) {
+                    break;
+                }
+            }
+            // Go to the previous round
+            round = round.getPrevious();
+        }
+
+        return Optional.ofNullable(round);
     }
 }
