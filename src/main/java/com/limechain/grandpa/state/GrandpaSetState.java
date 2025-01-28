@@ -286,10 +286,10 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
         // If peer has the same voter set id
         if (neighbourMessage.getSetId().equals(setId)) {
-            BigInteger latestRound = roundCache.getLatestRoundNumber(setId);
 
             // Check if needed to catch-up peer
-            if (neighbourMessage.getRound().compareTo(latestRound.add(CATCH_UP_THRESHOLD)) >= 0) {
+            if (neighbourMessage.getRound().compareTo(
+                    lastFinalizedRound.getRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
                 log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
 
                 catchUpReqMessage = CatchUpReqMessage.builder()
