@@ -340,10 +340,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         GrandpaRound round = roundCache.getLatestRound(setId);
 
         while (round != null) {
-            // Probably came to the round with previous voter set
-            if (round.getRoundNumber().compareTo(peerRoundNumber) < 0) {
-                return Optional.empty();
-            }
             // Round found
             // Check voter set
             if (round.getRoundNumber().equals(peerRoundNumber)) {
