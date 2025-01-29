@@ -32,7 +32,7 @@ public class PreDigestScaleTest {
         assertEquals(OUTPUT_BYTE_LEN, vrfOutput.length);
         assertEquals(PROOF_BYTE_LEN, vrfProof.length);
 
-        byte[] encode = ScaleUtils.Encode.encode(new PreDigestWriter(), preDigest);
+        byte[] encode = ScaleUtils.Encode.encode(PreDigestWriter.getInstance(), preDigest);
         assertArrayEquals(bytes, encode);
     }
 }

@@ -52,7 +52,7 @@ public class PeerMessageCoordinator {
     }
 
     public void sendBlockAnnounceMessageExcludingPeer(BlockAnnounceMessage message, PeerId excluding) {
-        byte[] scaleMessage = ScaleUtils.Encode.encode(new BlockAnnounceMessageScaleWriter(), message);
+        byte[] scaleMessage = ScaleUtils.Encode.encode(BlockAnnounceMessageScaleWriter.getInstance(), message);
         sendMessageToActivePeers(p -> {
                     if (p.equals(excluding)) {
                         return;
@@ -73,7 +73,7 @@ public class PeerMessageCoordinator {
      */
     public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> peersToIgnore) {
         ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
-        byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
+        byte[] scaleMessage = ScaleUtils.Encode.encode(TransactionWriter.getInstance(), extrinsicArray);
 
         sendMessageToActivePeers(p -> {
             if (peersToIgnore.contains(p)) {

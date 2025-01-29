@@ -7,6 +7,7 @@ import io.emeraldpay.polkaj.scale.ScaleWriter;
 import java.io.IOException;
 
 public class VoteScaleWriter implements ScaleWriter<Vote> {
+
     private static final VoteScaleWriter INSTANCE = new VoteScaleWriter();
 
     public static VoteScaleWriter getInstance() {

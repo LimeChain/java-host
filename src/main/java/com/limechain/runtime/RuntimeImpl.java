@@ -83,7 +83,7 @@ public class RuntimeImpl implements Runtime {
                                                           byte[] keyOwnershipProof) {
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
              ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
-            new BlockEquivocationProofWriter().write(scaleCodecWriter, blockEquivocationProof);
+            BlockEquivocationProofWriter.getInstance().write(scaleCodecWriter, blockEquivocationProof);
             scaleCodecWriter.writeAsList(keyOwnershipProof);
             call(RuntimeEndpoint.BABE_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, buffer.toByteArray());
         } catch (IOException e) {
@@ -112,7 +112,7 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public TransactionValidationResponse validateTransaction(TransactionValidationRequest request) {
-        byte[] encodedRequest = ScaleUtils.Encode.encode(new TransactionValidationWriter(), request);
+        byte[] encodedRequest = ScaleUtils.Encode.encode(TransactionValidationWriter.getInstance(), request);
         byte[] encodedResponse = callAndBackup(RuntimeEndpoint.TRANSACTION_QUEUE_VALIDATE_TRANSACTION, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new TransactionValidationReader());
@@ -141,7 +141,7 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public ExtrinsicArray inherentExtrinsics(com.limechain.babe.dto.InherentData inherentData) {
-        byte[] encodedRequest = ScaleUtils.Encode.encode(new BlockInherentsWriter(), inherentData);
+        byte[] encodedRequest = ScaleUtils.Encode.encode(BlockInherentsWriter.getInstance(), inherentData);
         byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_INHERENT_EXTRINISICS, encodedRequest);
 
         return ScaleUtils.Decode.decode(encodedResponse, new TransactionReader());
@@ -199,7 +199,7 @@ public class RuntimeImpl implements Runtime {
 
     private byte[] serializeCheckInherentsParameter(Block block, InherentData inherentData) {
         byte[] executeBlockParameter = serializeExecuteBlockParameter(block);
-        byte[] scaleEncodedInherentData = ScaleUtils.Encode.encode(new InherentDataWriter(), inherentData);
+        byte[] scaleEncodedInherentData = ScaleUtils.Encode.encode(InherentDataWriter.getInstance(), inherentData);
         return ArrayUtils.addAll(executeBlockParameter, scaleEncodedInherentData);
     }
 

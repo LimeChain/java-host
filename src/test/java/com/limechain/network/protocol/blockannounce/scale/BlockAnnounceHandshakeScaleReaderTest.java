@@ -47,7 +47,7 @@ class BlockAnnounceHandshakeScaleReaderTest {
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new BlockAnnounceHandshakeScaleWriter(), dataToEncode);
+            writer.write(BlockAnnounceHandshakeScaleWriter.getInstance(), dataToEncode);
             byte[] encoded = buf.toByteArray();
 
             assertTrue(Arrays.equals(encoded, expected));

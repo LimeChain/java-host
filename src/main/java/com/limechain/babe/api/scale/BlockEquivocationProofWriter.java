@@ -10,10 +10,16 @@ import java.io.IOException;
 
 public class BlockEquivocationProofWriter implements ScaleWriter<BlockEquivocationProof> {
 
+    private static final BlockEquivocationProofWriter INSTANCE = new BlockEquivocationProofWriter();
+
     private final UInt64Writer uint64Writer;
 
-    public BlockEquivocationProofWriter() {
+    private BlockEquivocationProofWriter() {
         this.uint64Writer = new UInt64Writer();
+    }
+
+    public static BlockEquivocationProofWriter getInstance() {
+        return INSTANCE;
     }
 
     @Override

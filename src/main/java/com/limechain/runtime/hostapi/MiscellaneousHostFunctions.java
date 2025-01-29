@@ -112,7 +112,7 @@ public class MiscellaneousHostFunctions implements PartialHostApi {
         try {
             Runtime runtime = RuntimeFactory.buildRuntime(wasmBlob, RuntimeFactory.Config.EMPTY);
             byte[] runtimeVersionData = ScaleUtils.Encode.encode(
-                    new RuntimeVersionWriter(), runtime.getCachedVersion());
+                    RuntimeVersionWriter.getInstance(), runtime.getCachedVersion());
 
             versionOption = scaleEncodedOption(runtimeVersionData);
         } catch (UnsatisfiedLinkError e) {

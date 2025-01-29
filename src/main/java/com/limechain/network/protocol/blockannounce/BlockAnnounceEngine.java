@@ -102,7 +102,7 @@ public class BlockAnnounceEngine {
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new BlockAnnounceHandshakeScaleWriter(), handshakeBuilder.getBlockAnnounceHandshake());
+            writer.write(BlockAnnounceHandshakeScaleWriter.getInstance(), handshakeBuilder.getBlockAnnounceHandshake());
         } catch (IOException e) {
             throw new ScaleEncodingException(e);
         }

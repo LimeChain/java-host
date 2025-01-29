@@ -155,7 +155,7 @@ public class BabeService implements SlotChangeListener {
         HeaderDigest preDigest = new HeaderDigest();
         preDigest.setId(ConsensusEngine.BABE);
         preDigest.setType(DigestType.PRE_RUNTIME);
-        preDigest.setMessage(ScaleUtils.Encode.encode(new PreDigestWriter(), digest));
+        preDigest.setMessage(ScaleUtils.Encode.encode(PreDigestWriter.getInstance(), digest));
 
         newDigests[length + 1] = preDigest;
 
