@@ -56,6 +56,8 @@ public class JustificationVerifier {
                 .map(Hash256::new)
                 .collect(Collectors.toSet());
 
+        BigInteger authoritiesSetId = grandpaSetState.getSetId();
+
         for (PreCommit preCommit : justification.getPreCommits()) {
 
             if (!authorityKeys.contains(preCommit.getAuthorityPublicKey())) {
@@ -68,8 +70,6 @@ public class JustificationVerifier {
                 return false;
             }
             seenPublicKeys.add(preCommit.getAuthorityPublicKey());
-
-            BigInteger authoritiesSetId = grandpaSetState.getSetId();
 
             byte[] data = getDataToVerify(preCommit, authoritiesSetId, justification.getRoundNumber());
 
