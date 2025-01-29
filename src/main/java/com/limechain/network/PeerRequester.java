@@ -117,7 +117,7 @@ public class PeerRequester {
     private static Block protobufDecodeBlock(SyncMessage.BlockData blockData) {
         // Decode the block header
         var encodedHeader = blockData.getHeader().toByteArray();
-        BlockHeader blockHeader = ScaleUtils.Decode.decode(encodedHeader, new BlockHeaderReader());
+        BlockHeader blockHeader = ScaleUtils.Decode.decode(encodedHeader, BlockHeaderReader.getInstance());
 
         // Protobuf decode the block body
         List<Extrinsic> extrinsicsList = blockData.getBodyList().stream()

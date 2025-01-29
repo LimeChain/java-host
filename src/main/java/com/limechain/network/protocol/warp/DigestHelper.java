@@ -31,7 +31,7 @@ public class DigestHelper {
                         ConsensusEngine.BABE.equals(headerDigest.getId()))
                 .findFirst()
                 .map(HeaderDigest::getMessage)
-                .map(message -> ScaleUtils.Decode.decode(message, new BabeConsensusMessageReader()));
+                .map(message -> ScaleUtils.Decode.decode(message, BabeConsensusMessageReader.getInstance()));
     }
 
     public static Optional<GrandpaConsensusMessage> getGrandpaConsensusMessage(HeaderDigest[] headerDigests) {
@@ -40,7 +40,7 @@ public class DigestHelper {
                         ConsensusEngine.GRANDPA.equals(headerDigest.getId()))
                 .findFirst()
                 .map(HeaderDigest::getMessage)
-                .map(message -> ScaleUtils.Decode.decode(message, new GrandpaConsensusMessageReader()));
+                .map(message -> ScaleUtils.Decode.decode(message, GrandpaConsensusMessageReader.getInstance()));
     }
 
     public static Optional<BabePreDigest> getBabePreRuntimeDigest(HeaderDigest[] headerDigests) {
@@ -49,7 +49,7 @@ public class DigestHelper {
                         ConsensusEngine.BABE.equals(headerDigest.getId()))
                 .findFirst()
                 .map(HeaderDigest::getMessage)
-                .map(message -> ScaleUtils.Decode.decode(message, new PreDigestReader()));
+                .map(message -> ScaleUtils.Decode.decode(message, PreDigestReader.getInstance()));
     }
 
     public static HeaderDigest buildSealHeaderDigest(BlockHeader blockHeader, Schnorrkel.KeyPair keyPair) {

@@ -16,12 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class PreDigestScaleTest {
+class PreDigestScaleTest {
 
     @Test
-    public void testEncodeAndDecode_BABE_SECONDARY_VRF() {
+    void testEncodeAndDecode_BABE_SECONDARY_VRF() {
         byte[] bytes = StringUtils.hexToBytes("0x03b7010000286f301100000000424dc7bc71c9b0f3a15b6aba389471fff57e154dbf3dc046f47513a38375ce4cfe421df446b2b7a0f5b1b2e69c810a6ba36787c0301e6636df3e45688116e005363dfe9922b3b7cc7b80e2fdab8b0b98dcfb4b96cc470fb35f753debda40aa0e");
-        BabePreDigest preDigest = ScaleUtils.Decode.decode(bytes, new PreDigestReader());
+        BabePreDigest preDigest = ScaleUtils.Decode.decode(bytes, PreDigestReader.getInstance());
         assertEquals(PreDigestType.BABE_SECONDARY_VRF, preDigest.getType());
         assertEquals(439, preDigest.getAuthorityIndex());
         assertEquals(BigInteger.valueOf(288386856), preDigest.getSlotNumber());

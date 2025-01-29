@@ -4,8 +4,17 @@ import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TransactionReader implements ScaleReader<ExtrinsicArray> {
+
+    private static final TransactionReader INSTANCE = new TransactionReader();
+
+    public static TransactionReader getInstance() {
+        return INSTANCE;
+    }
 
     @Override
     public ExtrinsicArray read(ScaleCodecReader reader) {

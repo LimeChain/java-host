@@ -32,7 +32,11 @@ class BlockAnnounceMessageScaleTest {
                 blockAnnounceMessage
         );
 
-        BlockAnnounceMessage decodedBlockAnnounceMessage = ScaleUtils.Decode.decode(encodedBlockAnnounceMessage, new BlockAnnounceMessageScaleReader());
+        BlockAnnounceMessage decodedBlockAnnounceMessage = ScaleUtils.Decode.decode(
+                encodedBlockAnnounceMessage,
+                BlockAnnounceMessageScaleReader.getInstance()
+        );
+
         assertEquals(blockAnnounceMessage.isBestBlock(), decodedBlockAnnounceMessage.isBestBlock());
 
         BlockHeader decodedHeader = decodedBlockAnnounceMessage.getHeader();

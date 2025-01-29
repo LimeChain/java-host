@@ -5,8 +5,18 @@ import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class HeaderDigestReader implements ScaleReader<HeaderDigest> {
+
+    private static final HeaderDigestReader INSTANCE = new HeaderDigestReader();
+
+    public static HeaderDigestReader getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public HeaderDigest read(ScaleCodecReader reader) {
         HeaderDigest headerDigest = new HeaderDigest();

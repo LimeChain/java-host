@@ -14,6 +14,7 @@ import java.nio.ByteOrder;
  * nom_varsize_number_decode_u64</a>
  */
 public class VarUint64Reader implements ScaleReader<BigInteger> {
+
     private final int blockNumSize;
 
     public VarUint64Reader(int blockNumSize) {

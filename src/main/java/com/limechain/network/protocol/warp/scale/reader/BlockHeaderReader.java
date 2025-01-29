@@ -5,10 +5,20 @@ import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.types.Hash256;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.math.BigInteger;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class BlockHeaderReader implements ScaleReader<BlockHeader> {
+
+    private static final BlockHeaderReader INSTANCE = new BlockHeaderReader();
+
+    public static BlockHeaderReader getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public BlockHeader read(ScaleCodecReader reader) {
         BlockHeader blockHeader = new BlockHeader();
@@ -22,7 +32,7 @@ public class BlockHeaderReader implements ScaleReader<BlockHeader> {
         var digestCount = reader.readCompactInt();
         HeaderDigest[] digests = new HeaderDigest[digestCount];
         for (int i = 0; i < digestCount; i++) {
-            digests[i] = new HeaderDigestReader().read(reader);
+            digests[i] = HeaderDigestReader.getInstance().read(reader);
         }
 
         blockHeader.setDigest(digests);

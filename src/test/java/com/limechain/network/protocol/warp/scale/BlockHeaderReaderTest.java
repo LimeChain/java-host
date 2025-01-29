@@ -38,7 +38,7 @@ class BlockHeaderReaderTest {
                 .map(Integer::byteValue)
                 .toArray(Byte[]::new));
 
-        BlockHeader decoded = new BlockHeaderReader().read(new ScaleCodecReader(encodedBytes));
+        BlockHeader decoded = BlockHeaderReader.getInstance().read(new ScaleCodecReader(encodedBytes));
         assertNotNull(decoded);
     }
 
@@ -49,7 +49,7 @@ class BlockHeaderReaderTest {
         byte[] encodedBytes = IOUtils.toByteArray(new FileInputStream(
                 "src/test/java/com/limechain/network/protocol/warp/scale/tests-header-polkadot-512271"
         ));
-        BlockHeader decoded = new BlockHeaderReader().read(new ScaleCodecReader(encodedBytes));
+        BlockHeader decoded = BlockHeaderReader.getInstance().read(new ScaleCodecReader(encodedBytes));
         assertNotNull(decoded);
     }
 
@@ -59,7 +59,7 @@ class BlockHeaderReaderTest {
         byte[] encodedBytes = IOUtils.toByteArray(new FileInputStream(
                 "src/test/java/com/limechain/network/protocol/warp/scale/tests-header-kusama-7472481"
         ));
-        BlockHeader decoded = new BlockHeaderReader().read(new ScaleCodecReader(encodedBytes));
+        BlockHeader decoded = BlockHeaderReader.getInstance().read(new ScaleCodecReader(encodedBytes));
         assertNotNull(decoded);
     }
 }

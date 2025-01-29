@@ -11,6 +11,7 @@ public class SignedVoteScaleReader implements ScaleReader<SignedVote> {
     private static final SignedVoteScaleReader INSTANCE = new SignedVoteScaleReader();
 
     private final VoteScaleReader voteScaleReader;
+
     private SignedVoteScaleReader() {
         voteScaleReader = VoteScaleReader.getInstance();
     }

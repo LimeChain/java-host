@@ -99,7 +99,7 @@ public final class BlockStateHelper {
     @NotNull
     BlockHeader readHeader(byte[] header) {
         ScaleCodecReader scaleCodecReader = new ScaleCodecReader(header);
-        BlockHeaderReader blockHeaderReader = new BlockHeaderReader();
+        BlockHeaderReader blockHeaderReader = BlockHeaderReader.getInstance();
 
         return blockHeaderReader.read(scaleCodecReader);
     }

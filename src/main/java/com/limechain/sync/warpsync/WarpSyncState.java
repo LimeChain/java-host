@@ -308,14 +308,14 @@ public class WarpSyncState {
             return;
         }
 
-        Justification justification = new JustificationReader().read(
+        Justification justification = JustificationReader.getInstance().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
 
         boolean verified = justification != null
                 && JustificationVerifier.verify(justification.getPreCommits(), justification.getRound());
 
         if (verified) {
-            BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));
+            BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));
 
             stateManager.getSyncState().finalizeHeader(header);
 

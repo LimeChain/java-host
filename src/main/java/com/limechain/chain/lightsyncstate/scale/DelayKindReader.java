@@ -4,10 +4,20 @@ import com.limechain.chain.lightsyncstate.PendingChange;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.UInt32Reader;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.math.BigInteger;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DelayKindReader implements ScaleReader<PendingChange.DelayKind> {
+
+    private static final DelayKindReader INSTANCE = new DelayKindReader();
+
+    public static DelayKindReader getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public PendingChange.DelayKind read(ScaleCodecReader reader) {
         var enumOrdinal = reader.readUByte();

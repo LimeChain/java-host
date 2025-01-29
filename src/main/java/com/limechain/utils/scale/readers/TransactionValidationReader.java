@@ -6,8 +6,17 @@ import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TransactionValidationReader implements ScaleReader<TransactionValidationResponse> {
+
+    private static final TransactionValidationReader INSTANCE = new TransactionValidationReader();
+
+    public static TransactionValidationReader getInstance() {
+        return INSTANCE;
+    }
 
     @Override
     public TransactionValidationResponse read(ScaleCodecReader reader) {
@@ -37,7 +46,7 @@ public class TransactionValidationReader implements ScaleReader<TransactionValid
 
             response.setValidity(validity);
         } else {
-            response.setValidityError(new TransactionValidityErrorReader().read(reader));
+            response.setValidityError(TransactionValidityErrorReader.getInstance().read(reader));
         }
 
         return response;

@@ -5,11 +5,21 @@ import com.limechain.babe.predigest.PreDigestType;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import static io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof.OUTPUT_BYTE_LEN;
 import static io.emeraldpay.polkaj.schnorrkel.VrfOutputAndProof.PROOF_BYTE_LEN;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class PreDigestReader implements ScaleReader<BabePreDigest> {
+
+    private static final PreDigestReader INSTANCE = new PreDigestReader();
+
+    public static PreDigestReader getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public BabePreDigest read(ScaleCodecReader reader) {
         BabePreDigest preDigest = new BabePreDigest();
