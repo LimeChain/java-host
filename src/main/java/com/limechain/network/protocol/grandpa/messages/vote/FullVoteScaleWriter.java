@@ -12,9 +12,9 @@ public class FullVoteScaleWriter implements ScaleWriter<FullVote> {
     private final UInt64Writer uint64Writer;
     private final VoteScaleWriter voteScaleWriter;
 
-    public FullVoteScaleWriter(UInt64Writer uint64Writer, VoteScaleWriter voteScaleWriter) {
-        this.uint64Writer = uint64Writer;
-        this.voteScaleWriter = voteScaleWriter;
+    public FullVoteScaleWriter() {
+        this.uint64Writer = new UInt64Writer();
+        this.voteScaleWriter = new VoteScaleWriter();
     }
 
     @Override

@@ -8,7 +8,6 @@ import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
-import com.limechain.network.protocol.grandpa.messages.commit.VoteScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
@@ -21,7 +20,6 @@ import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.scale.ScaleUtils;
-import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
 import lombok.RequiredArgsConstructor;
@@ -517,7 +515,7 @@ public class GrandpaService {
         fullVote.setVote(bestPreVoteCandidate);
         fullVote.setStage(Subround.PREVOTE);
 
-        byte[] encodedFullVote = ScaleUtils.Encode.encode(new FullVoteScaleWriter(new UInt64Writer(), new VoteScaleWriter()), fullVote);
+        byte[] encodedFullVote = ScaleUtils.Encode.encode(new FullVoteScaleWriter(), fullVote);
 
         SignedMessage signedMessage = new SignedMessage();
         signedMessage.setStage(fullVote.getStage());
