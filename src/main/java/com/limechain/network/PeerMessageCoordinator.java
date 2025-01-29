@@ -6,6 +6,8 @@ import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessag
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
@@ -113,5 +115,12 @@ public class PeerMessageCoordinator {
 
     public void sendCatchUpRequestToPeer(PeerId peerId) {
         network.getGrandpaService().sendCatchUpRequest(network.getHost(), peerId);
+    }
+
+    public void sendVoteMessageToPeers(VoteMessage voteMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(VoteMessageScaleWriter.getInstance(), voteMessage);
+        sendMessageToActivePeers(peerId -> asyncExecutor.executeAndForget(() -> network.getGrandpaService().sendVoteMessage(
+                network.getHost(), peerId, scaleMessage
+        )));
     }
 }

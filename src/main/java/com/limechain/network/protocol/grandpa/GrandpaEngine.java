@@ -249,4 +249,15 @@ public class GrandpaEngine {
         log.log(Level.FINE, "Sending catch up request to Peer " + peerId);
         stream.writeAndFlush(buf.toByteArray());
     }
+
+    /**
+     * Send our GRANDPA vote message from {@link GrandpaService} on a given <b>responder</b> stream.
+     *
+     * @param stream               <b>responder</b> stream to write the message to
+     * @param encodedVoteMessage scale encoded VoteMessage object
+     */
+    public void writeVoteMessage(Stream stream, byte[] encodedVoteMessage) {
+        log.log(Level.FINE, "Sending vote message to peer " + stream.remotePeerId());
+        stream.writeAndFlush(encodedVoteMessage);
+    }
 }

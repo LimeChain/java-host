@@ -40,4 +40,12 @@ public class GrandpaController {
     public void sendCatchUpRequest() {
         engine.writeCatchUpRequest(stream, stream.remotePeerId());
     }
+
+    /**
+     * Sends a vote message over the controller stream.
+     */
+    public void sendVoteMessage(byte[] encodedVoteMessage) {
+        engine.writeCommitMessage(stream, encodedVoteMessage);
+    }
+
 }
