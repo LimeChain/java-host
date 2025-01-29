@@ -10,7 +10,7 @@ import java.math.BigInteger;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder(toBuilder = true)
+@Builder
 public class CatchUpReqMessage {
     private BigInteger round;
     private BigInteger setId;
