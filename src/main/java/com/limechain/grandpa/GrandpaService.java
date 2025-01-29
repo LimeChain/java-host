@@ -8,14 +8,23 @@ import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
+import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.PreCommit;
+import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
+import com.limechain.utils.Ed25519Utils;
+import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.types.Hash256;
+import io.emeraldpay.polkaj.types.Hash512;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
+import org.javatuples.Pair;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
@@ -490,6 +499,43 @@ public class GrandpaService {
         commitMessage.setPreCommits(precommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
+    }
+
+    /**
+     * Broadcasts a vote message to network peers for the given round as part of the GRANDPA consensus process.
+     * <p>
+     * This method is used when broadcasting a vote message for the best preVote candidate block of the current round.
+     */
+    public void broadcastPreVoteMessage(GrandpaRound grandpaRound) {
+        Vote bestPreVoteCandidate = findBestPreVoteCandidate(grandpaRound);
+
+        FullVote fullVote = new FullVote();
+        fullVote.setRound(grandpaRound.getRoundNumber());
+        fullVote.setSetId(stateManager.getGrandpaSetState().getSetId());
+        fullVote.setVote(bestPreVoteCandidate);
+        fullVote.setStage(Subround.PREVOTE);
+
+        byte[] encodedFullVote = ScaleUtils.Encode.encode(new FullVoteScaleWriter(), fullVote);
+
+        SignedMessage signedMessage = new SignedMessage();
+        signedMessage.setStage(fullVote.getStage());
+        signedMessage.setBlockNumber(bestPreVoteCandidate.getBlockNumber());
+        signedMessage.setBlockHash(bestPreVoteCandidate.getBlockHash());
+
+        Pair<byte[], byte[]> grandpaKeyPair = AbstractState.getGrandpaKeyPair();
+
+        byte[] pubKey = grandpaKeyPair.getValue0();
+        byte[] privateKey = grandpaKeyPair.getValue1();
+        byte[] signature = Ed25519Utils.signMessage(privateKey, encodedFullVote);
+        signedMessage.setAuthorityPublicKey(new Hash256(pubKey));
+        signedMessage.setSignature(new Hash512(signature));
+
+        VoteMessage voteMessage = new VoteMessage();
+        voteMessage.setRound(fullVote.getRound());
+        voteMessage.setSetId(fullVote.getSetId());
+        voteMessage.setMessage(signedMessage);
+
+        peerMessageCoordinator.sendVoteMessageToPeers(voteMessage);
     }
 
     private PreCommit[] transformToCompactJustificationFormat(Map<Hash256, SignedVote> signedVotes) {
