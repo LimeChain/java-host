@@ -150,7 +150,7 @@ public class GrandpaEngine {
         new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
 
         if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
-            warpSyncState.initiateAndSendCatchUpRequest(neighbourMessage, peerId);
+            grandpaSetState.initiateAndSendCatchUpRequest(neighbourMessage, peerId);
         }
     }
 
@@ -175,7 +175,7 @@ public class GrandpaEngine {
         log.log(Level.INFO, "Received catch up request message from Peer " + peerId + "\n" + catchUpReqMessage);
 
         if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
-            warpSyncState.initiateAndSendCatchUpResponse(peerId, catchUpReqMessage, connectionManager::getPeerIds);
+            grandpaSetState.initiateAndSendCatchUpResponse(peerId, catchUpReqMessage, connectionManager::getPeerIds);
         }
     }
 

@@ -4,6 +4,7 @@ import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
+import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
@@ -43,6 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
@@ -68,6 +70,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     private final RoundCache roundCache;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
+    private final PeerMessageCoordinator messageCoordinator;
 
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
             new PriorityQueue<>(AuthoritySetChange.getComparator());
@@ -280,9 +283,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::clearAuthorityStatus);
     }
 
-    public CatchUpReqMessage initiateCatchUpRequestMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
-        CatchUpReqMessage catchUpReqMessage = null;
-
+    public void initiateAndSendCatchUpRequest(NeighbourMessage neighbourMessage, PeerId peerId) {
         // If peer has the same voter set id
         if (neighbourMessage.getSetId().equals(setId)) {
 
@@ -291,19 +292,20 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                     fetchLatestRound().getRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
                 log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
 
-                catchUpReqMessage = CatchUpReqMessage.builder()
+                CatchUpReqMessage catchUpReqMessage = CatchUpReqMessage.builder()
                         .round(neighbourMessage.getRound())
                         .setId(neighbourMessage.getSetId()).build();
+
+                messageCoordinator.sendCatchUpRequestToPeer(peerId, catchUpReqMessage);
             }
         }
-        return catchUpReqMessage;
     }
 
-    public CatchUpResMessage initiateCatchUpResponseMessage(PeerId peerId,
-                                                            CatchUpReqMessage catchUpReqMessage,
-                                                            Set<PeerId> peerIds) {
+    public void initiateAndSendCatchUpResponse(PeerId peerId,
+                                               CatchUpReqMessage catchUpReqMessage,
+                                               Supplier<Set<PeerId>> peerIds) {
 
-        if (!peerIds.contains(peerId)) {
+        if (!peerIds.get().contains(peerId)) {
             throw new GrandpaGenericException("Requesting catching up from a non-peer.");
         }
 
@@ -323,10 +325,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
         BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlockHeader();
 
-        // Not sure if we have to get the preVotes for the selectedGrandpaRound or for the
-        // last finalized block at the moment of round is created (that is how it is implemented in kagome).
-
-        return CatchUpResMessage.builder()
+        CatchUpResMessage catchUpResMessage = CatchUpResMessage.builder()
                 .round(selectedGrandpaRound.getRoundNumber())
                 .setId(setId)
                 .preCommits(preCommits)
@@ -334,6 +333,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .blockHash(finalizedBlockHeader.getHash())
                 .blockNumber(finalizedBlockHeader.getBlockNumber())
                 .build();
+
+        messageCoordinator.sendCatchUpResponseToPeer(peerId, catchUpResMessage);
     }
 
     private Optional<GrandpaRound> selectRound(BigInteger peerRoundNumber, BigInteger peerSetId) {

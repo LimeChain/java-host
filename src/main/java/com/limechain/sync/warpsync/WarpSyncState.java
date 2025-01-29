@@ -6,7 +6,6 @@ import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
@@ -41,9 +40,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
@@ -277,23 +274,6 @@ public class WarpSyncState {
                 .compareTo(stateManager.getGrandpaSetState().getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
         }
-    }
-
-    public void initiateAndSendCatchUpRequest(NeighbourMessage neighbourMessage, PeerId peerId) {
-
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        var catchUpRequest = grandpaSetState.initiateCatchUpRequestMessage(neighbourMessage, peerId);
-        Optional.ofNullable(catchUpRequest)
-                .ifPresent(msg -> messageCoordinator.sendCatchUpRequestToPeer(peerId, msg));
-    }
-
-    public void initiateAndSendCatchUpResponse(PeerId peerId,
-                                               CatchUpReqMessage catchUpReqMessage,
-                                               Supplier<Set<PeerId>> peerIds) {
-
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        var catchUpResponse = grandpaSetState.initiateCatchUpResponseMessage(peerId, catchUpReqMessage, peerIds.get());
-        messageCoordinator.sendCatchUpResponseToPeer(peerId, catchUpResponse);
     }
 
     private void updateSetData(BigInteger setChangeBlock) {

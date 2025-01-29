@@ -54,5 +54,4 @@ public class GrandpaController {
     public void sendVoteMessage(byte[] encodedVoteMessage) {
         engine.writeCommitMessage(stream, encodedVoteMessage);
     }
-
 }
