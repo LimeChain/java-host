@@ -3,7 +3,6 @@ package com.limechain.sync.warpsync;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.grandpa.state.RoundCache;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
@@ -274,22 +273,6 @@ public class WarpSyncState {
         if (warpSyncFinished && neighbourMessage.getSetId()
                 .compareTo(stateManager.getGrandpaSetState().getSetId()) > 0) {
             updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
-        }
-    }
-
-    public void checkAndInitiateCatchUp(NeighbourMessage neighbourMessage, PeerId peerId) {
-
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        // If peer has the same voter set id
-        if (neighbourMessage.getSetId().equals(grandpaSetState.getSetId())) {
-            RoundCache roundCache = grandpaSetState.getRoundCache();
-            BigInteger latestRound = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
-
-            // Check if needed to catch-up peer
-            if (neighbourMessage.getRound().compareTo(latestRound) > 0) {
-                log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
-                messageCoordinator.sendCatchUpRequestToPeer(peerId);
-            }
         }
     }
 

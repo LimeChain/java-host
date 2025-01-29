@@ -37,6 +37,11 @@ public class GrandpaService extends NetworkService<Grandpa> {
                 );
     }
 
+    private void sendNeighbourMessage(Stream stream) {
+        GrandpaController controller = new GrandpaController(stream);
+        controller.sendNeighbourMessage();
+    }
+
     /**
      * Sends a commit message to a peer. If there is no initiator stream opened with the peer,
      * sends a handshake instead.
@@ -55,11 +60,45 @@ public class GrandpaService extends NetworkService<Grandpa> {
     }
 
     /**
+     * Sends a catch-up request message to a peer. If there is no initiator stream opened with the peer,
+     * sends a handshake instead.
+     *
+     * @param us                       our host object
+     * @param peerId                   message receiver
+     * @param encodedCatchUpReqMessage scale encoded representation of the CatchUpReqMessage object
+     */
+    public void sendCatchUpRequest(Host us, PeerId peerId, byte[] encodedCatchUpReqMessage) {
+        Optional.ofNullable(connectionManager.getPeerInfo(peerId))
+                .map(p -> p.getGrandpaStreams().getInitiator())
+                .ifPresentOrElse(
+                        stream -> new GrandpaController(stream).sendCatchUpRequest(encodedCatchUpReqMessage),
+                        () -> sendHandshake(us, peerId)
+                );
+    }
+
+    /**
+     * Sends a catch-up response message to a peer. If there is no initiator stream opened with the peer,
+     * sends a handshake instead.
+     *
+     * @param us                       our host object
+     * @param peerId                   message receiver
+     * @param encodedCatchUpResMessage scale encoded representation of the CatchUpResMessage object
+     */
+    public void sendCatchUpResponse(Host us, PeerId peerId, byte[] encodedCatchUpResMessage) {
+        Optional.ofNullable(connectionManager.getPeerInfo(peerId))
+                .map(p -> p.getGrandpaStreams().getInitiator())
+                .ifPresentOrElse(
+                        stream -> new GrandpaController(stream).sendCatchUpResponse(encodedCatchUpResMessage),
+                        () -> sendHandshake(us, peerId)
+                );
+    }
+
+    /**
      * Sends a vote message to a peer. If there is no initiator stream opened with the peer,
      * sends a handshake instead.
      *
-     * @param us                   our host object
-     * @param peerId               message receiver
+     * @param us                 our host object
+     * @param peerId             message receiver
      * @param encodedVoteMessage scale encoded representation of the VoteMessage object
      */
     public void sendVoteMessage(Host us, PeerId peerId, byte[] encodedVoteMessage) {
@@ -71,11 +110,6 @@ public class GrandpaService extends NetworkService<Grandpa> {
                 );
     }
 
-    private void sendNeighbourMessage(Stream stream) {
-        GrandpaController controller = new GrandpaController(stream);
-        controller.sendNeighbourMessage();
-    }
-
     public void sendHandshake(Host us, PeerId peerId) {
         try {
             GrandpaController controller = this.protocol.dialPeer(us, peerId, us.getAddressBook());
@@ -83,19 +117,5 @@ public class GrandpaService extends NetworkService<Grandpa> {
         } catch (Exception e) {
             log.warning("Failed to send Grandpa handshake to " + peerId);
         }
-    }
-
-    public void sendCatchUpRequest(Host us, PeerId peerId) {
-        Optional.ofNullable(connectionManager.getPeerInfo(peerId))
-                .map(p -> p.getGrandpaStreams().getInitiator())
-                .ifPresentOrElse(
-                        this::sendCatchUpRequest,
-                        () -> sendHandshake(us, peerId)
-                );
-    }
-
-    private void sendCatchUpRequest(Stream stream) {
-        GrandpaController controller = new GrandpaController(stream);
-        controller.sendCatchUpRequest();
     }
 }

@@ -86,8 +86,9 @@ public class CommonConfig {
     public GrandpaSetState grandpaSetState(RoundCache roundCache,
                                            KeyStore keyStore,
                                            KVRepository<String, Object> repository,
-                                           BlockState blockState) {
-        return new GrandpaSetState(blockState, roundCache, keyStore, repository);
+                                           BlockState blockState,
+                                           PeerMessageCoordinator messageCoordinator) {
+        return new GrandpaSetState(blockState, roundCache, keyStore, repository, messageCoordinator);
     }
 
     @Bean
