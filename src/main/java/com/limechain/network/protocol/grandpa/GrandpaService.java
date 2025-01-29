@@ -93,6 +93,23 @@ public class GrandpaService extends NetworkService<Grandpa> {
                 );
     }
 
+    /**
+     * Sends a vote message to a peer. If there is no initiator stream opened with the peer,
+     * sends a handshake instead.
+     *
+     * @param us                   our host object
+     * @param peerId               message receiver
+     * @param encodedVoteMessage scale encoded representation of the VoteMessage object
+     */
+    public void sendVoteMessage(Host us, PeerId peerId, byte[] encodedVoteMessage) {
+        Optional.ofNullable(connectionManager.getPeerInfo(peerId))
+                .map(p -> p.getGrandpaStreams().getInitiator())
+                .ifPresentOrElse(
+                        stream -> new GrandpaController(stream).sendVoteMessage(encodedVoteMessage),
+                        () -> sendHandshake(us, peerId)
+                );
+    }
+
     public void sendHandshake(Host us, PeerId peerId) {
         try {
             GrandpaController controller = this.protocol.dialPeer(us, peerId, us.getAddressBook());

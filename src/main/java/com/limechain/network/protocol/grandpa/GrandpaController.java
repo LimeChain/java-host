@@ -47,4 +47,12 @@ public class GrandpaController {
     public void sendCatchUpResponse(byte[] encodedCatchUpResMessage) {
         engine.writeCatchUpResponse(stream, encodedCatchUpResMessage);
     }
+
+    /**
+     * Sends a vote message over the controller stream.
+     */
+    public void sendVoteMessage(byte[] encodedVoteMessage) {
+        engine.writeCommitMessage(stream, encodedVoteMessage);
+    }
+
 }

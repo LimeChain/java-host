@@ -10,6 +10,8 @@ import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMes
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
@@ -123,5 +125,12 @@ public class PeerMessageCoordinator {
     public void sendCatchUpResponseToPeer(PeerId peerId, CatchUpResMessage catchUpResMessage) {
         byte[] scaleMessage = ScaleUtils.Encode.encode(CatchUpResMessageScaleWriter.getInstance(), catchUpResMessage);
         network.getGrandpaService().sendCatchUpResponse(network.getHost(), peerId, scaleMessage);
+    }
+
+    public void sendVoteMessageToPeers(VoteMessage voteMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(VoteMessageScaleWriter.getInstance(), voteMessage);
+        sendMessageToActivePeers(peerId -> asyncExecutor.executeAndForget(() -> network.getGrandpaService().sendVoteMessage(
+                network.getHost(), peerId, scaleMessage
+        )));
     }
 }
