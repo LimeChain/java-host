@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class GrandpaConsensusMessageReaderTest {
 
-    private final GrandpaConsensusMessageReader reader = new GrandpaConsensusMessageReader();
+    private final GrandpaConsensusMessageReader reader = GrandpaConsensusMessageReader.getInstance();
 
     @Test
     void testScheduledChangeInput() {

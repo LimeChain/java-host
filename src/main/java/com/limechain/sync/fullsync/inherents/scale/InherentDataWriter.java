@@ -5,10 +5,19 @@ import com.limechain.utils.scale.writers.PairWriter;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
 import io.emeraldpay.polkaj.scale.writer.ListWriter;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.io.IOException;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class InherentDataWriter implements ScaleWriter<InherentData> {
+
+    private static final InherentDataWriter INSTANCE = new InherentDataWriter();
+
+    public static InherentDataWriter getInstance() {
+        return INSTANCE;
+    }
 
     @Override
     public void write(ScaleCodecWriter scaleCodecWriter, InherentData inherentData) throws IOException {

@@ -11,6 +11,7 @@ import java.math.BigInteger;
 public class NeighbourMessageScaleReader implements ScaleReader<NeighbourMessage> {
 
     private static final NeighbourMessageScaleReader INSTANCE = new NeighbourMessageScaleReader();
+
     private final UInt64Reader uint64Reader;
 
     private NeighbourMessageScaleReader() {

@@ -10,10 +10,16 @@ import java.io.IOException;
 
 public class PreDigestWriter implements ScaleWriter<BabePreDigest> {
 
+    private static final PreDigestWriter  INSTANCE = new PreDigestWriter();
+
     private final UInt64Writer uint64Writer;
 
-    public PreDigestWriter() {
+    private PreDigestWriter() {
         this.uint64Writer = new UInt64Writer();
+    }
+
+    public static PreDigestWriter getInstance() {
+        return INSTANCE;
     }
 
     @Override

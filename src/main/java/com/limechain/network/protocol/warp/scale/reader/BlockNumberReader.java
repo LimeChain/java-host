@@ -12,16 +12,17 @@ import java.math.BigInteger;
  * Varint meaning variable length integer, i.e. its byte size may vary.
  */
 public class BlockNumberReader implements ScaleReader<BigInteger> {
-    private static final BlockNumberReader INSTANCE = new BlockNumberReader();
 
-    public static BlockNumberReader getInstance() {
-        return INSTANCE;
-    }
+    private static final BlockNumberReader INSTANCE = new BlockNumberReader();
 
     private final VarUint64Reader varUint64Reader;
 
     private BlockNumberReader() {
         this.varUint64Reader = new VarUint64Reader(BlockHeader.BLOCK_NUMBER_SIZE);
+    }
+
+    public static BlockNumberReader getInstance() {
+        return INSTANCE;
     }
 
     @Override

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class BlockNumberWriter implements ScaleWriter<BigInteger> {
+
     private static final BlockNumberWriter INSTANCE = new BlockNumberWriter();
 
     private final VarUint64Writer varUint64Writer;

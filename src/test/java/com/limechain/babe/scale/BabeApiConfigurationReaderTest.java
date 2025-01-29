@@ -12,7 +12,7 @@ import java.math.BigInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class BabeApiConfigurationReaderTest {
+class BabeApiConfigurationReaderTest {
     private static final String BABE_API_CONFIGURATION_HEX = "0x701700000000000060090000000000000100000000000000040000000000000018fa3437" +
             "b10f6e7af8f31362df3a179b991a8c56313d1bcd6307a4d0c734c1ae310100000000000000d2419bc8835493ac89eb09d5985281f5dff4bc6c7a7ea988fd23af" +
             "05f301580a0100000000000000ccb6bef60defc30724545d57440394ed1c71ea7ee6d880ed0e79871a05b5e40601000000000000005e67b64cf07d4d258a47df" +
@@ -23,7 +23,7 @@ public class BabeApiConfigurationReaderTest {
     @Test
     void decodeBabeApiConfigurationTest() {
         byte[] data = StringUtils.hexToBytes(BABE_API_CONFIGURATION_HEX);
-        BabeApiConfiguration babeApiConfiguration = ScaleUtils.Decode.decode(data, new BabeApiConfigurationReader());
+        BabeApiConfiguration babeApiConfiguration = ScaleUtils.Decode.decode(data, BabeApiConfigurationReader.getInstance());
         assertEquals(BigInteger.valueOf(6000), babeApiConfiguration.getSlotDuration());
         assertEquals(BigInteger.valueOf(2400), babeApiConfiguration.getEpochLength());
         assertNotNull(babeApiConfiguration.getConstant());

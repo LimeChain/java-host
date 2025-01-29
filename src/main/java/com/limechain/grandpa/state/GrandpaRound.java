@@ -4,6 +4,7 @@ import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.warp.dto.BlockHeader;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,6 +30,7 @@ public class GrandpaRound implements Serializable {
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
     private Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
     private SignedVote primaryVote;
+    private BlockHeader finalizedBlockHeader;
 
     private Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();

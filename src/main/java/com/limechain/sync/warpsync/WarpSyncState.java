@@ -3,7 +3,6 @@ package com.limechain.sync.warpsync;
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.grandpa.state.RoundCache;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
@@ -278,22 +277,6 @@ public class WarpSyncState {
         }
     }
 
-    public void checkAndInitiateCatchUp(NeighbourMessage neighbourMessage, PeerId peerId) {
-
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        // If peer has the same voter set id
-        if (neighbourMessage.getSetId().equals(grandpaSetState.getSetId())) {
-            RoundCache roundCache = grandpaSetState.getRoundCache();
-            BigInteger latestRound = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
-
-            // Check if needed to catch-up peer
-            if (neighbourMessage.getRound().compareTo(latestRound) > 0) {
-                log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
-                messageCoordinator.sendCatchUpRequestToPeer(peerId);
-            }
-        }
-    }
-
     private void updateSetData(BigInteger setChangeBlock) {
 
         List<BlockData> response = requester.requestBlockData(
@@ -309,13 +292,13 @@ public class WarpSyncState {
             return;
         }
 
-        Justification justification = new JustificationReader().read(
+        Justification justification = JustificationReader.getInstance().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
 
         boolean verified = JustificationVerifier.verify(justification);
 
         if (verified) {
-            BlockHeader header = new BlockHeaderReader().read(new ScaleCodecReader(block.getHeader().toByteArray()));
+            BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));
 
             stateManager.getSyncState().finalizeHeader(header);
 

@@ -10,6 +10,7 @@ import java.math.BigInteger;
  * Encodes a `u64` into a SCALE-encoded number whose number of bytes isn't known at compile-time.
  */
 public class VarUint64Writer implements ScaleWriter<BigInteger> {
+
     private final int blockNumSize;
 
     public VarUint64Writer(int blockNumSize) {

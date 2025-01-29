@@ -60,7 +60,7 @@ public class WarpSyncProtocol extends ProtocolHandler<WarpSyncController> {
         public CompletableFuture<WarpSyncResponse> send(WarpSyncRequest req) {
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
             try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-                writer.write(new WarpSyncRequestWriter(), req);
+                writer.write(WarpSyncRequestWriter.getInstance(), req);
             } catch (IOException e) {
                 throw new ScaleEncodingException(e);
             }

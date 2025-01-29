@@ -7,21 +7,26 @@ import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
 import com.limechain.network.protocol.warp.dto.PreCommit;
+import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
+import org.javatuples.Pair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.InvocationTargetException;
@@ -37,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -858,6 +864,67 @@ class GrandpaServiceTest {
 
         verify(peerMessageCoordinator, times(1))
                 .sendCommitMessageToPeers(any(CommitMessage.class));
+    }
+
+    @Test
+    void testBroadcastPreVoteMessage() {
+        BigInteger setId = BigInteger.TEN;
+        BigInteger roundNumber = BigInteger.ONE;
+        when(grandpaRound.getRoundNumber()).thenReturn(roundNumber);
+        when(stateManager.getGrandpaSetState()).thenReturn(grandpaSetState);
+        when(stateManager.getBlockState()).thenReturn(blockState);
+        when(grandpaSetState.getSetId()).thenReturn(setId);
+
+        Vote currentVote = new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(3));
+        Hash256 currentVoteAuthorityHash = new Hash256(ONES_ARRAY);
+        SignedVote currentSignedVote = new SignedVote(currentVote, Hash512.empty(), currentVoteAuthorityHash);
+        Vote primaryVote = new Vote(new Hash256(TWOS_ARRAY), BigInteger.valueOf(4));
+        Hash256 primaryVoteAuthorityHash = new Hash256(TWOS_ARRAY);
+        SignedVote primarySignedVote = new SignedVote(primaryVote, Hash512.empty(), primaryVoteAuthorityHash);
+
+        when(grandpaRound.getPrimaryVote()).thenReturn(primarySignedVote);
+        BlockHeader blockHeader = createBlockHeader();
+        blockHeader.setBlockNumber(BigInteger.valueOf(1));
+
+        when(grandpaSetState.getThreshold()).thenReturn(BigInteger.valueOf(1));
+        when(grandpaRound.getRoundNumber()).thenReturn(BigInteger.valueOf(1));
+
+        when(grandpaRound.getPreVotes()).thenReturn(Map.of(
+                currentVoteAuthorityHash, currentSignedVote
+        ));
+        GrandpaRound previousRound = new GrandpaRound();
+        previousRound.setBestFinalCandidate(new Vote(new Hash256(ONES_ARRAY), BigInteger.valueOf(2)));
+        when(grandpaRound.getPrevious()).thenReturn(previousRound);
+
+        byte[] privateKey = new byte[32];
+        byte[] publicKey = new byte[32];
+        Pair<byte[], byte[]> grandpaKeyPair = Pair.with(publicKey, privateKey);
+        try (MockedStatic<AbstractState> abstractStateMock = mockStatic(AbstractState.class)) {
+            abstractStateMock.when(AbstractState::getGrandpaKeyPair).thenReturn(grandpaKeyPair);
+
+            when(blockState.getLastFinalizedBlockAsVote())
+                    .thenReturn(new Vote(blockHeader.getHash(), blockHeader.getBlockNumber()));
+            when(blockState.isDescendantOf(currentVote.getBlockHash(), currentVote.getBlockHash())).thenReturn(true);
+
+            grandpaService.broadcastPreVoteMessage(grandpaRound);
+
+            ArgumentCaptor<VoteMessage> captor = ArgumentCaptor.forClass(VoteMessage.class);
+            verify(peerMessageCoordinator).sendVoteMessageToPeers(captor.capture());
+
+            VoteMessage capturedMessage = captor.getValue();
+
+            assertNotNull(capturedMessage);
+            assertEquals(roundNumber, capturedMessage.getRound());
+            assertEquals(setId, capturedMessage.getSetId());
+
+            SignedMessage signedMessage = capturedMessage.getMessage();
+            assertNotNull(signedMessage);
+            assertEquals(primaryVote.getBlockNumber(), signedMessage.getBlockNumber());
+            assertEquals(primaryVote.getBlockHash(), signedMessage.getBlockHash());
+            assertNotNull(signedMessage.getAuthorityPublicKey());
+            assertNotNull(signedMessage.getSignature());
+            assertEquals(Subround.PREVOTE, signedMessage.getStage());
+        }
     }
 
     private BlockHeader createBlockHeader() {

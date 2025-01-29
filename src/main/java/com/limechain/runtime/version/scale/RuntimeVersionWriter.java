@@ -4,11 +4,21 @@ import com.limechain.runtime.version.ApiVersions;
 import com.limechain.runtime.version.RuntimeVersion;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.io.IOException;
 import java.math.BigInteger;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class RuntimeVersionWriter implements ScaleWriter<RuntimeVersion> {
+
+    private static final RuntimeVersionWriter INSTANCE = new RuntimeVersionWriter();
+
+    public static RuntimeVersionWriter getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public void write(ScaleCodecWriter scaleCodecWriter, RuntimeVersion runtimeVersion) throws IOException {
         scaleCodecWriter.writeAsList(runtimeVersion.getSpecName().getBytes());

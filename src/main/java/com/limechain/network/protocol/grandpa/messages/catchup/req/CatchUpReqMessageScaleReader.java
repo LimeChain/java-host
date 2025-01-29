@@ -9,6 +9,7 @@ import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
 public class CatchUpReqMessageScaleReader implements ScaleReader<CatchUpReqMessage> {
 
     private static final CatchUpReqMessageScaleReader INSTANCE = new CatchUpReqMessageScaleReader();
+
     private final UInt64Reader uint64Reader;
 
     private CatchUpReqMessageScaleReader() {

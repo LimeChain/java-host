@@ -4,8 +4,14 @@ import com.limechain.network.kad.KademliaService;
 import com.limechain.network.protocol.blockannounce.NodeRole;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
 import com.limechain.network.protocol.blockannounce.scale.BlockAnnounceMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessageScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessageScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionWriter;
 import com.limechain.transaction.dto.Extrinsic;
 import com.limechain.transaction.dto.ExtrinsicArray;
@@ -52,7 +58,7 @@ public class PeerMessageCoordinator {
     }
 
     public void sendBlockAnnounceMessageExcludingPeer(BlockAnnounceMessage message, PeerId excluding) {
-        byte[] scaleMessage = ScaleUtils.Encode.encode(new BlockAnnounceMessageScaleWriter(), message);
+        byte[] scaleMessage = ScaleUtils.Encode.encode(BlockAnnounceMessageScaleWriter.getInstance(), message);
         sendMessageToActivePeers(p -> {
                     if (p.equals(excluding)) {
                         return;
@@ -73,7 +79,7 @@ public class PeerMessageCoordinator {
      */
     public void sendTransactionMessageExcludingPeer(Extrinsic extrinsic, Set<PeerId> peersToIgnore) {
         ExtrinsicArray extrinsicArray = new ExtrinsicArray(new Extrinsic[]{extrinsic});
-        byte[] scaleMessage = ScaleUtils.Encode.encode(new TransactionWriter(), extrinsicArray);
+        byte[] scaleMessage = ScaleUtils.Encode.encode(TransactionWriter.getInstance(), extrinsicArray);
 
         sendMessageToActivePeers(p -> {
             if (peersToIgnore.contains(p)) {
@@ -111,7 +117,20 @@ public class PeerMessageCoordinator {
         });
     }
 
-    public void sendCatchUpRequestToPeer(PeerId peerId) {
-        network.getGrandpaService().sendCatchUpRequest(network.getHost(), peerId);
+    public void sendCatchUpRequestToPeer(PeerId peerId, CatchUpReqMessage catchUpReqMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(CatchUpReqMessageScaleWriter.getInstance(), catchUpReqMessage);
+        network.getGrandpaService().sendCatchUpRequest(network.getHost(), peerId, scaleMessage);
+    }
+
+    public void sendCatchUpResponseToPeer(PeerId peerId, CatchUpResMessage catchUpResMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(CatchUpResMessageScaleWriter.getInstance(), catchUpResMessage);
+        network.getGrandpaService().sendCatchUpResponse(network.getHost(), peerId, scaleMessage);
+    }
+
+    public void sendVoteMessageToPeers(VoteMessage voteMessage) {
+        byte[] scaleMessage = ScaleUtils.Encode.encode(VoteMessageScaleWriter.getInstance(), voteMessage);
+        sendMessageToActivePeers(peerId -> asyncExecutor.executeAndForget(() -> network.getGrandpaService().sendVoteMessage(
+                network.getHost(), peerId, scaleMessage
+        )));
     }
 }

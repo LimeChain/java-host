@@ -66,7 +66,7 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public BabeApiConfiguration getBabeApiConfiguration() {
-        return ScaleUtils.Decode.decode(call(RuntimeEndpoint.BABE_API_CONFIGURATION), new BabeApiConfigurationReader());
+        return ScaleUtils.Decode.decode(call(RuntimeEndpoint.BABE_API_CONFIGURATION), BabeApiConfigurationReader.getInstance());
     }
 
     @Override
@@ -75,7 +75,7 @@ public class RuntimeImpl implements Runtime {
         byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(
                 new UInt64Writer(), slotNumber), authorityPublicKey);
         byte[] encodedResponse = call(RuntimeEndpoint.BABE_API_GENERATE_KEY_OWNERSHIP_PROOF, encodedProof);
-        return new ScaleCodecReader(encodedResponse).readOptional(new OpaqueKeyOwnershipProofReader());
+        return new ScaleCodecReader(encodedResponse).readOptional(OpaqueKeyOwnershipProofReader.getInstance());
     }
 
     @Override
@@ -83,7 +83,7 @@ public class RuntimeImpl implements Runtime {
                                                           byte[] keyOwnershipProof) {
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
              ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
-            new BlockEquivocationProofWriter().write(scaleCodecWriter, blockEquivocationProof);
+            BlockEquivocationProofWriter.getInstance().write(scaleCodecWriter, blockEquivocationProof);
             scaleCodecWriter.writeAsList(keyOwnershipProof);
             call(RuntimeEndpoint.BABE_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, buffer.toByteArray());
         } catch (IOException e) {
@@ -97,7 +97,7 @@ public class RuntimeImpl implements Runtime {
                 ScaleCodecWriter::writeByteArray, StringUtils.hexToBytes(sessionKeys));
         byte[] encodedResponse = call(RuntimeEndpoint.SESSION_KEYS_DECODE_SESSION_KEYS, encodedRequest);
 
-        return ScaleUtils.Decode.decode(encodedResponse, new DecodedKeysReader());
+        return ScaleUtils.Decode.decode(encodedResponse, DecodedKeysReader.getInstance());
     }
 
     @Override
@@ -107,21 +107,21 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public RuntimeVersion getVersion() {
-        return ScaleUtils.Decode.decode(call(RuntimeEndpoint.CORE_VERSION), new RuntimeVersionReader());
+        return ScaleUtils.Decode.decode(call(RuntimeEndpoint.CORE_VERSION), RuntimeVersionReader.getInstance());
     }
 
     @Override
     public TransactionValidationResponse validateTransaction(TransactionValidationRequest request) {
-        byte[] encodedRequest = ScaleUtils.Encode.encode(new TransactionValidationWriter(), request);
+        byte[] encodedRequest = ScaleUtils.Encode.encode(TransactionValidationWriter.getInstance(), request);
         byte[] encodedResponse = callAndBackup(RuntimeEndpoint.TRANSACTION_QUEUE_VALIDATE_TRANSACTION, encodedRequest);
 
-        return ScaleUtils.Decode.decode(encodedResponse, new TransactionValidationReader());
+        return ScaleUtils.Decode.decode(encodedResponse, TransactionValidationReader.getInstance());
     }
 
     @Override
     public BlockHeader finalizeBlock() {
         byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_FINALIZE_BLOCK);
-        return ScaleUtils.Decode.decode(encodedResponse, new BlockHeaderReader());
+        return ScaleUtils.Decode.decode(encodedResponse, BlockHeaderReader.getInstance());
     }
 
 
@@ -136,15 +136,15 @@ public class RuntimeImpl implements Runtime {
         byte[] encodedRequest = ScaleUtils.Encode.encodeAsListOfBytes(ByteArrayUtils.toIterable(extrinsic.getData()));
         byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_APPLY_EXTRINISIC, encodedRequest);
 
-        return ScaleUtils.Decode.decode(encodedResponse, new ApplyExtrinsicResultReader());
+        return ScaleUtils.Decode.decode(encodedResponse, ApplyExtrinsicResultReader.getInstance());
     }
 
     @Override
     public ExtrinsicArray inherentExtrinsics(com.limechain.babe.dto.InherentData inherentData) {
-        byte[] encodedRequest = ScaleUtils.Encode.encode(new BlockInherentsWriter(), inherentData);
+        byte[] encodedRequest = ScaleUtils.Encode.encode(BlockInherentsWriter.getInstance(), inherentData);
         byte[] encodedResponse = call(RuntimeEndpoint.BLOCKBUILDER_INHERENT_EXTRINISICS, encodedRequest);
 
-        return ScaleUtils.Decode.decode(encodedResponse, new TransactionReader());
+        return ScaleUtils.Decode.decode(encodedResponse, TransactionReader.getInstance());
     }
 
     @Override
@@ -199,7 +199,7 @@ public class RuntimeImpl implements Runtime {
 
     private byte[] serializeCheckInherentsParameter(Block block, InherentData inherentData) {
         byte[] executeBlockParameter = serializeExecuteBlockParameter(block);
-        byte[] scaleEncodedInherentData = ScaleUtils.Encode.encode(new InherentDataWriter(), inherentData);
+        byte[] scaleEncodedInherentData = ScaleUtils.Encode.encode(InherentDataWriter.getInstance(), inherentData);
         return ArrayUtils.addAll(executeBlockParameter, scaleEncodedInherentData);
     }
 
@@ -279,7 +279,7 @@ public class RuntimeImpl implements Runtime {
     @Override
     public List<Authority> getGrandpaApiAuthorities() {
         return ScaleUtils.Decode.decode(
-                call(RuntimeEndpoint.GRANDPA_API_GRANDPA_AUTHORITIES), new ListReader<>(new AuthorityReader())
+                call(RuntimeEndpoint.GRANDPA_API_GRANDPA_AUTHORITIES), new ListReader<>(AuthorityReader.getInstance())
         );
     }
 
