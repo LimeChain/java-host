@@ -8,7 +8,9 @@ import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import java.io.IOException;
 
 public class CommitMessageScaleWriter implements ScaleWriter<CommitMessage> {
+
     private static final CommitMessageScaleWriter INSTANCE = new CommitMessageScaleWriter();
+
     private final UInt64Writer uint64Writer;
     private final VoteScaleWriter voteScaleWriter;
     private final CompactJustificationScaleWriter compactJustificationScaleWriter;

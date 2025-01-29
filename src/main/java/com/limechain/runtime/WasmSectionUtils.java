@@ -55,7 +55,7 @@ public class WasmSectionUtils {
 
         // Construct the runtime version partially uninitialized,
         // and then immediately set its apis we've read from the custom section.
-        RuntimeVersion version = ScaleUtils.Decode.decode(runtimeVersion.bytes(), new RuntimeVersionReader());
+        RuntimeVersion version = ScaleUtils.Decode.decode(runtimeVersion.bytes(), RuntimeVersionReader.getInstance());
         version.setApis(apiVersions);
 
         return version;

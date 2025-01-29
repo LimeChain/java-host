@@ -7,6 +7,7 @@ import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
 
 public class VoteMessageScaleReader implements ScaleReader<VoteMessage> {
+
     private static final VoteMessageScaleReader INSTANCE = new VoteMessageScaleReader();
 
     private final UInt64Reader uint64Reader;

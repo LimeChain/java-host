@@ -4,14 +4,15 @@ import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.math.BigInteger;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class SignedMessageScaleReader implements ScaleReader<SignedMessage> {
-    private static final SignedMessageScaleReader INSTANCE = new SignedMessageScaleReader();
 
-    private SignedMessageScaleReader() {
-    }
+    private static final SignedMessageScaleReader INSTANCE = new SignedMessageScaleReader();
 
     public static SignedMessageScaleReader getInstance() {
         return INSTANCE;

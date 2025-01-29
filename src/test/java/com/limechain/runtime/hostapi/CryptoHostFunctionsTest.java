@@ -521,7 +521,7 @@ class CryptoHostFunctionsTest {
     private byte[] toEncodedResult(byte[] data) {
         try (ByteArrayOutputStream buf = new ByteArrayOutputStream();
              ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            ResultWriter resultWriter = new ResultWriter();
+            ResultWriter resultWriter = ResultWriter.getInstance();
             resultWriter.writeResult(writer, true);
             resultWriter.write(writer, data);
             return buf.toByteArray();

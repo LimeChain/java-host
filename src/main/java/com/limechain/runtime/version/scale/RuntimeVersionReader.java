@@ -5,10 +5,20 @@ import com.limechain.runtime.version.RuntimeVersion;
 import com.limechain.runtime.version.StateVersion;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.math.BigInteger;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class RuntimeVersionReader implements ScaleReader<RuntimeVersion> {
+
+    private static final RuntimeVersionReader INSTANCE = new RuntimeVersionReader();
+
+    public static RuntimeVersionReader getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public RuntimeVersion read(ScaleCodecReader reader) {
         RuntimeVersion runtimeVersion = new RuntimeVersion();

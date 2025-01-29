@@ -73,7 +73,7 @@ public class BlockAnnounceEngine {
             stream.close();
         } else {
             ScaleCodecReader reader = new ScaleCodecReader(msg);
-            BlockAnnounceHandshake handshake = reader.read(new BlockAnnounceHandshakeScaleReader());
+            BlockAnnounceHandshake handshake = reader.read(BlockAnnounceHandshakeScaleReader.getInstance());
             connectionManager.addBlockAnnounceStream(stream);
             connectionManager.updatePeer(peerId, handshake);
             log.log(Level.INFO, "Received handshake from " + peerId + "\n" +
@@ -83,7 +83,7 @@ public class BlockAnnounceEngine {
     }
 
     private void handleBlockAnnounce(byte[] msg, PeerId peerId) {
-        BlockAnnounceMessage announce = ScaleUtils.Decode.decode(msg, new BlockAnnounceMessageScaleReader());
+        BlockAnnounceMessage announce = ScaleUtils.Decode.decode(msg, BlockAnnounceMessageScaleReader.getInstance());
         connectionManager.updatePeer(peerId, announce);
         //TODO Yordan: Do we actually need this since each block has a runtime?
         warpSyncState.syncBlockAnnounce(announce);
@@ -102,7 +102,7 @@ public class BlockAnnounceEngine {
     public void writeHandshakeToStream(Stream stream, PeerId peerId) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new BlockAnnounceHandshakeScaleWriter(), handshakeBuilder.getBlockAnnounceHandshake());
+            writer.write(BlockAnnounceHandshakeScaleWriter.getInstance(), handshakeBuilder.getBlockAnnounceHandshake());
         } catch (IOException e) {
             throw new ScaleEncodingException(e);
         }

@@ -647,7 +647,7 @@ public class CryptoHostFunctions implements PartialHostApi {
     }
 
     private long secp2561kScaleKeyResult(byte[] rawBytes) {
-        ResultWriter resultWriter = new ResultWriter();
+        ResultWriter resultWriter = ResultWriter.getInstance();
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(baos)) {
 

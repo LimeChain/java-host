@@ -14,7 +14,7 @@ public class WarpSyncResponseDecoder extends ByteToMessageDecoder {
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf in, List<Object> out) {
         byte[] messageBytes = new byte[in.readableBytes()];
         in.readBytes(messageBytes);
-        WarpSyncResponse response = new WarpSyncResponseScaleReader().read(new ScaleCodecReader(messageBytes));
+        WarpSyncResponse response = WarpSyncResponseScaleReader.getInstance().read(new ScaleCodecReader(messageBytes));
         out.add(response);
     }
 }

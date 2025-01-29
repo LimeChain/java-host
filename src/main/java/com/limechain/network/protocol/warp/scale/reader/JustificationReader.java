@@ -7,8 +7,18 @@ import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.UInt64Reader;
 import io.emeraldpay.polkaj.types.Hash256;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class JustificationReader implements ScaleReader<Justification> {
+
+    private static final JustificationReader INSTANCE = new JustificationReader();
+
+    public static JustificationReader getInstance() {
+        return INSTANCE;
+    }
+
     @Override
     public Justification read(ScaleCodecReader reader) {
         Justification justification = new Justification();
@@ -21,7 +31,7 @@ public class JustificationReader implements ScaleReader<Justification> {
 
         int preCommitsCount = reader.readCompactInt();
         PreCommit[] preCommits = new PreCommit[preCommitsCount];
-        PreCommitReader preCommitReader = new PreCommitReader();
+        PreCommitReader preCommitReader = PreCommitReader.getInstance();
         for (int i = 0; i < preCommitsCount; i++) {
             preCommits[i] = preCommitReader.read(reader);
         }
@@ -29,7 +39,7 @@ public class JustificationReader implements ScaleReader<Justification> {
 
         int ancestryCount = reader.readCompactInt();
         BlockHeader[] ancestries = new BlockHeader[ancestryCount];
-        BlockHeaderReader blockHeaderReader = new BlockHeaderReader();
+        BlockHeaderReader blockHeaderReader = BlockHeaderReader.getInstance();
         for (int i = 0; i < ancestryCount; i++) {
             ancestries[i] = blockHeaderReader.read(reader);
         }

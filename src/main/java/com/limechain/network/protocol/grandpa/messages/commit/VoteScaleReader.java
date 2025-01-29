@@ -6,6 +6,7 @@ import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.types.Hash256;
 
 public class VoteScaleReader implements ScaleReader<Vote> {
+
     private static final VoteScaleReader INSTANCE = new VoteScaleReader();
 
     public static VoteScaleReader getInstance() {

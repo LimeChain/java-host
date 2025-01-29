@@ -4,17 +4,25 @@ import com.limechain.network.protocol.grandpa.messages.commit.VoteScaleWriter;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
 import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.io.IOException;
 
 public class FullVoteScaleWriter implements ScaleWriter<FullVote> {
 
+    private static final FullVoteScaleWriter INSTANCE = new FullVoteScaleWriter();
+
     private final UInt64Writer uint64Writer;
     private final VoteScaleWriter voteScaleWriter;
 
-    public FullVoteScaleWriter() {
+    private FullVoteScaleWriter() {
         this.uint64Writer = new UInt64Writer();
         this.voteScaleWriter = new VoteScaleWriter();
+    }
+
+    public static FullVoteScaleWriter getInstance() {
+        return INSTANCE;
     }
 
     @Override

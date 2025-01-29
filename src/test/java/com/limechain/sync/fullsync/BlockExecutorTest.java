@@ -71,7 +71,7 @@ class BlockExecutorTest {
         header.setBlockNumber(BigInteger.valueOf(1));
         header.setStateRoot(Hash256.from("0xfabb0c6e92d29e8bb2167f3c6fb0ddeb956a4278a3cf853661af74a076fc9cb7"));
         header.setExtrinsicsRoot(Hash256.from("0xa35fb7f7616f5c979d48222b3d2fa7cb2331ef73954726714d91ca945cc34fd8"));
-        header.setDigest(ScaleUtils.Decode.decodeList(scaleEncodedDigest, new HeaderDigestReader()).toArray(HeaderDigest[]::new));
+        header.setDigest(ScaleUtils.Decode.decodeList(scaleEncodedDigest, HeaderDigestReader.getInstance()).toArray(HeaderDigest[]::new));
 
         var exts = ScaleUtils.Decode.decodeList(scaleEncodedBody, ScaleCodecReader::readByteArray);
         assertEquals(2, exts.size());

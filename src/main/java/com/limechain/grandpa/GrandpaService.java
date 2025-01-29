@@ -515,7 +515,7 @@ public class GrandpaService {
         fullVote.setVote(bestPreVoteCandidate);
         fullVote.setStage(Subround.PREVOTE);
 
-        byte[] encodedFullVote = ScaleUtils.Encode.encode(new FullVoteScaleWriter(), fullVote);
+        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
 
         SignedMessage signedMessage = new SignedMessage();
         signedMessage.setStage(fullVote.getStage());

@@ -27,9 +27,16 @@ class BlockAnnounceMessageScaleTest {
         blockAnnounceMessage.setHeader(blockHeader);
         blockAnnounceMessage.setBestBlock(true);
 
-        byte[] encodedBlockAnnounceMessage = ScaleUtils.Encode.encode(new BlockAnnounceMessageScaleWriter(), blockAnnounceMessage);
+        byte[] encodedBlockAnnounceMessage = ScaleUtils.Encode.encode(
+                BlockAnnounceMessageScaleWriter.getInstance(),
+                blockAnnounceMessage
+        );
 
-        BlockAnnounceMessage decodedBlockAnnounceMessage = ScaleUtils.Decode.decode(encodedBlockAnnounceMessage, new BlockAnnounceMessageScaleReader());
+        BlockAnnounceMessage decodedBlockAnnounceMessage = ScaleUtils.Decode.decode(
+                encodedBlockAnnounceMessage,
+                BlockAnnounceMessageScaleReader.getInstance()
+        );
+
         assertEquals(blockAnnounceMessage.isBestBlock(), decodedBlockAnnounceMessage.isBestBlock());
 
         BlockHeader decodedHeader = decodedBlockAnnounceMessage.getHeader();

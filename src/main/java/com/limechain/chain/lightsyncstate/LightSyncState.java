@@ -32,13 +32,13 @@ public class LightSyncState {
         }
 
         var state = new LightSyncState();
-        state.finalizedBlockHeader = new BlockHeaderReader()
+        state.finalizedBlockHeader = BlockHeaderReader.getInstance()
                 .read(new ScaleCodecReader(StringUtils.hexToBytes(header)));
 
-        state.epochChanges = new EpochChangesReader()
+        state.epochChanges = EpochChangesReader.getInstance()
                 .read(new ScaleCodecReader(StringUtils.hexToBytes(epochChanges)));
 
-        state.grandpaAuthoritySet = new AuthoritySetReader()
+        state.grandpaAuthoritySet = AuthoritySetReader.getInstance()
                 .read(new ScaleCodecReader(StringUtils.hexToBytes(grandpaAuthoritySet)));
 
         return state;

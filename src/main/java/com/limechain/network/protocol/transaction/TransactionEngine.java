@@ -115,7 +115,7 @@ public class TransactionEngine {
 
     private void handleTransactionMessage(byte[] message, Stream stream) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
-        ExtrinsicArray transactions = reader.read(new TransactionReader());
+        ExtrinsicArray transactions = reader.read(TransactionReader.getInstance());
         log.log(Level.FINE, "Received " + transactions.getExtrinsics().length + " transactions from Peer "
                 + stream.remotePeerId());
 

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,7 +24,7 @@ class BlockAnnounceHandshakeScaleReaderTest {
         byte[] encodedBytes = byteString.toByteArray();
 
         ScaleCodecReader reader = new ScaleCodecReader(encodedBytes);
-        BlockAnnounceHandshake decoded = reader.read(new BlockAnnounceHandshakeScaleReader());
+        BlockAnnounceHandshake decoded = reader.read(BlockAnnounceHandshakeScaleReader.getInstance());
 
         assertEquals(4, decoded.getNodeRole());
         assertEquals(BigInteger.valueOf(77), decoded.getBestBlock());
@@ -47,10 +48,10 @@ class BlockAnnounceHandshakeScaleReaderTest {
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (ScaleCodecWriter writer = new ScaleCodecWriter(buf)) {
-            writer.write(new BlockAnnounceHandshakeScaleWriter(), dataToEncode);
+            writer.write(BlockAnnounceHandshakeScaleWriter.getInstance(), dataToEncode);
             byte[] encoded = buf.toByteArray();
 
-            assertTrue(Arrays.equals(encoded, expected));
+            assertArrayEquals(encoded, expected);
         } catch (IOException e) {
             e.printStackTrace();
         }

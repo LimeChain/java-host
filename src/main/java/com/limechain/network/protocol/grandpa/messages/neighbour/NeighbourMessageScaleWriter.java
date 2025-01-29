@@ -8,6 +8,7 @@ import io.emeraldpay.polkaj.scale.writer.UInt64Writer;
 import java.io.IOException;
 
 public class NeighbourMessageScaleWriter implements ScaleWriter<NeighbourMessage> {
+
     private static final NeighbourMessageScaleWriter INSTANCE = new NeighbourMessageScaleWriter();
 
     private final UInt64Writer uint64Writer;

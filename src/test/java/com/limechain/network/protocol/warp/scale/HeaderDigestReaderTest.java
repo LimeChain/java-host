@@ -22,7 +22,7 @@ class HeaderDigestReaderTest {
         assertEquals(3, len);
 
         for (int i = 0; i < len; i++) {
-            HeaderDigest decoded = new HeaderDigestReader().read(reader);
+            HeaderDigest decoded = HeaderDigestReader.getInstance().read(reader);
             switch (i) {
                 case 0 -> {
                     assertEquals(DigestType.PRE_RUNTIME, decoded.getType());
@@ -51,7 +51,7 @@ class HeaderDigestReaderTest {
         String encoded = "06424142451001030507";
         ByteString byteString = ByteString.fromHex(encoded);
         byte[] bytes = byteString.toByteArray();
-        HeaderDigest decoded = new HeaderDigestReader().read(new ScaleCodecReader(bytes));
+        HeaderDigest decoded = HeaderDigestReader.getInstance().read(new ScaleCodecReader(bytes));
 
         assertEquals(ConsensusEngine.BABE, decoded.getId());
         assertEquals(DigestType.PRE_RUNTIME, decoded.getType());
@@ -63,7 +63,7 @@ class HeaderDigestReaderTest {
         String encoded = "04424142451001030507";
         ByteString byteString = ByteString.fromHex(encoded);
         byte[] bytes = byteString.toByteArray();
-        HeaderDigest decoded = new HeaderDigestReader().read(new ScaleCodecReader(bytes));
+        HeaderDigest decoded = HeaderDigestReader.getInstance().read(new ScaleCodecReader(bytes));
 
         assertEquals(ConsensusEngine.BABE, decoded.getId());
         assertEquals(DigestType.CONSENSUS_MESSAGE, decoded.getType());
@@ -75,7 +75,7 @@ class HeaderDigestReaderTest {
         String encoded = "05424142451001030507";
         ByteString byteString = ByteString.fromHex(encoded);
         byte[] bytes = byteString.toByteArray();
-        HeaderDigest decoded = new HeaderDigestReader().read(new ScaleCodecReader(bytes));
+        HeaderDigest decoded = HeaderDigestReader.getInstance().read(new ScaleCodecReader(bytes));
 
         assertEquals(ConsensusEngine.BABE, decoded.getId());
         assertEquals(DigestType.SEAL, decoded.getType());
