@@ -1,6 +1,7 @@
 package com.limechain.grandpa.state;
 
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.grandpa.round.RoundCache;
 import com.limechain.utils.Ed25519Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

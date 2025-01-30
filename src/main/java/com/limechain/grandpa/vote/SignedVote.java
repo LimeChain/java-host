@@ -1,6 +1,5 @@
-package com.limechain.network.protocol.grandpa.messages.catchup.res;
+package com.limechain.grandpa.vote;
 
-import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
 import lombok.AllArgsConstructor;
@@ -13,6 +12,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SignedVote implements Serializable {
+
     private Vote vote;
     private Hash512 signature;
     private Hash256 authorityPublicKey;

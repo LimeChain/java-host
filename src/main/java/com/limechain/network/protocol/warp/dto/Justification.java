@@ -12,6 +12,7 @@ import java.util.Arrays;
 @Getter
 @Log
 public class Justification {
+
     private BigInteger round;
     private Hash256 targetHash;
     private BigInteger targetBlock;

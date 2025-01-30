@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.grandpa.messages.vote;
 
+import com.limechain.grandpa.vote.SubRound;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
 import lombok.AllArgsConstructor;
@@ -12,7 +13,7 @@ import java.math.BigInteger;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SignedMessage {
-    private Subround stage;
+    private SubRound stage;
     private Hash256 blockHash;
     private BigInteger blockNumber;
     private Hash512 signature;

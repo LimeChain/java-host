@@ -4,15 +4,17 @@ import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
 import com.limechain.exception.grandpa.GrandpaGenericException;
+import com.limechain.grandpa.round.GrandpaRound;
+import com.limechain.grandpa.round.RoundCache;
+import com.limechain.grandpa.vote.SignedVote;
+import com.limechain.grandpa.vote.SubRound;
+import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
-import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
-import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
@@ -172,12 +174,12 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         this.setId = setId.add(BigInteger.ONE);
         this.authorities = authorities;
 
-        var lastFinalizedBlock = blockState.getLastFinalizedBlockAsVote();
+        BlockHeader lastFinalized = blockState.getHighestFinalizedHeader();
 
         GrandpaRound initGrandpaRound = new GrandpaRound();
         initGrandpaRound.setRoundNumber(BigInteger.ZERO);
-        initGrandpaRound.setPreVotedBlock(lastFinalizedBlock);
-        initGrandpaRound.setBestFinalCandidate(lastFinalizedBlock);
+        initGrandpaRound.setGrandpaGhost(lastFinalized);
+        initGrandpaRound.setLastFinalizedBlock(lastFinalized);
 
         roundCache.addRound(setId, initGrandpaRound);
         // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
@@ -188,6 +190,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
         roundCache.addRound(setId, grandpaRound);
 
+        // TODO Move up. If we are not an authority no need to to anything in the set.
         updateAuthorityStatus();
 
         log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
@@ -261,10 +264,10 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             roundCache.addRound(voteMessageSetId, round);
         }
 
-        Subround subround = signedMessage.getStage();
+        SubRound subround = signedMessage.getStage();
         switch (subround) {
-            case PREVOTE -> round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            case PRECOMMIT -> round.getPreCommits().put(signedMessage.getAuthorityPublicKey(), signedVote);
+            case PRE_VOTE -> round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
+            case PRE_COMMIT -> round.getPreCommits().put(signedMessage.getAuthorityPublicKey(), signedVote);
             case PRIMARY_PROPOSAL -> {
                 round.setPrimaryVote(signedVote);
                 round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
@@ -323,7 +326,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         SignedVote[] preCommits = selectedGrandpaRound.getPreCommits().values().toArray(SignedVote[]::new);
         SignedVote[] preVotes = selectedGrandpaRound.getPreVotes().values().toArray(SignedVote[]::new);
 
-        BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlockHeader();
+        BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlock();
 
         CatchUpResMessage catchUpResMessage = CatchUpResMessage.builder()
                 .round(selectedGrandpaRound.getRoundNumber())

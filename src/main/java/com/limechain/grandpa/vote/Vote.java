@@ -1,4 +1,4 @@
-package com.limechain.network.protocol.grandpa.messages.commit;
+package com.limechain.grandpa.vote;
 
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.AllArgsConstructor;
@@ -12,6 +12,7 @@ import java.math.BigInteger;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Vote implements Serializable {
+
     private Hash256 blockHash;
     private BigInteger blockNumber;
 }
