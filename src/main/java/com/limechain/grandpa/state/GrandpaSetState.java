@@ -187,7 +187,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
         GrandpaRound grandpaRound = new GrandpaRound();
         grandpaRound.setRoundNumber(BigInteger.ONE);
-        grandpaRound.setPrevious(initGrandpaRound);
 
         roundCache.addRound(setId, grandpaRound);
 
