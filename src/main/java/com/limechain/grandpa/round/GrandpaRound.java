@@ -70,7 +70,7 @@ public class GrandpaRound implements Serializable {
     private final Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private final Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
 
-    private transient final List<CommitMessage> commitMessagesArchive = new ArrayList<>();
+    private final transient List<CommitMessage> commitMessagesArchive = new ArrayList<>();
 
     public BlockHeader getGrandpaGhost() {
         if (grandpaGhost == null) throw new GrandpaGenericException("Grandpa GHOST has not been set.");
