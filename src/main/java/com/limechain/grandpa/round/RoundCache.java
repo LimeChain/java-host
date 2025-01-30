@@ -1,4 +1,4 @@
-package com.limechain.grandpa.state;
+package com.limechain.grandpa.round;
 
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import org.springframework.stereotype.Component;

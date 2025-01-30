@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.grandpa.messages.catchup.res;
 
+import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.VoteScaleWriter;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;

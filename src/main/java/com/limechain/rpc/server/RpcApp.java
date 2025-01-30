@@ -18,14 +18,13 @@ import java.util.Map;
 @ComponentScan(basePackages = {
         "com.limechain.babe",
         "com.limechain.grandpa",
+        "com.limechain.network",
         "com.limechain.rpc.config",
         "com.limechain.rpc.methods",
         "com.limechain.rpc.server",
+        "com.limechain.runtime",
         "com.limechain.storage",
         "com.limechain.sync.state",
-        "com.limechain.grandpa.state",
-        "com.limechain.network",
-        "com.limechain.runtime",
         "com.limechain.transaction"
 })
 public class RpcApp {

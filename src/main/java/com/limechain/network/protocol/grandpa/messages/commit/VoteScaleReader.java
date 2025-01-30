@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
+import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.protocol.warp.scale.reader.BlockNumberReader;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
