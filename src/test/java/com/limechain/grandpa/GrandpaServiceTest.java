@@ -14,7 +14,6 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.ConsensusEngine;
 import com.limechain.network.protocol.warp.dto.DigestType;
 import com.limechain.network.protocol.warp.dto.HeaderDigest;
-import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
@@ -854,9 +853,9 @@ class GrandpaServiceTest {
         assertEquals(blockHeader.getHash(), commitMessage.getVote().getBlockHash());
         assertEquals(1, commitMessage.getPreCommits().length);
 
-        PreCommit precommit = commitMessage.getPreCommits()[0];
-        assertEquals(vote.getBlockHash(), precommit.getTargetHash());
-        assertEquals(BigInteger.valueOf(123L), precommit.getTargetNumber());
+        SignedVote precommit = commitMessage.getPreCommits()[0];
+        assertEquals(vote.getBlockHash(), precommit.getVote().getBlockHash());
+        assertEquals(BigInteger.valueOf(123L), precommit.getVote().getBlockNumber());
         assertEquals(Hash512.empty(), precommit.getSignature());
         assertEquals(signedVotes.get(authorityPublicKey).getAuthorityPublicKey(),
                 precommit.getAuthorityPublicKey()

@@ -14,7 +14,6 @@ import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
@@ -490,7 +489,7 @@ public class GrandpaService {
      */
     private void broadcastCommitMessage(GrandpaRound grandpaRound) {
         Vote bestCandidate = findBestFinalCandidate(grandpaRound);
-        PreCommit[] preCommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
+        SignedVote[] preCommits = grandpaRound.getPreCommits().values().toArray(new SignedVote[0]);
 
         CommitMessage commitMessage = new CommitMessage();
         commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
@@ -536,17 +535,5 @@ public class GrandpaService {
         voteMessage.setMessage(signedMessage);
 
         peerMessageCoordinator.sendVoteMessageToPeers(voteMessage);
-    }
-
-    private PreCommit[] transformToCompactJustificationFormat(Map<Hash256, SignedVote> signedVotes) {
-        return signedVotes.values().stream()
-                .map(signedVote -> {
-                    PreCommit precommit = new PreCommit();
-                    precommit.setTargetHash(signedVote.getVote().getBlockHash());
-                    precommit.setTargetNumber(signedVote.getVote().getBlockNumber());
-                    precommit.setSignature(signedVote.getSignature());
-                    precommit.setAuthorityPublicKey(signedVote.getAuthorityPublicKey());
-                    return precommit;
-                }).toArray(PreCommit[]::new);
     }
 }

@@ -2,9 +2,10 @@ package com.limechain.sync;
 
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.Justification;
-import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.hostapi.dto.Key;
 import com.limechain.runtime.hostapi.dto.VerifySignature;
@@ -45,7 +46,7 @@ public class JustificationVerifier {
 
         // Implementation from: https://github.com/smol-dot/smoldot
         // lib/src/finality/justification/verify.rs
-        if (BigInteger.valueOf(justification.getPreCommits().length).compareTo(threshold) < 0) {
+        if (BigInteger.valueOf(justification.getSignedVotes().length).compareTo(threshold) < 0) {
             log.log(Level.WARNING, "Not enough signatures");
             return false;
         }
@@ -58,24 +59,28 @@ public class JustificationVerifier {
 
         BigInteger authoritiesSetId = grandpaSetState.getSetId();
 
-        for (PreCommit preCommit : justification.getPreCommits()) {
+        for (SignedVote signedVote : justification.getSignedVotes()) {
 
-            if (!authorityKeys.contains(preCommit.getAuthorityPublicKey())) {
-                log.log(Level.WARNING, "Invalid Authority for preCommit");
+            if (!authorityKeys.contains(signedVote.getAuthorityPublicKey())) {
+                log.log(Level.WARNING, "Invalid Authority for vote");
                 return false;
             }
 
-            if (seenPublicKeys.contains(preCommit.getAuthorityPublicKey())) {
+            if (seenPublicKeys.contains(signedVote.getAuthorityPublicKey())) {
                 log.log(Level.WARNING, "Duplicated signature");
                 return false;
             }
-            seenPublicKeys.add(preCommit.getAuthorityPublicKey());
+            seenPublicKeys.add(signedVote.getAuthorityPublicKey());
 
-            byte[] data = getDataToVerify(preCommit, authoritiesSetId, justification.getRoundNumber());
+            byte[] data = getDataToVerify(
+                    signedVote.getVote(),
+                    authoritiesSetId,
+                    justification.getRoundNumber()
+            );
 
             boolean isValid = verifySignature(
-                    preCommit.getAuthorityPublicKey().toString(),
-                    preCommit.getSignature().toString(),
+                    signedVote.getAuthorityPublicKey().toString(),
+                    signedVote.getSignature().toString(),
                     data
             );
 
@@ -84,8 +89,8 @@ public class JustificationVerifier {
                 return false;
             }
 
-            if (!blockState.isDescendantOf(justification.getTargetHash(), preCommit.getTargetHash())) {
-                log.log(Level.WARNING, "PreCommit block is not a descendant of the target block");
+            if (!blockState.isDescendantOf(justification.getTargetHash(), signedVote.getVote().getBlockHash())) {
+                log.log(Level.WARNING, "Vote block is not a descendant of the target block");
                 return false;
             }
         }
@@ -102,7 +107,7 @@ public class JustificationVerifier {
         return true;
     }
 
-    private static byte[] getDataToVerify(PreCommit preCommit, BigInteger authoritiesSetId, BigInteger round) {
+    private static byte[] getDataToVerify(Vote vote, BigInteger authoritiesSetId, BigInteger round) {
         // 1 reserved byte for data type
         // 32 reserved for target hash
         // 4 reserved for block number
@@ -116,10 +121,10 @@ public class JustificationVerifier {
         messageBuffer.put((byte) 1);
         // Write target hash
         messageBuffer.put(LittleEndianUtils
-                .convertBytes(StringUtils.hexToBytes(preCommit.getTargetHash().toString())));
+                .convertBytes(StringUtils.hexToBytes(vote.getBlockHash().toString())));
         //Write Justification round bytes as u64
         messageBuffer.put(LittleEndianUtils
-                .bytesToFixedLength(preCommit.getTargetNumber().toByteArray(), 4));
+                .bytesToFixedLength(vote.getBlockNumber().toByteArray(), 4));
         //Write Justification round bytes as u64
         messageBuffer.put(LittleEndianUtils.bytesToFixedLength(round.toByteArray(), 8));
         //Write Set Id bytes as u64

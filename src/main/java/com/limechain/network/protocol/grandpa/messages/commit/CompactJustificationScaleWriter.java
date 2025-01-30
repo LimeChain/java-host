@@ -1,12 +1,12 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
-import com.limechain.network.protocol.warp.dto.PreCommit;
+import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import io.emeraldpay.polkaj.scale.ScaleCodecWriter;
 import io.emeraldpay.polkaj.scale.ScaleWriter;
 
 import java.io.IOException;
 
-public class CompactJustificationScaleWriter implements ScaleWriter<PreCommit[]> {
+public class CompactJustificationScaleWriter implements ScaleWriter<SignedVote[]> {
 
     private static final CompactJustificationScaleWriter INSTANCE = new CompactJustificationScaleWriter();
 
@@ -21,21 +21,16 @@ public class CompactJustificationScaleWriter implements ScaleWriter<PreCommit[]>
     }
 
     @Override
-    public void write(ScaleCodecWriter writer, PreCommit[] preCommits) throws IOException {
+    public void write(ScaleCodecWriter writer, SignedVote[] preCommits) throws IOException {
         writer.writeCompact(preCommits.length);
 
-        for (int i = 0; i < preCommits.length; i++) {
-            PreCommit preCommit = preCommits[i];
-            Vote vote = new Vote();
-            vote.setBlockHash(preCommit.getTargetHash());
-            vote.setBlockNumber(preCommit.getTargetNumber());
-            voteScaleWriter.write(writer, vote);
+        for (SignedVote preCommit : preCommits) {
+            voteScaleWriter.write(writer, preCommit.getVote());
         }
 
         writer.writeCompact(preCommits.length);
 
-        for (int i = 0; i < preCommits.length; i++) {
-            PreCommit preCommit = preCommits[i];
+        for (SignedVote preCommit : preCommits) {
             writer.writeByteArray(preCommit.getSignature().getBytes());
             writer.writeUint256(preCommit.getAuthorityPublicKey().getBytes());
         }
