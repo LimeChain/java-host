@@ -14,21 +14,23 @@ import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.types.Hash256;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import lombok.experimental.UtilityClass;
 import lombok.extern.java.Log;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 @Log
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
+@UtilityClass
 public class JustificationVerifier {
 
     public static boolean verify(Justification justification) {
@@ -51,48 +53,14 @@ public class JustificationVerifier {
             return false;
         }
 
-        Set<Hash256> seenPublicKeys = new HashSet<>();
+        BigInteger setId = grandpaSetState.getSetId();
         Set<Hash256> authorityKeys = Arrays.stream(authorities)
                 .map(Authority::getPublicKey)
                 .map(Hash256::new)
                 .collect(Collectors.toSet());
 
-        BigInteger authoritiesSetId = grandpaSetState.getSetId();
-
-        for (SignedVote signedVote : justification.getSignedVotes()) {
-
-            if (!authorityKeys.contains(signedVote.getAuthorityPublicKey())) {
-                log.log(Level.WARNING, "Invalid Authority for vote");
-                return false;
-            }
-
-            if (seenPublicKeys.contains(signedVote.getAuthorityPublicKey())) {
-                log.log(Level.WARNING, "Duplicated signature");
-                return false;
-            }
-            seenPublicKeys.add(signedVote.getAuthorityPublicKey());
-
-            byte[] data = getDataToVerify(
-                    signedVote.getVote(),
-                    authoritiesSetId,
-                    justification.getRoundNumber()
-            );
-
-            boolean isValid = verifySignature(
-                    signedVote.getAuthorityPublicKey().toString(),
-                    signedVote.getSignature().toString(),
-                    data
-            );
-
-            if (!isValid) {
-                log.log(Level.WARNING, "Failed to verify signature");
-                return false;
-            }
-
-            if (!blockState.isDescendantOf(justification.getTargetHash(), signedVote.getVote().getBlockHash())) {
-                log.log(Level.WARNING, "Vote block is not a descendant of the target block");
-                return false;
-            }
+        if (!groupAndValidateAuthorityVotes(blockState, justification, setId, authorityKeys)) {
+            return false;
         }
 
         for (BlockHeader ancestryVote : justification.getAncestryVotes()) {
@@ -105,6 +73,80 @@ public class JustificationVerifier {
         log.log(Level.INFO, "All signatures were verified successfully");
 
         return true;
+    }
+
+    private boolean groupAndValidateAuthorityVotes(BlockState blockState,
+                                                   Justification justification,
+                                                   BigInteger setId,
+                                                   Set<Hash256> authorityKeys) {
+
+        return Arrays.stream(justification.getSignedVotes())
+                .collect(Collectors.groupingBy(SignedVote::getAuthorityPublicKey))
+                .entrySet().stream()
+                .allMatch(
+                        validateAllVotesFromSingleAuthority(
+                                blockState,
+                                justification.getTargetHash(),
+                                setId,
+                                justification.getRoundNumber(),
+                                authorityKeys
+                        )
+                );
+    }
+
+    private static Predicate<Map.Entry<Hash256, List<SignedVote>>> validateAllVotesFromSingleAuthority(
+            BlockState blockState,
+            Hash256 targetBlockHash,
+            BigInteger setId,
+            BigInteger roundNumber,
+            Set<Hash256> authorityKeys) {
+
+        return entry -> {
+
+            if (entry.getValue().size() > 3) {
+                log.log(Level.WARNING, "Authority submitted more than 1 valid vote and 2 equivocatory votes");
+                return false;
+            }
+
+            Hash256 authorityKey = entry.getKey();
+            SignedVote validVote = getValidVote(entry.getValue());
+
+            if (!authorityKeys.contains(authorityKey)) {
+                log.log(Level.WARNING, "Invalid Authority for vote");
+                return false;
+            }
+
+            byte[] data = getDataToVerify(
+                    validVote.getVote(),
+                    setId,
+                    roundNumber
+            );
+
+            boolean validSignature = verifySignature(
+                    authorityKey.toString(),
+                    validVote.getSignature().toString(),
+                    data
+            );
+
+            if (!validSignature) {
+                log.log(Level.WARNING, "Failed to verify signature");
+                return false;
+            }
+
+            if (!blockState.isDescendantOf(targetBlockHash, validVote.getVote().getBlockHash())) {
+                log.log(Level.WARNING, "Vote block is not a descendant of the target block");
+                return false;
+            }
+
+            return true;
+        };
+    }
+
+    // The vote with the smallest block number is the valid vote, other 2 are considered as equivocatory votes
+    private SignedVote getValidVote(List<SignedVote> votes) {
+        return votes.stream()
+                .min(Comparator.comparing(signedVote -> signedVote.getVote().getBlockNumber()))
+                .get();
     }
 
     private static byte[] getDataToVerify(Vote vote, BigInteger authoritiesSetId, BigInteger round) {
