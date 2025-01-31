@@ -1,6 +1,7 @@
 package com.limechain.network.protocol.warp.dto;
 
 import com.limechain.grandpa.vote.SignedVote;
+import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,6 +18,15 @@ public class Justification {
     private BigInteger targetBlock;
     private SignedVote[] signedVotes; // either preCommis or preVotes
     private BlockHeader[] ancestryVotes;
+
+    public static Justification fromCommitMessage(CommitMessage commitMessage) {
+        Justification justification = new Justification();
+        justification.setRoundNumber(commitMessage.getRoundNumber());
+        justification.setTargetHash(commitMessage.getVote().getBlockHash());
+        justification.setTargetBlock(commitMessage.getVote().getBlockNumber());
+        justification.setSignedVotes(commitMessage.getPreCommits());
+        return justification;
+    }
 
     @Override
     public String toString() {

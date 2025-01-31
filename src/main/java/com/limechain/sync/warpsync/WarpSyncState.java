@@ -137,7 +137,7 @@ public class WarpSyncState {
                 + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
                 + " with " + commitMessage.getPreCommits().length + " voters");
 
-        boolean verified = JustificationVerifier.verify(CommitMessage.toJustification(commitMessage));
+        boolean verified = JustificationVerifier.verify(Justification.fromCommitMessage(commitMessage));
 
         if (!verified) {
             log.log(Level.WARNING, "Could not verify commit from peer: " + peerId);

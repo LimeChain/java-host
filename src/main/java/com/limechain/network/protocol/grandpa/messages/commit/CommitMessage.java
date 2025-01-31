@@ -2,7 +2,6 @@ package com.limechain.network.protocol.grandpa.messages.commit;
 
 import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.Vote;
-import com.limechain.network.protocol.warp.dto.Justification;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,13 +16,4 @@ public class CommitMessage {
     private BigInteger setId;
     private Vote vote;
     private SignedVote[] preCommits;
-
-    public static Justification toJustification(CommitMessage commitMessage) {
-        Justification justification = new Justification();
-        justification.setRoundNumber(commitMessage.getRoundNumber());
-        justification.setTargetHash(commitMessage.getVote().getBlockHash());
-        justification.setTargetBlock(commitMessage.getVote().getBlockNumber());
-        justification.setSignedVotes(commitMessage.getPreCommits());
-        return justification;
-    }
 }
