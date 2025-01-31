@@ -21,7 +21,6 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -103,50 +102,46 @@ public class JustificationVerifier {
 
         return entry -> {
 
-            if (entry.getValue().size() > 3) {
+            Hash256 authorityKey = entry.getKey();
+            List<SignedVote> signedVotes = entry.getValue();
+
+            if (signedVotes.size() > 3) {
                 log.log(Level.WARNING, "Authority submitted more than 1 valid vote and 2 equivocatory votes");
                 return false;
             }
-
-            Hash256 authorityKey = entry.getKey();
-            SignedVote validVote = getValidVote(entry.getValue());
 
             if (!authorityKeys.contains(authorityKey)) {
                 log.log(Level.WARNING, "Invalid Authority for vote");
                 return false;
             }
 
-            byte[] data = getDataToVerify(
-                    validVote.getVote(),
-                    setId,
-                    roundNumber
-            );
+            for (SignedVote signedVote : signedVotes) {
 
-            boolean validSignature = verifySignature(
-                    authorityKey.toString(),
-                    validVote.getSignature().toString(),
-                    data
-            );
+                byte[] data = getDataToVerify(
+                        signedVote.getVote(),
+                        setId,
+                        roundNumber
+                );
 
-            if (!validSignature) {
-                log.log(Level.WARNING, "Failed to verify signature");
-                return false;
-            }
+                boolean validSignature = verifySignature(
+                        authorityKey.toString(),
+                        signedVote.getSignature().toString(),
+                        data
+                );
 
-            if (!blockState.isDescendantOf(targetBlockHash, validVote.getVote().getBlockHash())) {
-                log.log(Level.WARNING, "Vote block is not a descendant of the target block");
-                return false;
+                if (!validSignature) {
+                    log.log(Level.WARNING, "Failed to verify signature");
+                    return false;
+                }
+
+                if (!blockState.isDescendantOf(targetBlockHash, signedVote.getVote().getBlockHash())) {
+                    log.log(Level.WARNING, "Vote block is not a descendant of the target block");
+                    return false;
+                }
             }
 
             return true;
         };
-    }
-
-    // The vote with the smallest block number is the valid vote, other 2 are considered as equivocatory votes
-    private SignedVote getValidVote(List<SignedVote> votes) {
-        return votes.stream()
-                .min(Comparator.comparing(signedVote -> signedVote.getVote().getBlockNumber()))
-                .get();
     }
 
     private static byte[] getDataToVerify(Vote vote, BigInteger authoritiesSetId, BigInteger round) {
