@@ -2,8 +2,8 @@ package com.limechain.sync;
 
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
-import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.grandpa.vote.SignedVote;
+import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.rpc.server.AppBean;
