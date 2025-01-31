@@ -1,7 +1,8 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
 import com.limechain.exception.network.SignatureCountMismatchException;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.grandpa.vote.SignedVote;
+import com.limechain.grandpa.vote.Vote;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;

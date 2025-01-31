@@ -1,6 +1,6 @@
 package com.limechain.network.protocol.warp.dto;
 
-import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.grandpa.vote.SignedVote;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,6 +11,7 @@ import java.util.Arrays;
 @Setter
 @Getter
 public class Justification {
+
     private BigInteger roundNumber;
     private Hash256 targetHash;
     private BigInteger targetBlock;

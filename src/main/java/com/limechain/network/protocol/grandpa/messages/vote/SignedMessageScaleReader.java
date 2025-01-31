@@ -1,5 +1,6 @@
 package com.limechain.network.protocol.grandpa.messages.vote;
 
+import com.limechain.grandpa.vote.SubRound;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.types.Hash256;
@@ -22,7 +23,7 @@ public class SignedMessageScaleReader implements ScaleReader<SignedMessage> {
     public SignedMessage read(ScaleCodecReader reader) {
 
         SignedMessage signedMessage = new SignedMessage();
-        signedMessage.setStage(Subround.getByStage(reader.readByte()));
+        signedMessage.setStage(SubRound.getByStage(reader.readByte()));
         signedMessage.setBlockHash(new Hash256(reader.readUint256()));
         signedMessage.setBlockNumber(BigInteger.valueOf(reader.readUint32()));
         signedMessage.setSignature(new Hash512(reader.readByteArray(64)));

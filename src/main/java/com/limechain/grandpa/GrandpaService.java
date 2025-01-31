@@ -2,16 +2,16 @@ package com.limechain.grandpa;
 
 import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.storage.BlockStorageGenericException;
-import com.limechain.grandpa.state.GrandpaRound;
+import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
+import com.limechain.grandpa.vote.SignedVote;
+import com.limechain.grandpa.vote.SubRound;
+import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.PeerMessageCoordinator;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
-import com.limechain.network.protocol.grandpa.messages.commit.Vote;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
-import com.limechain.network.protocol.grandpa.messages.vote.Subround;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.state.AbstractState;
@@ -45,10 +45,10 @@ public class GrandpaService {
         BlockState blockState = stateManager.getBlockState();
         BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
 
-        Vote bestFinalCandidate = grandpaRound.getBestFinalCandidate();
+        Vote bestFinalCandidate = toVote(grandpaRound.getBestFinalCandidate());
 
         var bestFinalCandidateVotesCount = BigInteger.valueOf(
-                getObservedVotesForBlock(grandpaRound, bestFinalCandidate.getBlockHash(), Subround.PRECOMMIT)
+                getObservedVotesForBlock(grandpaRound, bestFinalCandidate.getBlockHash(), SubRound.PRE_COMMIT)
         );
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
@@ -79,17 +79,12 @@ public class GrandpaService {
      */
     private boolean isFinalizable(GrandpaRound grandpaRound) {
 
-        Vote preVoteCandidate = findGrandpaGhost(grandpaRound);
-        if (preVoteCandidate == null) {
-            return false;
-        }
-
         if (!isCompletable(grandpaRound)) {
             return false;
         }
 
-        Vote bestFinalCandidate = findBestFinalCandidate(grandpaRound);
-        if (bestFinalCandidate == null) {
+        BlockHeader currentBfc = grandpaRound.getBestFinalCandidate();
+        if (currentBfc == null) {
             return false;
         }
 
@@ -98,11 +93,11 @@ public class GrandpaService {
             return false;
         }
 
-        Vote prevBestFinalCandidate = prevGrandpaRound.getBestFinalCandidate();
+        BlockHeader ghost = grandpaRound.getGrandpaGhost();
+        BlockHeader prevBfc = prevGrandpaRound.getBestFinalCandidate();
 
-        return prevBestFinalCandidate != null
-                && prevBestFinalCandidate.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) <= 0
-                && bestFinalCandidate.getBlockNumber().compareTo(preVoteCandidate.getBlockNumber()) <= 0;
+        return prevBfc.getBlockNumber().compareTo(currentBfc.getBlockNumber()) <= 0
+                && currentBfc.getBlockNumber().compareTo(ghost.getBlockNumber()) <= 0;
     }
 
     /**
@@ -115,7 +110,7 @@ public class GrandpaService {
      */
     private boolean isCompletable(GrandpaRound grandpaRound) {
 
-        Map<Vote, Long> votes = getDirectVotes(grandpaRound, Subround.PRECOMMIT);
+        Map<Vote, Long> votes = getDirectVotes(grandpaRound, SubRound.PRE_COMMIT);
         long votesCount = votes.values().stream()
                 .mapToLong(Long::longValue)
                 .sum();
@@ -129,7 +124,7 @@ public class GrandpaService {
         }
 
         List<Vote> ghostDescendents = getBlockDescendents(
-                grandpaRound.getPreVotedBlock(),
+                toVote(grandpaRound.getGrandpaGhost()),
                 new ArrayList<>(votes.keySet())
         );
 
@@ -139,7 +134,7 @@ public class GrandpaService {
             var observedVotesForDescendantBlock = getObservedVotesForBlock(
                     grandpaRound,
                     descendantBlockHash,
-                    Subround.PRECOMMIT
+                    SubRound.PRE_COMMIT
             );
 
             var validVotesForThresholdCheck = BigInteger.valueOf(
@@ -162,60 +157,53 @@ public class GrandpaService {
      *
      * @return the best final candidate block
      */
-    private Vote findBestFinalCandidate(GrandpaRound grandpaRound) {
+    private BlockHeader findBestFinalCandidate(GrandpaRound grandpaRound) {
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         BlockState blockState = stateManager.getBlockState();
 
-        Vote preVoteCandidate = findGrandpaGhost(grandpaRound);
+        BlockHeader ghost = grandpaRound.getGrandpaGhost();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
-            return preVoteCandidate;
+            return ghost;
         }
 
         var threshold = grandpaSetState.getThreshold();
         Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(
                 grandpaRound,
                 threshold,
-                Subround.PRECOMMIT
+                SubRound.PRE_COMMIT
         );
 
         if (possibleSelectedBlocks.isEmpty()) {
-            return preVoteCandidate;
+            return ghost;
         }
 
-        var bestFinalCandidate = blockState.getLastFinalizedBlockAsVote();
+        var bestFinalCandidate = grandpaRound.getLastFinalizedBlock();
 
         for (Map.Entry<Hash256, BigInteger> block : possibleSelectedBlocks.entrySet()) {
 
-            var blockHash = block.getKey();
-            var blockNumber = block.getValue();
+            Hash256 blockHash = block.getKey();
 
-            boolean isDescendant = blockState.isDescendantOf(blockHash, preVoteCandidate.getBlockHash());
+            boolean isDescendant = blockState.isDescendantOf(blockHash, ghost.getHash());
 
             if (!isDescendant) {
 
                 Hash256 lowestCommonAncestor;
                 try {
-                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, preVoteCandidate.getBlockHash());
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, ghost.getHash());
                 } catch (IllegalArgumentException e) {
                     log.warning("Error finding the lowest common ancestor: " + e.getMessage());
                     continue;
                 }
 
-                BlockHeader header = blockState.getHeader(lowestCommonAncestor);
-                blockNumber = header.getBlockNumber();
                 blockHash = lowestCommonAncestor;
             }
 
-            if (blockNumber.compareTo(bestFinalCandidate.getBlockNumber()) > 0) {
-                bestFinalCandidate = new Vote(
-                        blockHash,
-                        blockNumber
-                );
+            BlockHeader header = BlockHeader.fromHash(blockHash);
+            if (header.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) > 0) {
+                bestFinalCandidate = header;
             }
         }
-
-        grandpaRound.setBestFinalCandidate(bestFinalCandidate);
 
         return bestFinalCandidate;
     }
@@ -227,22 +215,22 @@ public class GrandpaService {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    private Vote findGrandpaGhost(GrandpaRound grandpaRound) {
+    private BlockHeader findGrandpaGhost(GrandpaRound grandpaRound) {
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         var threshold = grandpaSetState.getThreshold();
 
         if (grandpaRound.getRoundNumber().equals(BigInteger.ZERO)) {
-            return stateManager.getBlockState().getLastFinalizedBlockAsVote();
+            return grandpaRound.getLastFinalizedBlock();
         }
 
-        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(grandpaRound, threshold, Subround.PREVOTE);
+        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(grandpaRound, threshold, SubRound.PRE_VOTE);
 
         if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
             throw new GhostExecutionException("GHOST not found");
         }
 
-        Vote grandpaGhost = selectBlockWithMostVotes(blocks);
-        grandpaRound.setPreVotedBlock(grandpaGhost);
+        BlockHeader grandpaGhost = selectBlockWithMostVotes(blocks, grandpaRound.getPrevious().getBestFinalCandidate());
+        grandpaRound.setGrandpaGhost(grandpaGhost);
 
         return grandpaGhost;
     }
@@ -258,22 +246,23 @@ public class GrandpaService {
      */
     private Vote findBestPreVoteCandidate(GrandpaRound grandpaRound) {
 
-        Vote previousBestFinalCandidate = grandpaRound.getPrevious() != null
-                ? grandpaRound.getPrevious().getBestFinalCandidate()
-                : new Vote(null, BigInteger.ZERO);
-
-        Vote currentVote = findGrandpaGhost(grandpaRound);
         SignedVote primaryVote = grandpaRound.getPrimaryVote();
 
+        BlockHeader choiceHeader = findGrandpaGhost(grandpaRound);
         if (primaryVote != null) {
             BigInteger primaryBlockNumber = primaryVote.getVote().getBlockNumber();
+            BlockHeader previousBestFinalCandidate = grandpaRound.getPrevious().getBestFinalCandidate();
 
-            if (primaryBlockNumber.compareTo(currentVote.getBlockNumber()) > 0 &&
+            if (primaryBlockNumber.compareTo(choiceHeader.getBlockNumber()) > 0 &&
                     primaryBlockNumber.compareTo(previousBestFinalCandidate.getBlockNumber()) > 0) {
                 return primaryVote.getVote();
             }
         }
-        return currentVote;
+
+        Vote choiceVote = toVote(choiceHeader);
+        grandpaRound.setPreVoteChoice(choiceVote);
+
+        return choiceVote;
     }
 
     /**
@@ -284,16 +273,16 @@ public class GrandpaService {
      * @param blocks map of block that exceed the required threshold
      * @return the block with the most votes from the provided map
      */
-    private Vote selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks) {
+    private BlockHeader selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks, BlockHeader start) {
 
-        Vote highest = stateManager.getBlockState().getLastFinalizedBlockAsVote();
+        BlockHeader highest = start;
 
         for (Map.Entry<Hash256, BigInteger> entry : blocks.entrySet()) {
-            Hash256 hash = entry.getKey();
+            Hash256 currentHash = entry.getKey();
             BigInteger number = entry.getValue();
 
             if (number.compareTo(highest.getBlockNumber()) > 0) {
-                highest = new Vote(hash, number);
+                highest = BlockHeader.fromHash(currentHash);
             }
         }
 
@@ -311,7 +300,7 @@ public class GrandpaService {
      */
     private Map<Hash256, BigInteger> getPossibleSelectedBlocks(GrandpaRound grandpaRound,
                                                                BigInteger threshold,
-                                                               Subround subround) {
+                                                               SubRound subround) {
 
         var votes = getDirectVotes(grandpaRound, subround);
         var blocks = new HashMap<Hash256, BigInteger>();
@@ -358,7 +347,7 @@ public class GrandpaService {
                                                                   List<Vote> votes,
                                                                   Hash256 currentBlockHash,
                                                                   Map<Hash256, BigInteger> selected,
-                                                                  Subround subround,
+                                                                  SubRound subround,
                                                                   BigInteger threshold) {
         BlockState blockState = stateManager.getBlockState();
         for (Vote vote : votes) {
@@ -409,7 +398,7 @@ public class GrandpaService {
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return total votes for a specific block
      */
-    private long getTotalVotesForBlock(GrandpaRound grandpaRound, Hash256 blockHash, Subround subround) {
+    private long getTotalVotesForBlock(GrandpaRound grandpaRound, Hash256 blockHash, SubRound subround) {
         long votesForBlock = getObservedVotesForBlock(grandpaRound, blockHash, subround);
 
         if (votesForBlock == 0L) {
@@ -417,8 +406,8 @@ public class GrandpaService {
         }
 
         long equivocationCount = switch (subround) {
-            case Subround.PREVOTE -> grandpaRound.getPvEquivocationsCount();
-            case Subround.PRECOMMIT -> grandpaRound.getPcEquivocationsCount();
+            case SubRound.PRE_VOTE -> grandpaRound.getPvEquivocationsCount();
+            case SubRound.PRE_COMMIT -> grandpaRound.getPcEquivocationsCount();
             default -> 0;
         };
 
@@ -433,7 +422,7 @@ public class GrandpaService {
      * @param subround  stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return total observed votes
      */
-    private long getObservedVotesForBlock(GrandpaRound grandpaRound, Hash256 blockHash, Subround subround) {
+    private long getObservedVotesForBlock(GrandpaRound grandpaRound, Hash256 blockHash, SubRound subround) {
         var votes = getDirectVotes(grandpaRound, subround);
         var votesForBlock = 0L;
 
@@ -455,12 +444,12 @@ public class GrandpaService {
      * @param subround stage of the GRANDPA process, such as PREVOTE, PRECOMMIT or PRIMARY_PROPOSAL.
      * @return map of direct votes
      */
-    private HashMap<Vote, Long> getDirectVotes(GrandpaRound grandpaRound, Subround subround) {
+    private HashMap<Vote, Long> getDirectVotes(GrandpaRound grandpaRound, SubRound subround) {
         var voteCounts = new HashMap<Vote, Long>();
 
         Map<Hash256, SignedVote> votes = switch (subround) {
-            case Subround.PREVOTE -> grandpaRound.getPreVotes();
-            case Subround.PRECOMMIT -> grandpaRound.getPreCommits();
+            case SubRound.PRE_VOTE -> grandpaRound.getPreVotes();
+            case SubRound.PRE_COMMIT -> grandpaRound.getPreCommits();
             default -> new HashMap<>();
         };
 
@@ -469,7 +458,7 @@ public class GrandpaService {
         return voteCounts;
     }
 
-    private List<Vote> getVotes(GrandpaRound grandpaRound, Subround subround) {
+    private List<Vote> getVotes(GrandpaRound grandpaRound, SubRound subround) {
         var votes = getDirectVotes(grandpaRound, subround);
         return new ArrayList<>(votes.keySet());
     }
@@ -488,13 +477,12 @@ public class GrandpaService {
      * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
      */
     private void broadcastCommitMessage(GrandpaRound grandpaRound) {
-        Vote bestCandidate = findBestFinalCandidate(grandpaRound);
         SignedVote[] preCommits = grandpaRound.getPreCommits().values().toArray(new SignedVote[0]);
 
         CommitMessage commitMessage = new CommitMessage();
         commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
         commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
-        commitMessage.setVote(bestCandidate);
+        commitMessage.setVote(toVote(grandpaRound.getBestFinalCandidate()));
         commitMessage.setPreCommits(preCommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
@@ -512,7 +500,7 @@ public class GrandpaService {
         fullVote.setRound(grandpaRound.getRoundNumber());
         fullVote.setSetId(stateManager.getGrandpaSetState().getSetId());
         fullVote.setVote(bestPreVoteCandidate);
-        fullVote.setStage(Subround.PREVOTE);
+        fullVote.setStage(SubRound.PRE_VOTE);
 
         byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
 
@@ -535,5 +523,13 @@ public class GrandpaService {
         voteMessage.setMessage(signedMessage);
 
         peerMessageCoordinator.sendVoteMessageToPeers(voteMessage);
+    }
+
+    private Vote toVote(BlockHeader blockHeader) {
+        Vote vote = new Vote();
+        vote.setBlockHash(blockHeader.getHash());
+        vote.setBlockNumber(blockHeader.getBlockNumber());
+
+        return vote;
     }
 }

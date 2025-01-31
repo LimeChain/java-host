@@ -8,7 +8,7 @@ import com.limechain.exception.storage.BlockStorageGenericException;
 import com.limechain.exception.storage.HeaderNotFoundException;
 import com.limechain.exception.storage.LowerThanRootException;
 import com.limechain.exception.storage.RoundAndSetIdNotFoundException;
-import com.limechain.network.protocol.grandpa.messages.commit.Vote;
+import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockBody;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
