@@ -1,6 +1,6 @@
 package com.limechain.network.protocol.warp.scale.reader;
 
-import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVote;
+import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.network.protocol.grandpa.messages.catchup.res.SignedVoteScaleReader;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.Justification;
