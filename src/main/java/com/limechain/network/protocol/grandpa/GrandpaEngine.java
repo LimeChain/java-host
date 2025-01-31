@@ -40,16 +40,11 @@ import java.util.logging.Level;
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class GrandpaEngine {
     private static final int HANDSHAKE_LENGTH = 1;
-
-    private final WarpSyncState warpSyncState;
-
     protected ConnectionManager connectionManager;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
     protected GrandpaMessageHandler grandpaMessageHandler;
 
     public GrandpaEngine() {
-        warpSyncState = AppBean.getBean(WarpSyncState.class);
-
         connectionManager = ConnectionManager.getInstance();
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
         grandpaMessageHandler = AppBean.getBean(GrandpaMessageHandler.class);
@@ -146,7 +141,7 @@ public class GrandpaEngine {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
-        new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
+        new Thread(() -> grandpaMessageHandler.handleNeighbourMessage(neighbourMessage, peerId)).start();
 
         if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
             grandpaMessageHandler.initiateAndSendCatchUpRequest(neighbourMessage, peerId);
@@ -156,16 +151,15 @@ public class GrandpaEngine {
     private void handleVoteMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         VoteMessage voteMessage = reader.read(VoteMessageScaleReader.getInstance());
+        log.log(Level.INFO, "Received vote message from Peer " + peerId + "\n" + voteMessage);
         //Maybe we need to add possible roundNumber check
         grandpaMessageHandler.handleVoteMessage(voteMessage);
-        //todo: handle vote message (authoring node responsibility?)
-        log.log(Level.INFO, "Received vote message from Peer " + peerId + "\n" + voteMessage);
     }
 
     private void handleCommitMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         CommitMessage commitMessage = reader.read(CommitMessageScaleReader.getInstance());
-        warpSyncState.syncCommit(commitMessage, peerId);
+        grandpaMessageHandler.handleCommitMessage(commitMessage, peerId);
     }
 
     private void handleCatchupRequestMessage(byte[] message, PeerId peerId) {
