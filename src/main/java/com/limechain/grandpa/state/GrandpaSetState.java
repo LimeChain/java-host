@@ -3,19 +3,12 @@ package com.limechain.grandpa.state;
 import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
-import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.round.RoundCache;
 import com.limechain.grandpa.vote.SignedVote;
-import com.limechain.grandpa.vote.SubRound;
 import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.PeerMessageCoordinator;
-import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMessage;
-import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
-import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
-import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
-import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
 import com.limechain.state.AbstractState;
@@ -29,7 +22,6 @@ import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
 import io.emeraldpay.polkaj.types.Hash256;
-import io.libp2p.core.PeerId;
 import io.libp2p.core.crypto.PubKey;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -45,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
@@ -62,7 +52,6 @@ import java.util.logging.Level;
 public class GrandpaSetState extends AbstractState implements ServiceConsensusState {
 
     private static final BigInteger THRESHOLD_DENOMINATOR = BigInteger.valueOf(3);
-    private static final BigInteger CATCH_UP_THRESHOLD = BigInteger.TWO;
 
     private List<Authority> authorities;
     private BigInteger disabledAuthority;
@@ -247,35 +236,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
     }
 
-    public void handleVoteMessage(VoteMessage voteMessage) {
-        BigInteger voteMessageSetId = voteMessage.getSetId();
-        BigInteger voteMessageRoundNumber = voteMessage.getRound();
-        SignedMessage signedMessage = voteMessage.getMessage();
-
-        SignedVote signedVote = new SignedVote();
-        signedVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
-        signedVote.setSignature(signedMessage.getSignature());
-        signedVote.setAuthorityPublicKey(signedMessage.getAuthorityPublicKey());
-
-        GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
-        if (round == null) {
-            round = new GrandpaRound();
-            round.setRoundNumber(voteMessageRoundNumber);
-            roundCache.addRound(voteMessageSetId, round);
-        }
-
-        SubRound subround = signedMessage.getStage();
-        switch (subround) {
-            case PRE_VOTE -> round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            case PRE_COMMIT -> round.getPreCommits().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            case PRIMARY_PROPOSAL -> {
-                round.setPrimaryVote(signedVote);
-                round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            }
-            default -> throw new GrandpaGenericException("Unknown subround: " + subround);
-        }
-    }
-
     private void updateAuthorityStatus() {
         Optional<Pair<byte[], byte[]>> keyPair = authorities.stream()
                 .map(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()))
@@ -284,77 +244,5 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .findFirst();
 
         keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::clearAuthorityStatus);
-    }
-
-    public void initiateAndSendCatchUpRequest(NeighbourMessage neighbourMessage, PeerId peerId) {
-        // If peer has the same voter set id
-        if (neighbourMessage.getSetId().equals(setId)) {
-
-            // Check if needed to catch-up peer
-            if (neighbourMessage.getRound().compareTo(
-                    fetchLatestRound().getRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
-                log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
-
-                CatchUpReqMessage catchUpReqMessage = CatchUpReqMessage.builder()
-                        .round(neighbourMessage.getRound())
-                        .setId(neighbourMessage.getSetId()).build();
-
-                messageCoordinator.sendCatchUpRequestToPeer(peerId, catchUpReqMessage);
-            }
-        }
-    }
-
-    public void initiateAndSendCatchUpResponse(PeerId peerId,
-                                               CatchUpReqMessage catchUpReqMessage,
-                                               Supplier<Set<PeerId>> peerIds) {
-
-        if (!peerIds.get().contains(peerId)) {
-            throw new GrandpaGenericException("Requesting catching up from a non-peer.");
-        }
-
-        if (!catchUpReqMessage.getSetId().equals(setId)) {
-            throw new GrandpaGenericException("Catch up message has a different setId.");
-        }
-
-        if (catchUpReqMessage.getRound().compareTo(fetchLatestRound().getRoundNumber()) > 0) {
-            throw new GrandpaGenericException("Catching up on a round in the future.");
-        }
-
-        GrandpaRound selectedGrandpaRound = selectRound(catchUpReqMessage.getRound(), catchUpReqMessage.getSetId())
-                .orElseThrow(() -> new GrandpaGenericException("Target round was no found."));
-
-        SignedVote[] preCommits = selectedGrandpaRound.getPreCommits().values().toArray(SignedVote[]::new);
-        SignedVote[] preVotes = selectedGrandpaRound.getPreVotes().values().toArray(SignedVote[]::new);
-
-        BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlock();
-
-        CatchUpResMessage catchUpResMessage = CatchUpResMessage.builder()
-                .round(selectedGrandpaRound.getRoundNumber())
-                .setId(setId)
-                .preCommits(preCommits)
-                .preVotes(preVotes)
-                .blockHash(finalizedBlockHeader.getHash())
-                .blockNumber(finalizedBlockHeader.getBlockNumber())
-                .build();
-
-        messageCoordinator.sendCatchUpResponseToPeer(peerId, catchUpResMessage);
-    }
-
-    private Optional<GrandpaRound> selectRound(BigInteger peerRoundNumber, BigInteger peerSetId) {
-        GrandpaRound round = roundCache.getLatestRound(setId);
-
-        while (round != null) {
-            // Round found
-            // Check voter set
-            if (round.getRoundNumber().equals(peerRoundNumber)) {
-                if (round.getCommitMessagesArchive().getFirst().getSetId().equals(peerSetId)) {
-                    break;
-                }
-            }
-            // Go to the previous round
-            round = round.getPrevious();
-        }
-
-        return Optional.ofNullable(round);
     }
 }
