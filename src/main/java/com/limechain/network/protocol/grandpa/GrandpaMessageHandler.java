@@ -22,7 +22,6 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
-import com.limechain.rpc.server.AppBean;
 import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.sync.JustificationVerifier;
@@ -48,7 +47,7 @@ public class GrandpaMessageHandler {
     private static final BigInteger CATCH_UP_THRESHOLD = BigInteger.TWO;
     private final StateManager stateManager;
     private final PeerMessageCoordinator messageCoordinator;
-    private final WarpSyncState warpSyncState = AppBean.getBean(WarpSyncState.class);
+    private final WarpSyncState warpSyncState;
     private final PeerRequester requester;
 
 
@@ -117,9 +116,9 @@ public class GrandpaMessageHandler {
         }
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        grandpaSetState.getRoundCache()
-                .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber())
-                .addCommitMessageToArchive(commitMessage);
+        Optional.ofNullable(grandpaSetState.getRoundCache()
+                        .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber()))
+                .ifPresent(round -> round.addCommitMessageToArchive(commitMessage));
 
         if (warpSyncState.isWarpSyncFinished() && !AbstractState.isActiveAuthority()) {
             updateSyncStateAndRuntime(commitMessage);
