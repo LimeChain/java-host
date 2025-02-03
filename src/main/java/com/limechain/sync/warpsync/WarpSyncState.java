@@ -2,6 +2,7 @@ package com.limechain.sync.warpsync;
 
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
+import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
@@ -145,9 +146,12 @@ public class WarpSyncState {
         }
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        grandpaSetState.getRoundCache()
-                .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber())
-                .addCommitMessageToArchive(commitMessage);
+        GrandpaRound grandpaRound = grandpaSetState.getRoundCache()
+                .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber());
+
+        if (grandpaRound != null) {
+            grandpaRound.addCommitMessageToArchive(commitMessage);
+        }
 
         if (warpSyncFinished && !AbstractState.isActiveAuthority()) {
             updateState(commitMessage);
@@ -157,7 +161,7 @@ public class WarpSyncState {
     private void updateState(CommitMessage commitMessage) {
         SyncState syncState = stateManager.getSyncState();
         BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
-        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) < 1) {
+        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) <= 0) {
             return;
         }
         syncState.finalizedCommitMessage(commitMessage);
