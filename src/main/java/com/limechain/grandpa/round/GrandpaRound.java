@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Getter
 @Setter
@@ -25,7 +26,16 @@ public class GrandpaRound implements Serializable {
 
     private GrandpaRound previous;
     private BigInteger roundNumber;
-    private RoundStage stage = RoundStage.INIT;
+
+    private StageState state = new StartStage();
+    /**
+     * Invoked when the round attempts to finalize a block with >= 2/3 + 1 pre commits.
+     */
+    private Runnable onFinalizeHandler;
+    /**
+     * Serves as a timer when {@link PreVoteStage} and {@link PreCommitStage} have to wait for incoming votes.
+     */
+    private ScheduledExecutorService onStageTimerHandler;
 
     /**
      * Current finalized block at the start of the round.
@@ -52,13 +62,13 @@ public class GrandpaRound implements Serializable {
 
     /**
      * Best pre vote candidate.<BR>
-     * Null before {@link RoundStage#PRE_VOTE_RUNS} finishes.
+     * Null before {@link PreVoteStage} finishes.
      */
     @Nullable
     private Vote preVoteChoice;
     /**
      * Best final candidate.<BR>
-     * Null before {@link RoundStage#PRE_COMMIT_RUNS} finishes.
+     * Null before {@link PreCommitStage} finishes.
      */
     @Nullable
     private Vote preCommitChoice;
