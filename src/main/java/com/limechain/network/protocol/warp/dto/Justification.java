@@ -17,6 +17,7 @@ public class Justification {
     private Hash256 targetHash;
     private BigInteger targetBlock;
     private SignedVote[] signedVotes; // either preCommis or preVotes
+    // TODO: Review handling (unclear purpose of ancestryVotes)
     private BlockHeader[] ancestryVotes;
 
     public static Justification fromCommitMessage(CommitMessage commitMessage) {

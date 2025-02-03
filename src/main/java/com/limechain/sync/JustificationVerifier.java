@@ -4,7 +4,6 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.Vote;
-import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.rpc.server.AppBean;
 import com.limechain.runtime.hostapi.dto.Key;
@@ -62,11 +61,12 @@ public class JustificationVerifier {
             return false;
         }
 
-        for (BlockHeader ancestryVote : justification.getAncestryVotes()) {
-            if (!blockState.isDescendantOf(justification.getTargetHash(), ancestryVote.getHash())) {
-                log.log(Level.WARNING, "Ancestry vote block is not a descendant of the target block");
-                return false;
-            }
+        if (justification.getAncestryVotes() != null &&
+                Arrays.stream(justification.getAncestryVotes())
+                        .anyMatch(vote -> !blockState.isDescendantOf(justification.getTargetHash(), vote.getHash()))
+        ) {
+            log.log(Level.WARNING, "Ancestry vote block is not a descendant of the target block");
+            return false;
         }
 
         log.log(Level.INFO, "All signatures were verified successfully");
