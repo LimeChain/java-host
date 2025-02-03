@@ -27,15 +27,15 @@ public class GrandpaRound implements Serializable {
     private GrandpaRound previous;
     private BigInteger roundNumber;
 
-    private StageState state = new StartStage();
+    private transient StageState state = new StartStage();
     /**
      * Invoked when the round attempts to finalize a block with >= 2/3 + 1 pre commits.
      */
-    private Runnable onFinalizeHandler;
+    private transient Runnable onFinalizeHandler;
     /**
      * Serves as a timer when {@link PreVoteStage} and {@link PreCommitStage} have to wait for incoming votes.
      */
-    private ScheduledExecutorService onStageTimerHandler;
+    private transient ScheduledExecutorService onStageTimerHandler;
 
     /**
      * Current finalized block at the start of the round.
