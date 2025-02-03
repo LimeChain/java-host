@@ -52,12 +52,13 @@ public class VerifyJustificationAction implements WarpSyncAction {
 
             WarpSyncFragment fragment = sync.getFragmentsQueue().poll();
             log.log(Level.INFO, "Verifying justification...");
+            
             if (fragment == null) {
                 throw new JustificationVerificationException("No such fragment");
             }
-            boolean verified = JustificationVerifier.verify(
-                    fragment.getJustification().getPreCommits(),
-                    fragment.getJustification().getRound());
+
+            boolean verified = JustificationVerifier.verify(fragment.getJustification());
+
             if (!verified) {
                 throw new JustificationVerificationException("Justification could not be verified.");
             }

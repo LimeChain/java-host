@@ -137,7 +137,8 @@ public class WarpSyncState {
                 + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
                 + " with " + commitMessage.getPreCommits().length + " voters");
 
-        boolean verified = JustificationVerifier.verify(commitMessage.getPreCommits(), commitMessage.getRoundNumber());
+        boolean verified = JustificationVerifier.verify(Justification.fromCommitMessage(commitMessage));
+
         if (!verified) {
             log.log(Level.WARNING, "Could not verify commit from peer: " + peerId);
             return;
@@ -294,8 +295,7 @@ public class WarpSyncState {
         Justification justification = JustificationReader.getInstance().read(
                 new ScaleCodecReader(block.getJustification().toByteArray()));
 
-        boolean verified = justification != null
-                && JustificationVerifier.verify(justification.getPreCommits(), justification.getRound());
+        boolean verified = JustificationVerifier.verify(justification);
 
         if (verified) {
             BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));

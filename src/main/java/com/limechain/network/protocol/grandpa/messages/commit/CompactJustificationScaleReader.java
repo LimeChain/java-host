@@ -1,8 +1,8 @@
 package com.limechain.network.protocol.grandpa.messages.commit;
 
 import com.limechain.exception.network.SignatureCountMismatchException;
+import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.Vote;
-import com.limechain.network.protocol.warp.dto.PreCommit;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.scale.ScaleReader;
 import io.emeraldpay.polkaj.scale.reader.ListReader;
@@ -11,7 +11,7 @@ import io.emeraldpay.polkaj.types.Hash512;
 
 import java.util.List;
 
-public class CompactJustificationScaleReader implements ScaleReader<PreCommit[]> {
+public class CompactJustificationScaleReader implements ScaleReader<SignedVote[]> {
 
     private static final CompactJustificationScaleReader INSTANCE = new CompactJustificationScaleReader();
 
@@ -27,17 +27,15 @@ public class CompactJustificationScaleReader implements ScaleReader<PreCommit[]>
     }
 
     @Override
-    public PreCommit[] read(ScaleCodecReader reader) {
+    public SignedVote[] read(ScaleCodecReader reader) {
         List<Vote> votes = voteListReader.read(reader);
 
         int preCommitsCount = votes.size();
-        PreCommit[] preCommits = new PreCommit[preCommitsCount];
+        SignedVote[] preCommits = new SignedVote[preCommitsCount];
 
         for (int i = 0; i < preCommitsCount; i++) {
-            Vote vote = votes.get(i);
-            preCommits[i] = new PreCommit();
-            preCommits[i].setTargetHash(vote.getBlockHash());
-            preCommits[i].setTargetNumber(vote.getBlockNumber());
+            preCommits[i] = new SignedVote();
+            preCommits[i].setVote(votes.get(i));
         }
 
         int signaturesCount = reader.readCompactInt();

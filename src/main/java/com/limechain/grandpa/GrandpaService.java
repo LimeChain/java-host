@@ -14,7 +14,6 @@ import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
-import com.limechain.network.protocol.warp.dto.PreCommit;
 import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.block.state.BlockState;
@@ -478,16 +477,13 @@ public class GrandpaService {
      * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
      */
     private void broadcastCommitMessage(GrandpaRound grandpaRound) {
-        PreCommit[] precommits = transformToCompactJustificationFormat(grandpaRound.getPreCommits());
+        SignedVote[] preCommits = grandpaRound.getPreCommits().values().toArray(new SignedVote[0]);
 
         CommitMessage commitMessage = new CommitMessage();
         commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
         commitMessage.setRoundNumber(grandpaRound.getRoundNumber());
-        commitMessage.setVote(
-                toVote(
-                        grandpaRound.getBestFinalCandidate()
-                ));
-        commitMessage.setPreCommits(precommits);
+        commitMessage.setVote(toVote(grandpaRound.getBestFinalCandidate()));
+        commitMessage.setPreCommits(preCommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
     }
@@ -527,18 +523,6 @@ public class GrandpaService {
         voteMessage.setMessage(signedMessage);
 
         peerMessageCoordinator.sendVoteMessageToPeers(voteMessage);
-    }
-
-    private PreCommit[] transformToCompactJustificationFormat(Map<Hash256, SignedVote> signedVotes) {
-        return signedVotes.values().stream()
-                .map(signedVote -> {
-                    PreCommit precommit = new PreCommit();
-                    precommit.setTargetHash(signedVote.getVote().getBlockHash());
-                    precommit.setTargetNumber(signedVote.getVote().getBlockNumber());
-                    precommit.setSignature(signedVote.getSignature());
-                    precommit.setAuthorityPublicKey(signedVote.getAuthorityPublicKey());
-                    return precommit;
-                }).toArray(PreCommit[]::new);
     }
 
     private Vote toVote(BlockHeader blockHeader) {
