@@ -236,62 +236,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
     }
 
-    public void handleVoteMessage(VoteMessage voteMessage) {
-        BigInteger voteMessageSetId = voteMessage.getSetId();
-        BigInteger voteMessageRoundNumber = voteMessage.getRound();
-        SignedMessage signedMessage = voteMessage.getMessage();
-
-        SignedVote signedVote = new SignedVote();
-        signedVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
-        signedVote.setSignature(signedMessage.getSignature());
-        signedVote.setAuthorityPublicKey(signedMessage.getAuthorityPublicKey());
-
-        if (!isValidMessageSignature(voteMessage)) {
-            log.warning(
-                    String.format("Vote message signature is invalid for round %s, set %s, block hash %s, block number %s",
-                            voteMessageSetId, voteMessageSetId, signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
-            return;
-        }
-
-        GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
-        if (round == null) {
-            round = new GrandpaRound();
-            round.setRoundNumber(voteMessageRoundNumber);
-            roundCache.addRound(voteMessageSetId, round);
-        }
-
-        SubRound subround = signedMessage.getStage();
-        switch (subround) {
-            case PRE_VOTE -> round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            case PRE_COMMIT -> round.getPreCommits().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            case PRIMARY_PROPOSAL -> {
-                round.setPrimaryVote(signedVote);
-                round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
-            }
-            default -> throw new GrandpaGenericException("Unknown subround: " + subround);
-        }
-    }
-
-    private boolean isValidMessageSignature(VoteMessage voteMessage) {
-        SignedMessage signedMessage = voteMessage.getMessage();
-
-        FullVote fullVote = new FullVote();
-        fullVote.setRound(voteMessage.getRound());
-        fullVote.setSetId(voteMessage.getSetId());
-        fullVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
-        fullVote.setStage(signedMessage.getStage());
-
-        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
-
-        VerifySignature verifySignature = new VerifySignature(
-                signedMessage.getSignature().getBytes(),
-                encodedFullVote,
-                signedMessage.getAuthorityPublicKey().getBytes(),
-                Key.ED25519);
-
-        return Ed25519Utils.verifySignature(verifySignature);
-    }
-
     private void updateAuthorityStatus() {
         Optional<Pair<byte[], byte[]>> keyPair = authorities.stream()
                 .map(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()))

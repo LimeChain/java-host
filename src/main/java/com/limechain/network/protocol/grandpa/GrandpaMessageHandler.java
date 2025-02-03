@@ -13,6 +13,8 @@ import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMes
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
+import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.sync.BlockRequestField;
@@ -22,11 +24,15 @@ import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.Justification;
 import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
 import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
+import com.limechain.runtime.hostapi.dto.Key;
+import com.limechain.runtime.hostapi.dto.VerifySignature;
 import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.sync.JustificationVerifier;
 import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncState;
+import com.limechain.utils.Ed25519Utils;
+import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.libp2p.core.PeerId;
 import lombok.RequiredArgsConstructor;
@@ -45,11 +51,11 @@ import java.util.logging.Level;
 @Component
 public class GrandpaMessageHandler {
     private static final BigInteger CATCH_UP_THRESHOLD = BigInteger.TWO;
+
     private final StateManager stateManager;
     private final PeerMessageCoordinator messageCoordinator;
     private final WarpSyncState warpSyncState;
     private final PeerRequester requester;
-
 
     /**
      * Handles a vote message, extracts signed vote, associates it with the correct round.
@@ -68,6 +74,13 @@ public class GrandpaMessageHandler {
         signedVote.setSignature(signedMessage.getSignature());
         signedVote.setAuthorityPublicKey(signedMessage.getAuthorityPublicKey());
 
+        if (!isValidMessageSignature(voteMessage)) {
+            log.warning(
+                    String.format("Vote message signature is invalid for round %s, set %s, block hash %s, block number %s",
+                            voteMessageSetId, voteMessageSetId, signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
+            return;
+        }
+
         GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
         if (round == null) {
             round = new GrandpaRound();
@@ -85,6 +98,26 @@ public class GrandpaMessageHandler {
             }
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
+    }
+
+    private boolean isValidMessageSignature(VoteMessage voteMessage) {
+        SignedMessage signedMessage = voteMessage.getMessage();
+
+        FullVote fullVote = new FullVote();
+        fullVote.setRound(voteMessage.getRound());
+        fullVote.setSetId(voteMessage.getSetId());
+        fullVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
+        fullVote.setStage(signedMessage.getStage());
+
+        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
+
+        VerifySignature verifySignature = new VerifySignature(
+                signedMessage.getSignature().getBytes(),
+                encodedFullVote,
+                signedMessage.getAuthorityPublicKey().getBytes(),
+                Key.ED25519);
+
+        return Ed25519Utils.verifySignature(verifySignature);
     }
 
     /**
@@ -109,7 +142,7 @@ public class GrandpaMessageHandler {
                 + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
                 + " with " + commitMessage.getPreCommits().length + " voters");
 
-        boolean verified = JustificationVerifier.verify(commitMessage.getPreCommits(), commitMessage.getRoundNumber());
+        boolean verified = JustificationVerifier.verify(Justification.fromCommitMessage(commitMessage));
         if (!verified) {
             log.log(Level.WARNING, "Could not verify commit from peer: " + peerId);
             return;
@@ -166,8 +199,7 @@ public class GrandpaMessageHandler {
             Justification justification = JustificationReader.getInstance().read(
                     new ScaleCodecReader(block.getJustification().toByteArray()));
 
-            boolean verified = justification != null
-                    && JustificationVerifier.verify(justification.getPreCommits(), justification.getRound());
+            boolean verified = JustificationVerifier.verify(justification);
 
             if (verified) {
                 processNeighbourUpdates(block);
