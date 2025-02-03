@@ -161,7 +161,7 @@ public class GrandpaMessageHandler {
     private void updateSyncStateAndRuntime(CommitMessage commitMessage) {
         SyncState syncState = stateManager.getSyncState();
         BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
-        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) < 1) {
+        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) <= 0) {
             return;
         }
         syncState.finalizedCommitMessage(commitMessage);
