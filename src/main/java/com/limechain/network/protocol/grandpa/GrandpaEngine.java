@@ -2,7 +2,6 @@ package com.limechain.network.protocol.grandpa;
 
 import com.limechain.exception.scale.ScaleEncodingException;
 import com.limechain.grandpa.GrandpaService;
-import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.ConnectionManager;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceHandshakeBuilder;
 import com.limechain.network.protocol.grandpa.messages.GrandpaMessageType;
@@ -41,19 +40,14 @@ import java.util.logging.Level;
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class GrandpaEngine {
     private static final int HANDSHAKE_LENGTH = 1;
-
-    private final WarpSyncState warpSyncState;
-
     protected ConnectionManager connectionManager;
     protected BlockAnnounceHandshakeBuilder handshakeBuilder;
-    protected GrandpaSetState grandpaSetState;
+    protected GrandpaMessageHandler grandpaMessageHandler;
 
     public GrandpaEngine() {
-        warpSyncState = AppBean.getBean(WarpSyncState.class);
-
         connectionManager = ConnectionManager.getInstance();
         handshakeBuilder = new BlockAnnounceHandshakeBuilder();
-        grandpaSetState = AppBean.getBean(GrandpaSetState.class);
+        grandpaMessageHandler = AppBean.getBean(GrandpaMessageHandler.class);
     }
 
     /**
@@ -147,25 +141,25 @@ public class GrandpaEngine {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         NeighbourMessage neighbourMessage = reader.read(NeighbourMessageScaleReader.getInstance());
         log.log(Level.FINE, "Received neighbour message from Peer " + peerId + "\n" + neighbourMessage);
-        new Thread(() -> warpSyncState.syncNeighbourMessage(neighbourMessage, peerId)).start();
+        new Thread(() -> grandpaMessageHandler.handleNeighbourMessage(neighbourMessage, peerId)).start();
 
         if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
-            grandpaSetState.initiateAndSendCatchUpRequest(neighbourMessage, peerId);
+            grandpaMessageHandler.initiateAndSendCatchUpRequest(neighbourMessage, peerId);
         }
     }
 
     private void handleVoteMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         VoteMessage voteMessage = reader.read(VoteMessageScaleReader.getInstance());
-        grandpaSetState.handleVoteMessage(voteMessage);
-        //todo: handle vote message (authoring node responsibility?)
         log.log(Level.INFO, "Received vote message from Peer " + peerId + "\n" + voteMessage);
+        //Maybe we need to add possible roundNumber check
+        grandpaMessageHandler.handleVoteMessage(voteMessage);
     }
 
     private void handleCommitMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         CommitMessage commitMessage = reader.read(CommitMessageScaleReader.getInstance());
-        warpSyncState.syncCommit(commitMessage, peerId);
+        grandpaMessageHandler.handleCommitMessage(commitMessage, peerId);
     }
 
     private void handleCatchupRequestMessage(byte[] message, PeerId peerId) {
@@ -174,7 +168,7 @@ public class GrandpaEngine {
         log.log(Level.INFO, "Received catch up request message from Peer " + peerId + "\n" + catchUpReqMessage);
 
         if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
-            grandpaSetState.initiateAndSendCatchUpResponse(peerId, catchUpReqMessage, connectionManager::getPeerIds);
+            grandpaMessageHandler.initiateAndSendCatchUpResponse(peerId, catchUpReqMessage, connectionManager::getPeerIds);
         }
     }
 
@@ -254,7 +248,7 @@ public class GrandpaEngine {
     /**
      * Send our GRANDPA vote message from {@link GrandpaService} on a given <b>responder</b> stream.
      *
-     * @param stream               <b>responder</b> stream to write the message to
+     * @param stream             <b>responder</b> stream to write the message to
      * @param encodedVoteMessage scale encoded VoteMessage object
      */
     public void writeVoteMessage(Stream stream, byte[] encodedVoteMessage) {

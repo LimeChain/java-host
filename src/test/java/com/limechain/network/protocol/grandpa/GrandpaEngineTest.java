@@ -19,7 +19,6 @@ import com.limechain.network.protocol.grandpa.messages.vote.VoteMessageScaleRead
 import com.limechain.network.protocol.message.ProtocolMessageBuilder;
 import com.limechain.state.AbstractState;
 import com.limechain.sync.SyncMode;
-import com.limechain.sync.warpsync.WarpSyncState;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.Stream;
@@ -55,7 +54,7 @@ class GrandpaEngineTest {
     @Mock
     private ConnectionManager connectionManager;
     @Mock
-    private WarpSyncState warpSyncState;
+    private GrandpaMessageHandler grandpaMessageHandler;
     @Mock
     private GrandpaSetState grandpaSetState;
     @Mock
@@ -77,7 +76,7 @@ class GrandpaEngineTest {
         grandpaEngine.receiveRequest(unknownTypeMessage, stream);
 
         verifyNoInteractions(connectionManager);
-        verifyNoInteractions(warpSyncState);
+        verifyNoInteractions(grandpaMessageHandler);
     }
 
     // INITIATOR STREAM
@@ -91,7 +90,7 @@ class GrandpaEngineTest {
         grandpaEngine.receiveRequest(message, stream);
 
         verifyNoInteractions(connectionManager);
-        verifyNoInteractions(warpSyncState);
+        verifyNoInteractions(grandpaMessageHandler);
     }
 
     @Test
@@ -132,7 +131,7 @@ class GrandpaEngineTest {
         grandpaEngine.receiveRequest(message, stream);
 
         verifyNoMoreInteractions(connectionManager);
-        verifyNoInteractions(warpSyncState);
+        verifyNoInteractions(grandpaMessageHandler);
         verify(stream).close();
     }
 
@@ -148,7 +147,7 @@ class GrandpaEngineTest {
             grandpaEngine.receiveRequest(message, stream);
 
             verifyNoMoreInteractions(connectionManager);
-            verifyNoInteractions(warpSyncState);
+            verifyNoInteractions(grandpaMessageHandler);
             verify(stream).close();
         }
     }
@@ -208,7 +207,7 @@ class GrandpaEngineTest {
             ) {
                 grandpaEngine.receiveRequest(message, stream);
 
-                verify(warpSyncState).syncCommit(commitMessage, peerId);
+                verify(grandpaMessageHandler).handleCommitMessage(commitMessage, peerId);
             }
         }
     }
@@ -227,7 +226,7 @@ class GrandpaEngineTest {
                 (mock, context) -> when(mock.read(any(NeighbourMessageScaleReader.class))).thenReturn(neighbourMessage))
         ) {
             grandpaEngine.receiveRequest(message, stream);
-            verify(warpSyncState).syncNeighbourMessage(neighbourMessage, peerId);
+            verify(grandpaMessageHandler).handleNeighbourMessage(neighbourMessage, peerId);
         }
     }
 
@@ -246,7 +245,7 @@ class GrandpaEngineTest {
             grandpaEngine.receiveRequest(message, stream);
 
             verifyNoMoreInteractions(connectionManager);
-            verifyNoInteractions(warpSyncState);
+            verifyNoInteractions(grandpaMessageHandler);
         }
     }
 
@@ -265,7 +264,7 @@ class GrandpaEngineTest {
             grandpaEngine.receiveRequest(message, stream);
 
             verifyNoMoreInteractions(connectionManager);
-            verifyNoInteractions(warpSyncState);
+            verifyNoInteractions(grandpaMessageHandler);
         }
     }
 
@@ -284,7 +283,7 @@ class GrandpaEngineTest {
             grandpaEngine.receiveRequest(message, stream);
 
             verifyNoMoreInteractions(connectionManager);
-            verifyNoInteractions(warpSyncState);
+            verifyNoInteractions(grandpaMessageHandler);
         }
     }
 

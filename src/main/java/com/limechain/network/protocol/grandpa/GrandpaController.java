@@ -52,6 +52,6 @@ public class GrandpaController {
      * Sends a vote message over the controller stream.
      */
     public void sendVoteMessage(byte[] encodedVoteMessage) {
-        engine.writeCommitMessage(stream, encodedVoteMessage);
+        engine.writeVoteMessage(stream, encodedVoteMessage);
     }
 }
