@@ -14,10 +14,14 @@ import com.limechain.network.protocol.grandpa.messages.catchup.req.CatchUpReqMes
 import com.limechain.network.protocol.grandpa.messages.catchup.res.CatchUpResMessage;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
+import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
+import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
+import com.limechain.runtime.hostapi.dto.Key;
+import com.limechain.runtime.hostapi.dto.VerifySignature;
 import com.limechain.state.AbstractState;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
@@ -28,6 +32,8 @@ import com.limechain.storage.crypto.KeyType;
 import com.limechain.sync.warpsync.dto.AuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ForcedAuthoritySetChange;
 import com.limechain.sync.warpsync.dto.ScheduledAuthoritySetChange;
+import com.limechain.utils.Ed25519Utils;
+import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.PeerId;
 import io.libp2p.core.crypto.PubKey;
@@ -257,6 +263,13 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         signedVote.setSignature(signedMessage.getSignature());
         signedVote.setAuthorityPublicKey(signedMessage.getAuthorityPublicKey());
 
+        if (!isValidMessageSignature(voteMessage)) {
+            log.warning(
+                    String.format("Vote message signature is invalid for round %s, set %s, block hash %s, block number %s",
+                            voteMessageSetId, voteMessageSetId, signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
+            return;
+        }
+
         GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
         if (round == null) {
             round = new GrandpaRound();
@@ -274,6 +287,26 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             }
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
+    }
+
+    private boolean isValidMessageSignature(VoteMessage voteMessage) {
+        SignedMessage signedMessage = voteMessage.getMessage();
+
+        FullVote fullVote = new FullVote();
+        fullVote.setRound(voteMessage.getRound());
+        fullVote.setSetId(voteMessage.getSetId());
+        fullVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
+        fullVote.setStage(signedMessage.getStage());
+
+        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
+
+        VerifySignature verifySignature = new VerifySignature(
+                signedMessage.getSignature().getBytes(),
+                encodedFullVote,
+                signedMessage.getAuthorityPublicKey().getBytes(),
+                Key.ED25519);
+
+        return Ed25519Utils.verifySignature(verifySignature);
     }
 
     private void updateAuthorityStatus() {
