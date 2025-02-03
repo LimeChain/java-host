@@ -104,9 +104,8 @@ public class CommonConfig {
     public WarpSyncState warpSyncState(StateManager stateManager,
                                        KVRepository<String, Object> repository,
                                        RuntimeBuilder runtimeBuilder,
-                                       PeerRequester requester,
-                                       PeerMessageCoordinator messageCoordinator) {
-        return new WarpSyncState(stateManager, repository, runtimeBuilder, requester, messageCoordinator);
+                                       PeerRequester requester) {
+        return new WarpSyncState(stateManager, repository, runtimeBuilder, requester);
     }
 
     @Bean

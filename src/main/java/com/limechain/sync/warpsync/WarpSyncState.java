@@ -2,29 +2,15 @@ package com.limechain.sync.warpsync;
 
 import com.limechain.exception.global.RuntimeCodeException;
 import com.limechain.exception.trie.TrieDecoderException;
-import com.limechain.grandpa.round.GrandpaRound;
-import com.limechain.grandpa.state.GrandpaSetState;
-import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.PeerRequester;
 import com.limechain.network.protocol.blockannounce.messages.BlockAnnounceMessage;
-import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
-import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.lightclient.pb.LightClientMessage;
-import com.limechain.network.protocol.sync.BlockRequestField;
-import com.limechain.network.protocol.sync.pb.SyncMessage.BlockData;
-import com.limechain.network.protocol.warp.DigestHelper;
-import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.network.protocol.warp.dto.DigestType;
-import com.limechain.network.protocol.warp.dto.Justification;
-import com.limechain.network.protocol.warp.scale.reader.BlockHeaderReader;
-import com.limechain.network.protocol.warp.scale.reader.JustificationReader;
 import com.limechain.runtime.Runtime;
 import com.limechain.runtime.RuntimeBuilder;
-import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
 import com.limechain.storage.DBConstants;
 import com.limechain.storage.KVRepository;
-import com.limechain.sync.JustificationVerifier;
 import com.limechain.sync.state.SyncState;
 import com.limechain.trie.decoded.Trie;
 import com.limechain.trie.decoded.TrieVerifier;
@@ -32,7 +18,6 @@ import com.limechain.utils.LittleEndianUtils;
 import com.limechain.utils.StringUtils;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.types.Hash256;
-import io.libp2p.core.PeerId;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
@@ -40,7 +25,6 @@ import lombok.extern.java.Log;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -53,7 +37,6 @@ public class WarpSyncState {
 
     private final StateManager stateManager;
     private final PeerRequester requester;
-    private final PeerMessageCoordinator messageCoordinator;
     private final KVRepository<String, Object> db;
 
     public static final String CODE_KEY = StringUtils.toHex(":code");
@@ -61,7 +44,7 @@ public class WarpSyncState {
     @Getter
     private boolean warpSyncFragmentsFinished;
     @Getter
-    private boolean warpSyncFinished;
+    private boolean warpSyncFinished = false;
 
     @Getter
     private Runtime runtime;
@@ -75,30 +58,26 @@ public class WarpSyncState {
     public WarpSyncState(StateManager stateManager,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder,
-                         PeerRequester requester,
-                         PeerMessageCoordinator messageCoordinator) {
+                         PeerRequester requester) {
 
         this(stateManager,
                 db,
                 runtimeBuilder,
                 new HashSet<>(),
-                requester,
-                messageCoordinator
+                requester
         );
     }
 
     public WarpSyncState(StateManager stateManager,
                          KVRepository<String, Object> db,
                          RuntimeBuilder runtimeBuilder, Set<BigInteger> scheduledRuntimeUpdateBlocks,
-                         PeerRequester requester,
-                         PeerMessageCoordinator messageCoordinator) {
+                         PeerRequester requester) {
 
         this.stateManager = stateManager;
         this.db = db;
         this.runtimeBuilder = runtimeBuilder;
         this.scheduledRuntimeUpdateBlocks = scheduledRuntimeUpdateBlocks;
         this.requester = requester;
-        this.messageCoordinator = messageCoordinator;
     }
 
     /**
@@ -116,62 +95,10 @@ public class WarpSyncState {
         }
     }
 
-    /**
-     * Updates the Host's state with information from a commit message.
-     * Synchronized to avoid race condition between checking and updating latest block
-     * Scheduled runtime updates for synchronized blocks are executed.
-     *
-     * @param commitMessage received commit message
-     * @param peerId        sender of the message
-     */
-    public synchronized void syncCommit(CommitMessage commitMessage, PeerId peerId) {
-        if (commitMessage.getVote().getBlockNumber().compareTo(
-                stateManager.getSyncState().getLastFinalizedBlockNumber()) <= 0) {
-            log.log(Level.FINE, String.format("Received commit message for finalized block %d from peer %s",
-                    commitMessage.getVote().getBlockNumber(), peerId));
+    public void updateRuntime(BigInteger blockNumber) {
+        if (!scheduledRuntimeUpdateBlocks.contains(blockNumber)) {
             return;
         }
-
-        log.log(Level.FINE, "Received commit message from peer " + peerId
-                + " for block #" + commitMessage.getVote().getBlockNumber()
-                + " with hash " + commitMessage.getVote().getBlockHash()
-                + " with setId " + commitMessage.getSetId() + " and round " + commitMessage.getRoundNumber()
-                + " with " + commitMessage.getPreCommits().length + " voters");
-
-        boolean verified = JustificationVerifier.verify(Justification.fromCommitMessage(commitMessage));
-
-        if (!verified) {
-            log.log(Level.WARNING, "Could not verify commit from peer: " + peerId);
-            return;
-        }
-
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        GrandpaRound grandpaRound = grandpaSetState.getRoundCache()
-                .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber());
-
-        if (grandpaRound != null) {
-            grandpaRound.addCommitMessageToArchive(commitMessage);
-        }
-
-        if (warpSyncFinished && !AbstractState.isActiveAuthority()) {
-            updateState(commitMessage);
-        }
-    }
-
-    private void updateState(CommitMessage commitMessage) {
-        SyncState syncState = stateManager.getSyncState();
-        BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
-        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) <= 0) {
-            return;
-        }
-        syncState.finalizedCommitMessage(commitMessage);
-
-        if (warpSyncFinished && scheduledRuntimeUpdateBlocks.contains(lastFinalizedBlockNumber)) {
-            new Thread(this::updateRuntime).start();
-        }
-    }
-
-    private void updateRuntime() {
         updateRuntimeCode();
         buildRuntime();
         BigInteger lastFinalizedBlockNumber = stateManager.getSyncState().getLastFinalizedBlockNumber();
@@ -263,66 +190,5 @@ public class WarpSyncState {
     public void loadSavedRuntimeCode() {
         this.runtimeCode = (byte[]) db.find(DBConstants.RUNTIME_CODE)
                 .orElseThrow(() -> new RuntimeCodeException("No available runtime code"));
-    }
-
-    /**
-     * Updates the Host's state with information from a neighbour message.
-     * Tries to update Host's set data (id and authorities) if neighbour has a greater set id than the Host.
-     * Synchronized to avoid race condition between checking and updating set id
-     *
-     * @param neighbourMessage received neighbour message
-     * @param peerId           sender of message
-     */
-    public void syncNeighbourMessage(NeighbourMessage neighbourMessage, PeerId peerId) {
-        messageCoordinator.sendNeighbourMessageToPeer(peerId);
-        if (warpSyncFinished && neighbourMessage.getSetId()
-                .compareTo(stateManager.getGrandpaSetState().getSetId()) > 0) {
-            updateSetData(neighbourMessage.getLastFinalizedBlock().add(BigInteger.ONE));
-        }
-    }
-
-    private void updateSetData(BigInteger setChangeBlock) {
-
-        List<BlockData> response = requester.requestBlockData(
-                BlockRequestField.ALL,
-                setChangeBlock.intValueExact(),
-                1
-        ).join();
-
-        BlockData block = response.getFirst();
-
-        if (block.getIsEmptyJustification()) {
-            log.log(Level.WARNING, "No justification for block " + setChangeBlock);
-            return;
-        }
-
-        Justification justification = JustificationReader.getInstance().read(
-                new ScaleCodecReader(block.getJustification().toByteArray()));
-
-        boolean verified = JustificationVerifier.verify(justification);
-
-        if (verified) {
-            BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));
-
-            stateManager.getSyncState().finalizeHeader(header);
-
-            DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                    .ifPresent(cm -> stateManager.getGrandpaSetState()
-                            .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
-
-            handleScheduledEvents();
-        }
-    }
-
-    /**
-     * Executes scheduled or forced authority changes for the last finalized block.
-     */
-    public void handleScheduledEvents() {
-        boolean updated = stateManager.getGrandpaSetState().handleAuthoritySetChange(
-                stateManager.getSyncState().getLastFinalizedBlockNumber());
-
-        if (warpSyncFinished && updated) {
-            new Thread(messageCoordinator::sendMessagesToPeers).start();
-        }
     }
 }
