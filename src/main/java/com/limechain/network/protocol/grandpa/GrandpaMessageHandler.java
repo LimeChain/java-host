@@ -1,6 +1,8 @@
 package com.limechain.network.protocol.grandpa;
 
+import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.grandpa.GrandpaGenericException;
+import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.round.RoundCache;
 import com.limechain.grandpa.state.GrandpaSetState;
@@ -28,23 +30,27 @@ import com.limechain.runtime.hostapi.dto.Key;
 import com.limechain.runtime.hostapi.dto.VerifySignature;
 import com.limechain.state.AbstractState;
 import com.limechain.state.StateManager;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.sync.JustificationVerifier;
 import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.scale.ScaleUtils;
 import io.emeraldpay.polkaj.scale.ScaleCodecReader;
+import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.PeerId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Stream;
 
 @Log
 @RequiredArgsConstructor
@@ -53,6 +59,7 @@ public class GrandpaMessageHandler {
     private static final BigInteger CATCH_UP_THRESHOLD = BigInteger.TWO;
 
     private final StateManager stateManager;
+    private final GrandpaService grandpaService;
     private final PeerMessageCoordinator messageCoordinator;
     private final WarpSyncState warpSyncState;
     private final PeerRequester requester;
@@ -277,8 +284,8 @@ public class GrandpaMessageHandler {
         GrandpaRound selectedGrandpaRound = selectRound(catchUpReqMessage.getRound(), catchUpReqMessage.getSetId())
                 .orElseThrow(() -> new GrandpaGenericException("Target round was no found."));
 
-        SignedVote[] preCommits = selectedGrandpaRound.getPreCommits().values().toArray(SignedVote[]::new);
-        SignedVote[] preVotes = selectedGrandpaRound.getPreVotes().values().toArray(SignedVote[]::new);
+        SignedVote[] preVotes = getPreVoteJustification(selectedGrandpaRound);
+        SignedVote[] preCommits = getPreCommitJustification(selectedGrandpaRound);
 
         BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlock();
 
@@ -313,4 +320,117 @@ public class GrandpaMessageHandler {
 
         return Optional.ofNullable(round);
     }
+
+    private SignedVote[] getPreVoteJustification(GrandpaRound requestedRound) {
+        BlockHeader estimate = requestedRound.getBestFinalCandidate();
+        BlockState blockState = stateManager.getBlockState();
+
+        List<SignedVote> preVotes = requestedRound.getPreVotes().values().stream()
+                .filter(preVote ->
+                        blockState.isDescendantOf(estimate.getHash(), preVote.getVote().getBlockHash())
+                ).toList();
+
+        List<SignedVote> pvEquivocations = requestedRound.getPvEquivocations().values().stream()
+                .flatMap(Set::stream)
+                .toList();
+
+        return Stream.concat(preVotes.stream(), pvEquivocations.stream()).toArray(SignedVote[]::new);
+    }
+
+    private SignedVote[] getPreCommitJustification(GrandpaRound requestedRound) {
+        BlockHeader finalizedBlock = requestedRound.getFinalizedBlock();
+        BlockState blockState = stateManager.getBlockState();
+        BigInteger totalWeight = BigInteger.ZERO;
+        BigInteger threshold = stateManager.getGrandpaSetState().getThreshold();
+
+        List<SignedVote> result = new ArrayList<>();
+        SignedVote[] preCommits = requestedRound.getPreCommits().values()
+                .toArray(SignedVote[]::new);
+        SignedVote[] pcEquivocations = requestedRound.getPcEquivocations().values()
+                .stream()
+                .flatMap(Set::stream)
+                .toArray(SignedVote[]::new);
+
+        for (SignedVote pcEquivocation : pcEquivocations) {
+            if (totalWeight.compareTo(threshold) >= 0)
+                break;
+            totalWeight = processVote(pcEquivocation, totalWeight, result);
+        }
+
+        for (SignedVote preCommit : preCommits) {
+            if (totalWeight.compareTo(threshold) >= 0)
+                break;
+            if (finalizedBlock.getBlockNumber().compareTo(preCommit.getVote().getBlockNumber()) <= 0 &&
+                    blockState.isDescendantOf(finalizedBlock.getHash(), preCommit.getVote().getBlockHash())) {
+
+                totalWeight = processVote(preCommit, totalWeight, result);
+            }
+        }
+        return result.toArray(SignedVote[]::new);
+    }
+
+    private BigInteger processVote(SignedVote vote, BigInteger totalWeight, List<SignedVote> result) {
+        Optional<BigInteger> voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey());
+        if (voterWeight.isPresent() && voterWeight.get().compareTo(BigInteger.ZERO) > 0) {
+            totalWeight = totalWeight.add(voterWeight.get());
+            result.add(vote);
+        }
+        return totalWeight;
+    }
+
+    private Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
+        List<Authority> authorities = stateManager.getGrandpaSetState().getAuthorities();
+        return authorities.stream()
+                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
+                .findFirst()
+                .map(Authority::getWeight);
+    }
+
+//    public void handleCatchUpResponse(PeerId peerId,
+//                                      CatchUpResMessage catchUpResMessage,
+//                                      Supplier<Set<PeerId>> peerIds) {
+//
+//        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+//        if (!peerIds.get().contains(peerId)) {
+//            throw new GrandpaGenericException("Receiving catching up response from a non-peer.");
+//        }
+//
+//        if (!catchUpResMessage.getSetId().equals(grandpaSetState.getSetId())) {
+//            throw new GrandpaGenericException("Catch up response has a different setId.");
+//        }
+//
+//        RoundCache roundCache = grandpaSetState.getRoundCache();
+//        BigInteger latestRoundNumber = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
+//        if (catchUpResMessage.getRound().compareTo(latestRoundNumber) <= 0) {
+//            throw new GrandpaGenericException("Catching up unto a round in the future.");
+//        }
+//
+//        //Todo: verify preCommits and preVotes
+//
+//        Map<Hash256, SignedVote> preVotes = Arrays.stream(catchUpResMessage.getPreVotes())
+//                .collect(Collectors.toMap(SignedVote::getAuthorityPublicKey, Function.identity()));
+//
+//        Map<Hash256, SignedVote> preCommits = Arrays.stream(catchUpResMessage.getPreCommits())
+//                .collect(Collectors.toMap(SignedVote::getAuthorityPublicKey, Function.identity()));
+//
+//        GrandpaRound grandpaRound = new GrandpaRound();
+//        grandpaRound.setRoundNumber(catchUpResMessage.getRound());
+//        grandpaRound.setPreVotes(preVotes);
+//        grandpaRound.setPreCommits(preCommits);
+//
+//        Vote preVoteCandidate = grandpaService.findGrandpaGhost(grandpaRound);
+//
+//        if (preVoteCandidate == null) {
+//            throw new GrandpaGenericException("Cannot determine a valid preVote block to catch up to.");
+//        }
+//
+//        grandpaRound.setPreVotedBlock(preVoteCandidate);
+//        grandpaRound.setPvEquivocations(new HashMap<>());
+//        grandpaRound.setPcEquivocations(new HashMap<>());
+//
+//        if (!grandpaService.isCompletable(grandpaRound)) {
+//            throw new GrandpaGenericException("Catch-up round is not completable.");
+//        }
+//
+//    }
 }
