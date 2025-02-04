@@ -13,7 +13,6 @@ import java.math.BigInteger;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GrandpaSetStateTest {
@@ -63,15 +62,12 @@ class GrandpaSetStateTest {
         grandpaSetState.setSetId(BigInteger.ONE);
 
         // 4 % voters.size = 1
-        when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(4));
-        assertEquals(BigInteger.ONE, grandpaSetState.derivePrimary());
+        assertEquals(BigInteger.ONE, grandpaSetState.derivePrimary(BigInteger.valueOf(4)));
 
         // 5 % voters.size = 2
-        when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(5));
-        assertEquals(BigInteger.TWO, grandpaSetState.derivePrimary());
+        assertEquals(BigInteger.TWO, grandpaSetState.derivePrimary(BigInteger.valueOf(5)));
 
         // 6 % voters.size = 0
-        when(roundCache.getLatestRoundNumber(BigInteger.ONE)).thenReturn(BigInteger.valueOf(6));
-        assertEquals(BigInteger.ZERO, grandpaSetState.derivePrimary());
+        assertEquals(BigInteger.ZERO, grandpaSetState.derivePrimary(BigInteger.valueOf(6)));
     }
 }

@@ -94,9 +94,9 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .reduce(BigInteger.ZERO, BigInteger::add);
     }
 
-    public BigInteger derivePrimary() {
+    public BigInteger derivePrimary(BigInteger roundNumber) {
         var authoritiesCount = BigInteger.valueOf(authorities.size());
-        return roundCache.getLatestRoundNumber(setId).remainder(authoritiesCount);
+        return roundNumber.remainder(authoritiesCount);
     }
 
     public void saveGrandpaAuthorities() {
@@ -115,12 +115,12 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         return repository.find(DBConstants.SET_ID, BigInteger.ZERO);
     }
 
-    public void saveLatestRound() {
-        repository.save(DBConstants.LATEST_ROUND, roundCache.getLatestRound(setId));
+    public void saveLatestRoundNumber() {
+        repository.save(DBConstants.LATEST_ROUND, roundCache.getLatestRound(setId).getRoundNumber());
     }
 
-    public GrandpaRound fetchLatestRound() {
-        return repository.find(DBConstants.LATEST_ROUND, new GrandpaRound());
+    public BigInteger fetchLatestRoundNumber() {
+        return repository.find(DBConstants.LATEST_ROUND, BigInteger.ZERO);
     }
 
     public void savePreVotes(BigInteger roundNumber) {
@@ -154,7 +154,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     public void persistState() {
         saveGrandpaAuthorities();
         saveAuthoritySetId();
-        saveLatestRound();
+        saveLatestRoundNumber();
         savePreCommits(roundCache.getLatestRoundNumber(setId));
         savePreVotes(roundCache.getLatestRoundNumber(setId));
     }
@@ -163,26 +163,39 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         this.setId = setId.add(BigInteger.ONE);
         this.authorities = authorities;
 
-        BlockHeader lastFinalized = blockState.getHighestFinalizedHeader();
-
-        GrandpaRound initGrandpaRound = new GrandpaRound();
-        initGrandpaRound.setRoundNumber(BigInteger.ZERO);
-        initGrandpaRound.setGrandpaGhost(lastFinalized);
-        initGrandpaRound.setLastFinalizedBlock(lastFinalized);
-
-        roundCache.addRound(setId, initGrandpaRound);
-        // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
-        persistState();
-
-        GrandpaRound grandpaRound = new GrandpaRound();
-        grandpaRound.setRoundNumber(BigInteger.ONE);
-
-        roundCache.addRound(setId, grandpaRound);
-
-        // TODO Move up. If we are not an authority no need to to anything in the set.
         updateAuthorityStatus();
 
-        log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
+        if (AbstractState.isActiveAuthority()) {
+            BlockHeader lastFinalized = blockState.getHighestFinalizedHeader();
+
+            BigInteger threshold = getThreshold();
+
+            GrandpaRound initGrandpaRound = new GrandpaRound(null,
+                    BigInteger.ZERO,
+                    false,
+                    threshold,
+                    lastFinalized
+            );
+            initGrandpaRound.setGrandpaGhost(lastFinalized);
+
+            roundCache.addRound(setId, initGrandpaRound);
+            // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
+            persistState();
+
+            BigInteger primaryIndex = derivePrimary(BigInteger.ONE);
+            boolean isPrimary = Arrays.equals(authorities.get(primaryIndex.intValueExact()).getPublicKey(),
+                    AbstractState.getGrandpaKeyPair().getValue0());
+
+            GrandpaRound grandpaRound = new GrandpaRound(initGrandpaRound,
+                    BigInteger.ONE,
+                    isPrimary,
+                    threshold,
+                    lastFinalized);
+
+            roundCache.addRound(setId, grandpaRound);
+
+            log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
+        }
     }
 
     public void setLightSyncState(LightSyncState initState) {
