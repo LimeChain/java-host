@@ -115,26 +115,6 @@ public class GrandpaMessageHandler {
         }
     }
 
-    private boolean isValidMessageSignature(VoteMessage voteMessage) {
-        SignedMessage signedMessage = voteMessage.getMessage();
-
-        FullVote fullVote = new FullVote();
-        fullVote.setRound(voteMessage.getRound());
-        fullVote.setSetId(voteMessage.getSetId());
-        fullVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
-        fullVote.setStage(signedMessage.getStage());
-
-        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
-
-        VerifySignature verifySignature = new VerifySignature(
-                signedMessage.getSignature().getBytes(),
-                encodedFullVote,
-                signedMessage.getAuthorityPublicKey().getBytes(),
-                Key.ED25519);
-
-        return Ed25519Utils.verifySignature(verifySignature);
-    }
-
     /**
      * Updates the Host's state with information from a commit message.
      * Synchronized to avoid race condition between checking and updating latest block
@@ -173,17 +153,6 @@ public class GrandpaMessageHandler {
         }
     }
 
-    private void updateSyncStateAndRuntime(CommitMessage commitMessage) {
-        SyncState syncState = stateManager.getSyncState();
-        BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
-        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) <= 0) {
-            return;
-        }
-        syncState.finalizedCommitMessage(commitMessage);
-
-        new Thread(() -> warpSyncState.updateRuntime(lastFinalizedBlockNumber)).start();
-    }
-
     /**
      * Updates the Host's state with information from a neighbour message.
      * Tries to update Host's set data (id and authorities) if neighbour has a greater set id than the Host.
@@ -219,24 +188,6 @@ public class GrandpaMessageHandler {
             if (verified) {
                 processNeighbourUpdates(block);
             }
-        }
-    }
-
-    private void processNeighbourUpdates(SyncMessage.BlockData block) {
-        BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));
-
-        stateManager.getSyncState().finalizeHeader(header);
-
-        DigestHelper.getGrandpaConsensusMessage(header.getDigest())
-                .ifPresent(cm -> stateManager.getGrandpaSetState()
-                        .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
-
-        // Executes scheduled or forced authority changes for the last finalized block.
-        boolean changeInAuthoritySet = stateManager.getGrandpaSetState().handleAuthoritySetChange(
-                stateManager.getSyncState().getLastFinalizedBlockNumber());
-
-        if (warpSyncState.isWarpSyncFinished() && changeInAuthoritySet) {
-            new Thread(messageCoordinator::sendMessagesToPeers).start();
         }
     }
 
@@ -307,93 +258,6 @@ public class GrandpaMessageHandler {
                 .build();
 
         messageCoordinator.sendCatchUpResponseToPeer(peerId, catchUpResMessage);
-    }
-
-    private Optional<GrandpaRound> selectRound(BigInteger peerRoundNumber, BigInteger peerSetId) {
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-
-        GrandpaRound round = grandpaSetState.getRoundCache().getLatestRound(grandpaSetState.getSetId());
-
-        while (round != null) {
-            // Round found
-            // Check voter set
-            if (round.getRoundNumber().equals(peerRoundNumber)) {
-                if (round.getCommitMessagesArchive().getFirst().getSetId().equals(peerSetId)) {
-                    break;
-                }
-            }
-            // Go to the previous round
-            round = round.getPrevious();
-        }
-
-        return Optional.ofNullable(round);
-    }
-
-    private SignedVote[] getPreVoteJustification(GrandpaRound requestedRound) {
-        BlockHeader estimate = requestedRound.getBestFinalCandidate();
-        BlockState blockState = stateManager.getBlockState();
-        Hash256 estimateHash = estimate.getHash();
-
-        Predicate<SignedVote> isDescendant = vote ->
-                blockState.isDescendantOf(estimateHash, vote.getVote().getBlockHash());
-
-        return Stream.concat(
-                        requestedRound.getPreVotes().values().stream(),
-                        requestedRound.getPvEquivocations().values().stream().flatMap(Set::stream)
-                )
-                .filter(isDescendant)
-                .toArray(SignedVote[]::new);
-    }
-
-    private SignedVote[] getPreCommitJustification(GrandpaRound requestedRound) {
-        BlockHeader finalizedBlock = requestedRound.getFinalizedBlock();
-        BigInteger totalWeight = BigInteger.ZERO;
-        BigInteger threshold = stateManager.getGrandpaSetState().getThreshold();
-
-        List<SignedVote> result = new ArrayList<>();
-
-        Stream<SignedVote> allPreCommits = Stream.concat(
-                requestedRound.getPcEquivocations().values().stream().flatMap(Set::stream),
-                requestedRound.getPreCommits().values().stream()
-        );
-
-        for (SignedVote vote : allPreCommits.toList()) {
-            if (totalWeight.compareTo(threshold) >= 0)
-                break;
-            totalWeight = validateAndProcessVote(vote, finalizedBlock, totalWeight, result);
-        }
-
-        return result.toArray(SignedVote[]::new);
-    }
-
-    private BigInteger validateAndProcessVote(SignedVote vote,
-                                              BlockHeader finalizedBlock,
-                                              BigInteger totalWeight,
-                                              List<SignedVote> result) {
-
-        BlockState blockState = stateManager.getBlockState();
-        if (finalizedBlock.getBlockNumber().compareTo(vote.getVote().getBlockNumber()) <= 0 &&
-                blockState.isDescendantOf(finalizedBlock.getHash(), vote.getVote().getBlockHash())) {
-
-            return processVote(vote, totalWeight, result);
-        }
-        return totalWeight;
-    }
-
-    private BigInteger processVote(SignedVote vote, BigInteger totalWeight, List<SignedVote> result) {
-        BigInteger voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
-        if (voterWeight.compareTo(BigInteger.ZERO) > 0) {
-            totalWeight = totalWeight.add(voterWeight);
-            result.add(vote);
-        }
-        return totalWeight;
-    }
-
-    private Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
-        return stateManager.getGrandpaSetState().getAuthorities().stream()
-                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
-                .map(Authority::getWeight)
-                .findFirst();
     }
 
     /**
@@ -491,5 +355,141 @@ public class GrandpaMessageHandler {
 
         setUniqueVotes.accept(grandpaRound, uniqueVotes);
         setEquivocations.accept(grandpaRound, equivocations);
+    }
+
+    private boolean isValidMessageSignature(VoteMessage voteMessage) {
+        SignedMessage signedMessage = voteMessage.getMessage();
+
+        FullVote fullVote = new FullVote();
+        fullVote.setRound(voteMessage.getRound());
+        fullVote.setSetId(voteMessage.getSetId());
+        fullVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
+        fullVote.setStage(signedMessage.getStage());
+
+        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
+
+        VerifySignature verifySignature = new VerifySignature(
+                signedMessage.getSignature().getBytes(),
+                encodedFullVote,
+                signedMessage.getAuthorityPublicKey().getBytes(),
+                Key.ED25519);
+
+        return Ed25519Utils.verifySignature(verifySignature);
+    }
+
+    private void updateSyncStateAndRuntime(CommitMessage commitMessage) {
+        SyncState syncState = stateManager.getSyncState();
+        BigInteger lastFinalizedBlockNumber = syncState.getLastFinalizedBlockNumber();
+        if (commitMessage.getVote().getBlockNumber().compareTo(lastFinalizedBlockNumber) <= 0) {
+            return;
+        }
+        syncState.finalizedCommitMessage(commitMessage);
+
+        new Thread(() -> warpSyncState.updateRuntime(lastFinalizedBlockNumber)).start();
+    }
+
+    private void processNeighbourUpdates(SyncMessage.BlockData block) {
+        BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));
+
+        stateManager.getSyncState().finalizeHeader(header);
+
+        DigestHelper.getGrandpaConsensusMessage(header.getDigest())
+                .ifPresent(cm -> stateManager.getGrandpaSetState()
+                        .handleGrandpaConsensusMessage(cm, header.getBlockNumber()));
+
+        // Executes scheduled or forced authority changes for the last finalized block.
+        boolean changeInAuthoritySet = stateManager.getGrandpaSetState().handleAuthoritySetChange(
+                stateManager.getSyncState().getLastFinalizedBlockNumber());
+
+        if (warpSyncState.isWarpSyncFinished() && changeInAuthoritySet) {
+            new Thread(messageCoordinator::sendMessagesToPeers).start();
+        }
+    }
+
+    private Optional<GrandpaRound> selectRound(BigInteger peerRoundNumber, BigInteger peerSetId) {
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+
+        GrandpaRound round = grandpaSetState.getRoundCache().getLatestRound(grandpaSetState.getSetId());
+
+        while (round != null) {
+            // Round found
+            // Check voter set
+            if (round.getRoundNumber().equals(peerRoundNumber)) {
+                if (round.getCommitMessagesArchive().getFirst().getSetId().equals(peerSetId)) {
+                    break;
+                }
+            }
+            // Go to the previous round
+            round = round.getPrevious();
+        }
+
+        return Optional.ofNullable(round);
+    }
+
+    private SignedVote[] getPreVoteJustification(GrandpaRound requestedRound) {
+        BlockHeader estimate = requestedRound.getBestFinalCandidate();
+        BlockState blockState = stateManager.getBlockState();
+        Hash256 estimateHash = estimate.getHash();
+
+        Predicate<SignedVote> isDescendant = vote ->
+                blockState.isDescendantOf(estimateHash, vote.getVote().getBlockHash());
+
+        return Stream.concat(
+                        requestedRound.getPreVotes().values().stream(),
+                        requestedRound.getPvEquivocations().values().stream().flatMap(Set::stream)
+                )
+                .filter(isDescendant)
+                .toArray(SignedVote[]::new);
+    }
+
+    private SignedVote[] getPreCommitJustification(GrandpaRound requestedRound) {
+        BlockHeader finalizedBlock = requestedRound.getFinalizedBlock();
+        BigInteger totalWeight = BigInteger.ZERO;
+        BigInteger threshold = stateManager.getGrandpaSetState().getThreshold();
+
+        List<SignedVote> result = new ArrayList<>();
+
+        Stream<SignedVote> allPreCommits = Stream.concat(
+                requestedRound.getPcEquivocations().values().stream().flatMap(Set::stream),
+                requestedRound.getPreCommits().values().stream()
+        );
+
+        for (SignedVote vote : allPreCommits.toList()) {
+            if (totalWeight.compareTo(threshold) >= 0)
+                break;
+            totalWeight = validateAndAccumulateVote(vote, finalizedBlock, totalWeight, result);
+        }
+
+        return result.toArray(SignedVote[]::new);
+    }
+
+    private BigInteger validateAndAccumulateVote(SignedVote vote,
+                                                 BlockHeader finalizedBlock,
+                                                 BigInteger totalWeight,
+                                                 List<SignedVote> result) {
+
+        BlockState blockState = stateManager.getBlockState();
+        if (finalizedBlock.getBlockNumber().compareTo(vote.getVote().getBlockNumber()) <= 0 &&
+                blockState.isDescendantOf(finalizedBlock.getHash(), vote.getVote().getBlockHash())) {
+
+            return addVoteAndIncreaseWeight(vote, totalWeight, result);
+        }
+        return totalWeight;
+    }
+
+    private BigInteger addVoteAndIncreaseWeight(SignedVote vote, BigInteger totalWeight, List<SignedVote> result) {
+        BigInteger voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
+        if (voterWeight.compareTo(BigInteger.ZERO) > 0) {
+            totalWeight = totalWeight.add(voterWeight);
+            result.add(vote);
+        }
+        return totalWeight;
+    }
+
+    private Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
+        return stateManager.getGrandpaSetState().getAuthorities().stream()
+                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
+                .map(Authority::getWeight)
+                .findFirst();
     }
 }
