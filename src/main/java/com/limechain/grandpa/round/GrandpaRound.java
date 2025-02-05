@@ -52,6 +52,8 @@ public class GrandpaRound {
     private final boolean isPrimaryVoter;
     private final BigInteger threshold;
 
+    private StageState state = new StartStage();
+
     /**
      * Current finalized block at the start of the round.
      */
@@ -101,7 +103,7 @@ public class GrandpaRound {
 
     private final Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
     private final Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
-    private SignedVote primaryVote;
+    private Vote primaryVote;
 
     private final Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
     private final Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
@@ -148,6 +150,15 @@ public class GrandpaRound {
                 .sum();
     }
 
+    public void play() {
+        state.start(this);
+    }
+
+    public void end() {
+        state = new CompletedStage();
+        state.start(this);
+    }
+
     public void addCommitMessageToArchive(CommitMessage message) {
         commitMessagesArchive.add(message);
     }
@@ -155,6 +166,14 @@ public class GrandpaRound {
     public boolean isCommitMessageInArchive(Vote vote) {
         return commitMessagesArchive.stream()
                 .anyMatch(cm -> cm.getVote().equals(vote));
+    }
+
+    public BlockHeader getPrevBestFinalCandidate() {
+        if (previous != null) {
+            return previous.getBestFinalCandidate();
+        }
+
+        return lastFinalizedBlock;
     }
 
     public BlockHeader getBestFinalCandidate() {
@@ -166,7 +185,7 @@ public class GrandpaRound {
         BlockState blockState = stateManager.getBlockState();
         BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
 
-        Vote bestFinalCandidate = toVote(getBestFinalCandidate());
+        Vote bestFinalCandidate = Vote.fromBlockHeader(getBestFinalCandidate());
 
         var bestFinalCandidateVotesCount = BigInteger.valueOf(
                 getObservedVotesForBlock(bestFinalCandidate.getBlockHash(), SubRound.PRE_COMMIT)
@@ -242,7 +261,7 @@ public class GrandpaRound {
         }
 
         List<Vote> ghostDescendents = getBlockDescendents(
-                toVote(getGrandpaGhost()),
+                Vote.fromBlockHeader(getGrandpaGhost()),
                 new ArrayList<>(votes.keySet())
         );
 
@@ -341,7 +360,7 @@ public class GrandpaRound {
             throw new GhostExecutionException("GHOST not found");
         }
 
-        BlockHeader grandpaGhost = selectBlockWithMostVotes(blocks, previous.getBestFinalCandidate());
+        BlockHeader grandpaGhost = selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
         this.grandpaGhost = grandpaGhost;
 
         return grandpaGhost;
@@ -361,16 +380,16 @@ public class GrandpaRound {
         BlockHeader choiceHeader = getGrandpaGhost();
 
         if (primaryVote != null) {
-            BigInteger primaryBlockNumber = primaryVote.getVote().getBlockNumber();
+            BigInteger primaryBlockNumber = primaryVote.getBlockNumber();
             BlockHeader previousBestFinalCandidate = previous.getBestFinalCandidate();
 
             if (primaryBlockNumber.compareTo(choiceHeader.getBlockNumber()) > 0 &&
                     primaryBlockNumber.compareTo(previousBestFinalCandidate.getBlockNumber()) > 0) {
-                return primaryVote.getVote();
+                return primaryVote;
             }
         }
 
-        Vote choiceVote = toVote(choiceHeader);
+        Vote choiceVote = Vote.fromBlockHeader(choiceHeader);
         preVoteChoice = choiceVote;
 
         return choiceVote;
@@ -576,20 +595,12 @@ public class GrandpaRound {
                 .toList();
     }
 
-    private Vote toVote(BlockHeader blockHeader) {
-        Vote vote = new Vote();
-        vote.setBlockHash(blockHeader.getHash());
-        vote.setBlockNumber(blockHeader.getBlockNumber());
-
-        return vote;
-    }
-
     /**
      * Broadcasts a vote message to network peers for the given round as part of the GRANDPA consensus process.
      * <p>
      * This method is used when broadcasting a vote message for the best preVote candidate block of the current round.
      */
-    private void broadcastVoteMessage(Vote vote, SubRound subround) {
+    public void broadcastVoteMessage(Vote vote, SubRound subround) {
         FullVote fullVote = new FullVote();
         fullVote.setRound(roundNumber);
         fullVote.setSetId(stateManager.getGrandpaSetState().getSetId());
@@ -626,13 +637,13 @@ public class GrandpaRound {
      * 1. As the primary validator, broadcasting a commit message for the best candidate block of the previous round.
      * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
      */
-    private void broadcastCommitMessage() {
+    public void broadcastCommitMessage() {
         SignedVote[] preCommits = getPreCommits().values().toArray(new SignedVote[0]);
 
         CommitMessage commitMessage = new CommitMessage();
         commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
         commitMessage.setRoundNumber(roundNumber);
-        commitMessage.setVote(toVote(getBestFinalCandidate()));
+        commitMessage.setVote(Vote.fromBlockHeader(getBestFinalCandidate()));
         commitMessage.setPreCommits(preCommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);

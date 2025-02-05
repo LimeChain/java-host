@@ -7,7 +7,6 @@ import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.round.RoundCache;
 import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.Vote;
-import com.limechain.network.PeerMessageCoordinator;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.runtime.Runtime;
@@ -61,7 +60,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     private final RoundCache roundCache;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
-    private final PeerMessageCoordinator messageCoordinator;
 
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
             new PriorityQueue<>(AuthoritySetChange.getComparator());
