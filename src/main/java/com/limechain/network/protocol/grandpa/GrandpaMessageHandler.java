@@ -449,7 +449,7 @@ public class GrandpaMessageHandler {
         }
 
         //Todo: Iterate over preVotes, for each check if we are at Stage::PRE_COMMIT_WAITS_FOR_PRE_VOTES
-        //      and updateGrandpaGhost if we have obtained enough preVotes. If grandpaGhost is updated,
+        //      then updateGrandpaGhost if we have obtained enough preVotes. If grandpaGhost is updated,
         //      finish the PRE_COMMIT_WAITS_FOR_PRE_VOTES stage.
 
         //Todo: If preVotes and preCommits are valid, we updateGrandpaGhost, updateFinalizeEstimate
