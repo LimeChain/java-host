@@ -67,8 +67,8 @@ public class GrandpaRound implements Serializable {
     private Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
     private SignedVote primaryVote;
 
-    private final Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
-    private final Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
+    private Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
+    private Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
 
     private final transient List<CommitMessage> commitMessagesArchive = new ArrayList<>();
 

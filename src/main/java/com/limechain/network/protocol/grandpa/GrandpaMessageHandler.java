@@ -2,6 +2,7 @@ package com.limechain.network.protocol.grandpa;
 
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.grandpa.GrandpaGenericException;
+import com.limechain.exception.sync.JustificationVerificationException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.round.RoundCache;
@@ -45,11 +46,18 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Log
@@ -324,113 +332,164 @@ public class GrandpaMessageHandler {
     private SignedVote[] getPreVoteJustification(GrandpaRound requestedRound) {
         BlockHeader estimate = requestedRound.getBestFinalCandidate();
         BlockState blockState = stateManager.getBlockState();
+        Hash256 estimateHash = estimate.getHash();
 
-        List<SignedVote> preVotes = requestedRound.getPreVotes().values().stream()
-                .filter(preVote ->
-                        blockState.isDescendantOf(estimate.getHash(), preVote.getVote().getBlockHash())
-                ).toList();
+        Predicate<SignedVote> isDescendant = vote ->
+                blockState.isDescendantOf(estimateHash, vote.getVote().getBlockHash());
 
-        List<SignedVote> pvEquivocations = requestedRound.getPvEquivocations().values().stream()
-                .flatMap(Set::stream)
-                .toList();
-
-        return Stream.concat(preVotes.stream(), pvEquivocations.stream()).toArray(SignedVote[]::new);
+        return Stream.concat(
+                        requestedRound.getPreVotes().values().stream(),
+                        requestedRound.getPvEquivocations().values().stream().flatMap(Set::stream)
+                )
+                .filter(isDescendant)
+                .toArray(SignedVote[]::new);
     }
 
     private SignedVote[] getPreCommitJustification(GrandpaRound requestedRound) {
         BlockHeader finalizedBlock = requestedRound.getFinalizedBlock();
-        BlockState blockState = stateManager.getBlockState();
         BigInteger totalWeight = BigInteger.ZERO;
         BigInteger threshold = stateManager.getGrandpaSetState().getThreshold();
 
         List<SignedVote> result = new ArrayList<>();
-        SignedVote[] preCommits = requestedRound.getPreCommits().values()
-                .toArray(SignedVote[]::new);
-        SignedVote[] pcEquivocations = requestedRound.getPcEquivocations().values()
-                .stream()
-                .flatMap(Set::stream)
-                .toArray(SignedVote[]::new);
 
-        for (SignedVote pcEquivocation : pcEquivocations) {
+        Stream<SignedVote> allPreCommits = Stream.concat(
+                requestedRound.getPcEquivocations().values().stream().flatMap(Set::stream),
+                requestedRound.getPreCommits().values().stream()
+        );
+
+        for (SignedVote vote : allPreCommits.toList()) {
             if (totalWeight.compareTo(threshold) >= 0)
                 break;
-            totalWeight = processVote(pcEquivocation, totalWeight, result);
+            totalWeight = validateAndProcessVote(vote, finalizedBlock, totalWeight, result);
         }
 
-        for (SignedVote preCommit : preCommits) {
-            if (totalWeight.compareTo(threshold) >= 0)
-                break;
-            if (finalizedBlock.getBlockNumber().compareTo(preCommit.getVote().getBlockNumber()) <= 0 &&
-                    blockState.isDescendantOf(finalizedBlock.getHash(), preCommit.getVote().getBlockHash())) {
-
-                totalWeight = processVote(preCommit, totalWeight, result);
-            }
-        }
         return result.toArray(SignedVote[]::new);
     }
 
+    private BigInteger validateAndProcessVote(SignedVote vote,
+                                              BlockHeader finalizedBlock,
+                                              BigInteger totalWeight,
+                                              List<SignedVote> result) {
+
+        BlockState blockState = stateManager.getBlockState();
+        if (finalizedBlock.getBlockNumber().compareTo(vote.getVote().getBlockNumber()) <= 0 &&
+                blockState.isDescendantOf(finalizedBlock.getHash(), vote.getVote().getBlockHash())) {
+
+            return processVote(vote, totalWeight, result);
+        }
+        return totalWeight;
+    }
+
     private BigInteger processVote(SignedVote vote, BigInteger totalWeight, List<SignedVote> result) {
-        Optional<BigInteger> voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey());
-        if (voterWeight.isPresent() && voterWeight.get().compareTo(BigInteger.ZERO) > 0) {
-            totalWeight = totalWeight.add(voterWeight.get());
+        BigInteger voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
+        if (voterWeight.compareTo(BigInteger.ZERO) > 0) {
+            totalWeight = totalWeight.add(voterWeight);
             result.add(vote);
         }
         return totalWeight;
     }
 
     private Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
-        List<Authority> authorities = stateManager.getGrandpaSetState().getAuthorities();
-        return authorities.stream()
+        return stateManager.getGrandpaSetState().getAuthorities().stream()
                 .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
-                .findFirst()
-                .map(Authority::getWeight);
+                .map(Authority::getWeight)
+                .findFirst();
     }
 
-//    public void handleCatchUpResponse(PeerId peerId,
-//                                      CatchUpResMessage catchUpResMessage,
-//                                      Supplier<Set<PeerId>> peerIds) {
-//
-//        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-//        if (!peerIds.get().contains(peerId)) {
-//            throw new GrandpaGenericException("Receiving catching up response from a non-peer.");
-//        }
-//
-//        if (!catchUpResMessage.getSetId().equals(grandpaSetState.getSetId())) {
-//            throw new GrandpaGenericException("Catch up response has a different setId.");
-//        }
-//
-//        RoundCache roundCache = grandpaSetState.getRoundCache();
-//        BigInteger latestRoundNumber = roundCache.getLatestRoundNumber(grandpaSetState.getSetId());
-//        if (catchUpResMessage.getRound().compareTo(latestRoundNumber) <= 0) {
-//            throw new GrandpaGenericException("Catching up unto a round in the future.");
-//        }
-//
-//        //Todo: verify preCommits and preVotes
-//
-//        Map<Hash256, SignedVote> preVotes = Arrays.stream(catchUpResMessage.getPreVotes())
-//                .collect(Collectors.toMap(SignedVote::getAuthorityPublicKey, Function.identity()));
-//
-//        Map<Hash256, SignedVote> preCommits = Arrays.stream(catchUpResMessage.getPreCommits())
-//                .collect(Collectors.toMap(SignedVote::getAuthorityPublicKey, Function.identity()));
-//
-//        GrandpaRound grandpaRound = new GrandpaRound();
-//        grandpaRound.setRoundNumber(catchUpResMessage.getRound());
-//        grandpaRound.setPreVotes(preVotes);
-//        grandpaRound.setPreCommits(preCommits);
-//
-//        Vote preVoteCandidate = grandpaService.findGrandpaGhost(grandpaRound);
-//
-//        if (preVoteCandidate == null) {
-//            throw new GrandpaGenericException("Cannot determine a valid preVote block to catch up to.");
-//        }
-//
-//        grandpaRound.setPreVotedBlock(preVoteCandidate);
-//        grandpaRound.setPvEquivocations(new HashMap<>());
-//        grandpaRound.setPcEquivocations(new HashMap<>());
-//
-//        if (!grandpaService.isCompletable(grandpaRound)) {
-//            throw new GrandpaGenericException("Catch-up round is not completable.");
-//        }
-//
-//    }
+    /**
+     * Handles a catch-up response from a peer, validating pre-votes and pre-commits.
+     * Initializes a new round, determines the Grandpa Ghost and finalization estimate,
+     * checks round compatibility, and executes the Play-Grandpa-Round if valid.
+     *
+     * @param peerId            peer requesting catch-up message
+     * @param catchUpResMessage received catch-up response message
+     * @param peerIds           set of connected peer ids
+     */
+    public void handleCatchUpResponse(PeerId peerId,
+                                      CatchUpResMessage catchUpResMessage,
+                                      Supplier<Set<PeerId>> peerIds) {
+
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+        if (!peerIds.get().contains(peerId)) {
+            throw new GrandpaGenericException("Receiving catching up response from a non-peer.");
+        }
+
+        if (!catchUpResMessage.getSetId().equals(grandpaSetState.getSetId())) {
+            throw new GrandpaGenericException("Catch up response has a different setId.");
+        }
+
+        RoundCache roundCache = grandpaSetState.getRoundCache();
+        GrandpaRound latestRound = roundCache.getLatestRound(grandpaSetState.getSetId());
+        if (catchUpResMessage.getRound().compareTo(latestRound.getRoundNumber()) <= 0) {
+            throw new GrandpaGenericException("Catching up into a round in the future.");
+        }
+
+        BlockState blockState = stateManager.getBlockState();
+        BlockHeader finalizedTarget = blockState.getHeaderByNumber(catchUpResMessage.getBlockNumber());
+        if (!finalizedTarget.getHash().equals(catchUpResMessage.getBlockHash())) {
+            throw new GrandpaGenericException("Catch up response with non-matching block hash and block number.");
+        }
+
+        GrandpaRound grandpaRound = new GrandpaRound();
+        //Todo: Maybe we should set previous block, as it is needed in the current implementation of findGhost
+        grandpaRound.setRoundNumber(catchUpResMessage.getRound());
+        grandpaRound.setLastFinalizedBlock(latestRound.getLastFinalizedBlock());
+        grandpaRound.setFinalizedBlock(finalizedTarget);
+        setPreVotesAndPvEquivocations(grandpaRound, catchUpResMessage.getPreVotes());
+        setPreCommitsAndPcEquivocations(grandpaRound, catchUpResMessage.getPreCommits());
+
+        boolean verified = JustificationVerifier.verify(Justification.fromCatchUpResMessage(catchUpResMessage));
+        if (!verified) {
+            throw new JustificationVerificationException("Justification could not be verified.");
+        }
+
+        BlockHeader bestFinalCandidate = grandpaService.findBestFinalCandidate(grandpaRound);
+        if (!bestFinalCandidate.getHash().equals(finalizedTarget.getHash())) {
+            throw new GrandpaGenericException("Unjustified Catch-up target finalization");
+        }
+
+        //Todo: Iterate over preVotes, for each check if we are at Stage::PRE_COMMIT_WAITS_FOR_PRE_VOTES
+        //      and updateGrandpaGhost if we have obtained enough preVotes. If grandpaGhost is updated,
+        //      finish the PRE_COMMIT_WAITS_FOR_PRE_VOTES stage.
+
+        //Todo: If preVotes and preCommits are valid, we updateGrandpaGhost, updateFinalizeEstimate
+        //      and attemptToFinalizeRound
+
+        //Todo: Play grandpa round for the currently created round
+    }
+
+    private void setPreVotesAndPvEquivocations(GrandpaRound grandpaRound, SignedVote[] votes) {
+        setVotesAndEquivocations(grandpaRound, votes, GrandpaRound::setPreVotes, GrandpaRound::setPvEquivocations);
+    }
+
+    private void setPreCommitsAndPcEquivocations(GrandpaRound grandpaRound, SignedVote[] votes) {
+        setVotesAndEquivocations(grandpaRound, votes, GrandpaRound::setPreCommits, GrandpaRound::setPcEquivocations);
+    }
+
+    private void setVotesAndEquivocations(GrandpaRound grandpaRound,
+                                          SignedVote[] votes,
+                                          BiConsumer<GrandpaRound, Map<Hash256, SignedVote>> setUniqueVotes,
+                                          BiConsumer<GrandpaRound, Map<Hash256, Set<SignedVote>>> setEquivocations) {
+
+        // Group votes by AuthorityPublicKey
+        Map<Hash256, List<SignedVote>> voteCount = Arrays.stream(votes)
+                .collect(Collectors.groupingBy(SignedVote::getAuthorityPublicKey));
+
+        Map<Hash256, SignedVote> uniqueVotes = new ConcurrentHashMap<>();
+        Map<Hash256, Set<SignedVote>> equivocations = new ConcurrentHashMap<>();
+
+        for (Map.Entry<Hash256, List<SignedVote>> entry : voteCount.entrySet()) {
+            List<SignedVote> voteList = entry.getValue();
+            Hash256 authorityKey = entry.getKey();
+
+            if (voteList.size() == 1) {
+                uniqueVotes.put(authorityKey, voteList.getFirst());
+            } else {
+                equivocations.put(authorityKey, new HashSet<>(voteList));
+            }
+        }
+
+        setUniqueVotes.accept(grandpaRound, uniqueVotes);
+        setEquivocations.accept(grandpaRound, equivocations);
+    }
 }

@@ -178,7 +178,7 @@ public class GrandpaEngine {
         log.log(Level.INFO, "Received catch up response message from Peer " + peerId + "\n" + catchUpResMessage);
 
         if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
-            //          grandpaMessageHandler.handleCatchUpResponse(peerId, catchUpResMessage, connectionManager::getPeerIds);
+            grandpaMessageHandler.handleCatchUpResponse(peerId, catchUpResMessage, connectionManager::getPeerIds);
         }
     }
 
