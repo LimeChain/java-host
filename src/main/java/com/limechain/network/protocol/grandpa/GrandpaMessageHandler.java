@@ -401,7 +401,7 @@ public class GrandpaMessageHandler {
      * Initializes a new round, determines the Grandpa Ghost and finalization estimate,
      * checks round compatibility, and executes the Play-Grandpa-Round if valid.
      *
-     * @param peerId            peer requesting catch-up message
+     * @param peerId            peer responding with catch-up message
      * @param catchUpResMessage received catch-up response message
      * @param peerIds           set of connected peer ids
      */
