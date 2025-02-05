@@ -455,33 +455,27 @@ public class GrandpaMessageHandler {
         );
 
         for (SignedVote vote : allPreCommits.toList()) {
-            if (totalWeight.compareTo(threshold) >= 0)
-                break;
-            totalWeight = validateAndAccumulateVote(vote, finalizedBlock, totalWeight, result);
+            if (totalWeight.compareTo(threshold) >= 0) break;
+            totalWeight = increaseWeightAndAddVote(vote, finalizedBlock, totalWeight, result);
         }
 
         return result.toArray(SignedVote[]::new);
     }
 
-    private BigInteger validateAndAccumulateVote(SignedVote vote,
-                                                 BlockHeader finalizedBlock,
-                                                 BigInteger totalWeight,
-                                                 List<SignedVote> result) {
+    private BigInteger increaseWeightAndAddVote(SignedVote vote,
+                                                BlockHeader finalizedBlock,
+                                                BigInteger totalWeight,
+                                                List<SignedVote> result) {
 
         BlockState blockState = stateManager.getBlockState();
         if (finalizedBlock.getBlockNumber().compareTo(vote.getVote().getBlockNumber()) <= 0 &&
                 blockState.isDescendantOf(finalizedBlock.getHash(), vote.getVote().getBlockHash())) {
 
-            return addVoteAndIncreaseWeight(vote, totalWeight, result);
-        }
-        return totalWeight;
-    }
-
-    private BigInteger addVoteAndIncreaseWeight(SignedVote vote, BigInteger totalWeight, List<SignedVote> result) {
-        BigInteger voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
-        if (voterWeight.compareTo(BigInteger.ZERO) > 0) {
-            totalWeight = totalWeight.add(voterWeight);
-            result.add(vote);
+            BigInteger voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
+            if (voterWeight.compareTo(BigInteger.ZERO) > 0) {
+                totalWeight = totalWeight.add(voterWeight);
+                result.add(vote);
+            }
         }
         return totalWeight;
     }
