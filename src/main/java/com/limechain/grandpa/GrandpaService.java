@@ -108,7 +108,7 @@ public class GrandpaService {
      *
      * @return if the current round is completable
      */
-    private boolean isCompletable(GrandpaRound grandpaRound) {
+    public boolean isCompletable(GrandpaRound grandpaRound) {
 
         Map<Vote, Long> votes = getDirectVotes(grandpaRound, SubRound.PRE_COMMIT);
         long votesCount = votes.values().stream()
@@ -157,7 +157,7 @@ public class GrandpaService {
      *
      * @return the best final candidate block
      */
-    private BlockHeader findBestFinalCandidate(GrandpaRound grandpaRound) {
+    public BlockHeader findBestFinalCandidate(GrandpaRound grandpaRound) {
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
         BlockState blockState = stateManager.getBlockState();
 
