@@ -37,7 +37,6 @@ import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.scale.ScaleUtils;
-import io.emeraldpay.polkaj.scale.ScaleCodecReader;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.PeerId;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +46,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -180,8 +178,8 @@ public class GrandpaMessageHandler {
                 return;
             }
 
-            Justification justification = JustificationReader.getInstance().read(
-                    new ScaleCodecReader(block.getJustification().toByteArray()));
+            Justification justification = ScaleUtils.Decode.decode(
+                    block.getJustification().toByteArray(), JustificationReader.getInstance());
 
             boolean verified = JustificationVerifier.verify(justification);
 
@@ -285,7 +283,7 @@ public class GrandpaMessageHandler {
         RoundCache roundCache = grandpaSetState.getRoundCache();
         GrandpaRound latestRound = roundCache.getLatestRound(grandpaSetState.getSetId());
         if (catchUpResMessage.getRound().compareTo(latestRound.getRoundNumber()) <= 0) {
-            throw new GrandpaGenericException("Catching up into a round in the future.");
+            throw new GrandpaGenericException("Catching up into a round in the past.");
         }
 
         BlockState blockState = stateManager.getBlockState();
@@ -333,14 +331,14 @@ public class GrandpaMessageHandler {
     private void setVotesAndEquivocations(GrandpaRound grandpaRound,
                                           SignedVote[] votes,
                                           BiConsumer<GrandpaRound, Map<Hash256, SignedVote>> setUniqueVotes,
-                                          BiConsumer<GrandpaRound, Map<Hash256, Set<SignedVote>>> setEquivocations) {
+                                          BiConsumer<GrandpaRound, Map<Hash256, List<SignedVote>>> setEquivocations) {
 
         // Group votes by AuthorityPublicKey
         Map<Hash256, List<SignedVote>> voteCount = Arrays.stream(votes)
                 .collect(Collectors.groupingBy(SignedVote::getAuthorityPublicKey));
 
         Map<Hash256, SignedVote> uniqueVotes = new ConcurrentHashMap<>();
-        Map<Hash256, Set<SignedVote>> equivocations = new ConcurrentHashMap<>();
+        Map<Hash256, List<SignedVote>> equivocations = new ConcurrentHashMap<>();
 
         for (Map.Entry<Hash256, List<SignedVote>> entry : voteCount.entrySet()) {
             List<SignedVote> voteList = entry.getValue();
@@ -349,7 +347,7 @@ public class GrandpaMessageHandler {
             if (voteList.size() == 1) {
                 uniqueVotes.put(authorityKey, voteList.getFirst());
             } else {
-                equivocations.put(authorityKey, new HashSet<>(voteList));
+                equivocations.put(authorityKey, voteList);
             }
         }
 
@@ -389,7 +387,8 @@ public class GrandpaMessageHandler {
     }
 
     private void processNeighbourUpdates(SyncMessage.BlockData block) {
-        BlockHeader header = BlockHeaderReader.getInstance().read(new ScaleCodecReader(block.getHeader().toByteArray()));
+        BlockHeader header = ScaleUtils.Decode.decode(
+                block.getHeader().toByteArray(), BlockHeaderReader.getInstance());
 
         stateManager.getSyncState().finalizeHeader(header);
 
@@ -436,7 +435,7 @@ public class GrandpaMessageHandler {
 
         return Stream.concat(
                         requestedRound.getPreVotes().values().stream(),
-                        requestedRound.getPvEquivocations().values().stream().flatMap(Set::stream)
+                        requestedRound.getPvEquivocations().values().stream().flatMap(List::stream)
                 )
                 .filter(isDescendant)
                 .toArray(SignedVote[]::new);
@@ -450,7 +449,7 @@ public class GrandpaMessageHandler {
         List<SignedVote> result = new ArrayList<>();
 
         Stream<SignedVote> allPreCommits = Stream.concat(
-                requestedRound.getPcEquivocations().values().stream().flatMap(Set::stream),
+                requestedRound.getPcEquivocations().values().stream().flatMap(List::stream),
                 requestedRound.getPreCommits().values().stream()
         );
 
