@@ -95,7 +95,7 @@ public class RuntimeImpl implements Runtime {
 
     @Override
     public Optional<OpaqueKeyOwnershipProof> generateGrandpaKeyOwnershipProof(BigInteger authoritySetId,
-                                                                       byte[] authorityPublicKey) {
+                                                                              byte[] authorityPublicKey) {
         byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(
                 new UInt64Writer(), authoritySetId), authorityPublicKey);
         byte[] encodedResponse = call(RuntimeEndpoint.GRANDPA_API_GENERATE_KEY_OWNERSHIP_PROOF, encodedProof);

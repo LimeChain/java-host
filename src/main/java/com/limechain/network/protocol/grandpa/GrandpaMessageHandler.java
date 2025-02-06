@@ -3,7 +3,6 @@ package com.limechain.network.protocol.grandpa;
 import com.limechain.babe.api.OpaqueKeyOwnershipProof;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.grandpa.GrandpaGenericException;
-import com.limechain.network.protocol.grandpa.messages.vote.GrandpaEquivocation;
 import com.limechain.exception.sync.JustificationVerificationException;
 import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.round.GrandpaRound;
@@ -20,6 +19,7 @@ import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.neighbour.NeighbourMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.vote.GrandpaEquivocation;
 import com.limechain.network.protocol.grandpa.messages.vote.SignedMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.VoteMessage;
 import com.limechain.network.protocol.sync.BlockRequestField;
@@ -40,8 +40,6 @@ import com.limechain.sync.state.SyncState;
 import com.limechain.sync.warpsync.WarpSyncState;
 import com.limechain.utils.Ed25519Utils;
 import com.limechain.utils.scale.ScaleUtils;
-import io.emeraldpay.polkaj.scale.ScaleCodecReader;
-import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.PeerId;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +47,6 @@ import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
-import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -108,7 +105,7 @@ public class GrandpaMessageHandler {
 
         if (isVoteEquivocationExist(signedVote, round, subround, voteMessageSetId)) {
             log.warning(
-                    String.format("Reported vote equivocation for round %s, set %s, block hash %s, block number %s",
+                    String.format("Detected vote equivocation for round %s, set %s, block hash %s, block number %s",
                             voteMessageSetId, voteMessageSetId, signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
             return;
         }
@@ -146,25 +143,28 @@ public class GrandpaMessageHandler {
 
     private boolean isVoteEquivocationExist(SignedVote signedVote, GrandpaRound round, SubRound subRound, BigInteger voteMessageSetId) {
         Map<Hash256, SignedVote> votes = PRE_COMMIT.equals(subRound) ? round.getPreCommits() : round.getPreVotes();
-        Map<Hash256, Set<SignedVote>> equivocations = PRE_COMMIT.equals(subRound) ? round.getPcEquivocations() : round.getPvEquivocations();
+        Map<Hash256, List<SignedVote>> equivocations = PRE_COMMIT.equals(subRound) ? round.getPcEquivocations() : round.getPvEquivocations();
 
         Hash256 authorityPublicKey = signedVote.getAuthorityPublicKey();
 
         if (votes.containsKey(authorityPublicKey)) {
-            equivocations.computeIfAbsent(authorityPublicKey, _ -> new HashSet<>()).add(signedVote);
-            Runtime runtime = warpSyncState.getRuntime();
+            equivocations.computeIfAbsent(authorityPublicKey, _ -> new ArrayList<>()).add(signedVote);
+            BlockState blockState = stateManager.getBlockState();
+            Runtime runtime = blockState.getRuntime(blockState.getHighestFinalizedHash());
             SignedVote firstSignedVote = votes.get(authorityPublicKey);
 
-            GrandpaEquivocation grandpaEquivocation = new GrandpaEquivocation();
-            grandpaEquivocation.setSetId(voteMessageSetId);
-            grandpaEquivocation.setEquivocationStage((byte) (PRE_COMMIT.equals(subRound) ? 1 : 0));
-            grandpaEquivocation.setRoundNumber(round.getRoundNumber());
-            grandpaEquivocation.setFirstBlockNumber(firstSignedVote.getVote().getBlockNumber());
-            grandpaEquivocation.setFirstBlockHash(firstSignedVote.getVote().getBlockHash());
-            grandpaEquivocation.setFirstSignature(firstSignedVote.getSignature());
-            grandpaEquivocation.setSecondBlockNumber(signedVote.getVote().getBlockNumber());
-            grandpaEquivocation.setSecondBlockHash(signedVote.getVote().getBlockHash());
-            grandpaEquivocation.setSecondSignature(signedVote.getSignature());
+            GrandpaEquivocation grandpaEquivocation =
+                    GrandpaEquivocation.builder().
+                            setId(voteMessageSetId).
+                            equivocationStage((byte) (PRE_COMMIT.equals(subRound) ? 1 : 0)).
+                            roundNumber(round.getRoundNumber()).
+                            firstBlockNumber(firstSignedVote.getVote().getBlockNumber()).
+                            firstBlockHash(firstSignedVote.getVote().getBlockHash()).
+                            firstSignature(firstSignedVote.getSignature()).
+                            secondBlockNumber(signedVote.getVote().getBlockNumber()).
+                            secondBlockHash(signedVote.getVote().getBlockHash()).
+                            secondSignature(signedVote.getSignature())
+                            .build();
 
             Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateGrandpaKeyOwnershipProof(voteMessageSetId, authorityPublicKey.getBytes());
             opaqueKeyOwnershipProof.ifPresentOrElse(
@@ -422,26 +422,6 @@ public class GrandpaMessageHandler {
 
         setUniqueVotes.accept(grandpaRound, uniqueVotes);
         setEquivocations.accept(grandpaRound, equivocations);
-    }
-
-    private boolean isValidMessageSignature(VoteMessage voteMessage) {
-        SignedMessage signedMessage = voteMessage.getMessage();
-
-        FullVote fullVote = new FullVote();
-        fullVote.setRound(voteMessage.getRound());
-        fullVote.setSetId(voteMessage.getSetId());
-        fullVote.setVote(new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
-        fullVote.setStage(signedMessage.getStage());
-
-        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
-
-        VerifySignature verifySignature = new VerifySignature(
-                signedMessage.getSignature().getBytes(),
-                encodedFullVote,
-                signedMessage.getAuthorityPublicKey().getBytes(),
-                Key.ED25519);
-
-        return Ed25519Utils.verifySignature(verifySignature);
     }
 
     private void updateSyncStateAndRuntime(CommitMessage commitMessage) {

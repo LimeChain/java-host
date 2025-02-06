@@ -2,11 +2,13 @@ package com.limechain.network.protocol.grandpa.messages.vote;
 
 import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 
 import java.math.BigInteger;
 
-@Data
+@Getter
+@Builder
 public class GrandpaEquivocation {
     private BigInteger setId;
     private byte equivocationStage;
