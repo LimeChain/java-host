@@ -100,8 +100,8 @@ public class GrandpaRound {
     @Nullable
     private Vote preCommitChoice;
 
-    private final Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
-    private final Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
+    private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
+    private Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
     private Vote primaryVote;
 
     private Map<Hash256, List<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
@@ -231,7 +231,7 @@ public class GrandpaRound {
         }
 
         BlockHeader ghost = getGrandpaGhost();
-        BlockHeader prevBfc = previous.getBestFinalCandidate();
+        BlockHeader prevBfc = getPrevBestFinalCandidate();
 
         return prevBfc.getBlockNumber().compareTo(currentBfc.getBlockNumber()) <= 0
                 && currentBfc.getBlockNumber().compareTo(ghost.getBlockNumber()) <= 0;
@@ -380,7 +380,7 @@ public class GrandpaRound {
 
         if (primaryVote != null) {
             BigInteger primaryBlockNumber = primaryVote.getBlockNumber();
-            BlockHeader previousBestFinalCandidate = previous.getBestFinalCandidate();
+            BlockHeader previousBestFinalCandidate = getPrevBestFinalCandidate();
 
             if (primaryBlockNumber.compareTo(choiceHeader.getBlockNumber()) > 0 &&
                     primaryBlockNumber.compareTo(previousBestFinalCandidate.getBlockNumber()) > 0) {

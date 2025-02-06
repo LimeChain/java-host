@@ -287,10 +287,14 @@ public class GrandpaMessageHandler {
             throw new GrandpaGenericException("Catch up response with non-matching block hash and block number.");
         }
 
-        GrandpaRound grandpaRound = new GrandpaRound();
+        GrandpaRound grandpaRound = new GrandpaRound(
+                null,
+                catchUpResMessage.getRound(),
+                false,
+                grandpaSetState.getThreshold(),
+                latestRound.getLastFinalizedBlock()
+        );
         //Todo: Maybe we should set previous block, as it is needed in the current implementation of findGhost
-        grandpaRound.setRoundNumber(catchUpResMessage.getRound());
-        grandpaRound.setLastFinalizedBlock(latestRound.getLastFinalizedBlock());
         grandpaRound.setFinalizedBlock(finalizedTarget);
         setPreVotesAndPvEquivocations(grandpaRound, catchUpResMessage.getPreVotes());
         setPreCommitsAndPcEquivocations(grandpaRound, catchUpResMessage.getPreCommits());
@@ -300,7 +304,7 @@ public class GrandpaMessageHandler {
             throw new JustificationVerificationException("Justification could not be verified.");
         }
 
-        BlockHeader bestFinalCandidate = grandpaService.findBestFinalCandidate(grandpaRound);
+        BlockHeader bestFinalCandidate = grandpaRound.getBestFinalCandidate();
         if (!bestFinalCandidate.getHash().equals(finalizedTarget.getHash())) {
             throw new GrandpaGenericException("Unjustified Catch-up target finalization");
         }
