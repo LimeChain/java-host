@@ -1,5 +1,6 @@
 package com.limechain.grandpa.vote;
 
+import com.limechain.network.protocol.warp.dto.BlockHeader;
 import io.emeraldpay.polkaj.types.Hash256;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,4 +16,12 @@ public class Vote implements Serializable {
 
     private Hash256 blockHash;
     private BigInteger blockNumber;
+
+    public static Vote fromBlockHeader(BlockHeader blockHeader) {
+        Vote vote = new Vote();
+        vote.setBlockHash(blockHeader.getHash());
+        vote.setBlockNumber(blockHeader.getBlockNumber());
+
+        return vote;
+    }
 }

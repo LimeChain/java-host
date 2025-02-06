@@ -38,7 +38,7 @@ public class RoundCache {
                 throw new GrandpaGenericException("Next round number isn't equal to the current round number plus one");
             }
 
-            grandpaRound.setPrevious(currentRound);
+//            grandpaRound.setPrevious(currentRound);
         }
 
         rounds.add(grandpaRound);
@@ -50,10 +50,10 @@ public class RoundCache {
             return;
         }
 
-        BigInteger roundNumberBeforeLastFinalizedRound = lastFinalizedRoundNumber.subtract(BigInteger.ONE);
-        rounds.stream()
-                .filter(r -> r.getRoundNumber().equals(roundNumberBeforeLastFinalizedRound))
-                .findFirst().ifPresent(roundBeforeFinalized -> roundBeforeFinalized.setPrevious(null));
+//        BigInteger roundNumberBeforeLastFinalizedRound = lastFinalizedRoundNumber.subtract(BigInteger.ONE);
+//        rounds.stream()
+//                .filter(r -> r.getRoundNumber().equals(roundNumberBeforeLastFinalizedRound))
+//                .findFirst().ifPresent(roundBeforeFinalized -> roundBeforeFinalized.setPrevious(null));
 
         // Remove all GrandpaRound objects with smaller numbers than the last finalized round number
         rounds.removeIf(r -> r.getRoundNumber().compareTo(lastFinalizedRoundNumber) < 0);

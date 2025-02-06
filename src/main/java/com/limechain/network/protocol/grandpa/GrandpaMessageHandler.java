@@ -95,18 +95,13 @@ public class GrandpaMessageHandler {
         }
 
         GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
-        if (round == null) {
-            round = new GrandpaRound();
-            round.setRoundNumber(voteMessageRoundNumber);
-            roundCache.addRound(voteMessageSetId, round);
-        }
 
         SubRound subround = signedMessage.getStage();
         switch (subround) {
             case PRE_VOTE -> round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
             case PRE_COMMIT -> round.getPreCommits().put(signedMessage.getAuthorityPublicKey(), signedVote);
             case PRIMARY_PROPOSAL -> {
-                round.setPrimaryVote(signedVote);
+                round.setPrimaryVote(signedVote.getVote());
                 round.getPreVotes().put(signedMessage.getAuthorityPublicKey(), signedVote);
             }
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
@@ -202,7 +197,7 @@ public class GrandpaMessageHandler {
 
             // Check if needed to catch-up peer
             if (neighbourMessage.getRound().compareTo(
-                    grandpaSetState.fetchLatestRound().getRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
+                    grandpaSetState.fetchLatestRoundNumber().add(CATCH_UP_THRESHOLD)) >= 0) {
                 log.log(Level.FINE, "Neighbor message indicates that the round of Peer " + peerId + " is ahead.");
 
                 CatchUpReqMessage catchUpReqMessage = CatchUpReqMessage.builder()
@@ -234,7 +229,7 @@ public class GrandpaMessageHandler {
             throw new GrandpaGenericException("Catch up message has a different setId.");
         }
 
-        if (catchUpReqMessage.getRound().compareTo(grandpaSetState.fetchLatestRound().getRoundNumber()) > 0) {
+        if (catchUpReqMessage.getRound().compareTo(grandpaSetState.fetchLatestRoundNumber()) > 0) {
             throw new GrandpaGenericException("Catching up on a round in the future.");
         }
 
@@ -292,10 +287,14 @@ public class GrandpaMessageHandler {
             throw new GrandpaGenericException("Catch up response with non-matching block hash and block number.");
         }
 
-        GrandpaRound grandpaRound = new GrandpaRound();
+        GrandpaRound grandpaRound = new GrandpaRound(
+                null,
+                catchUpResMessage.getRound(),
+                false,
+                grandpaSetState.getThreshold(),
+                latestRound.getLastFinalizedBlock()
+        );
         //Todo: Maybe we should set previous block, as it is needed in the current implementation of findGhost
-        grandpaRound.setRoundNumber(catchUpResMessage.getRound());
-        grandpaRound.setLastFinalizedBlock(latestRound.getLastFinalizedBlock());
         grandpaRound.setFinalizedBlock(finalizedTarget);
         setPreVotesAndPvEquivocations(grandpaRound, catchUpResMessage.getPreVotes());
         setPreCommitsAndPcEquivocations(grandpaRound, catchUpResMessage.getPreCommits());
@@ -305,7 +304,7 @@ public class GrandpaMessageHandler {
             throw new JustificationVerificationException("Justification could not be verified.");
         }
 
-        BlockHeader bestFinalCandidate = grandpaService.findBestFinalCandidate(grandpaRound);
+        BlockHeader bestFinalCandidate = grandpaRound.getBestFinalCandidate();
         if (!bestFinalCandidate.getHash().equals(finalizedTarget.getHash())) {
             throw new GrandpaGenericException("Unjustified Catch-up target finalization");
         }
