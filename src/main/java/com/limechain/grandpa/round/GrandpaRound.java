@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -105,8 +104,8 @@ public class GrandpaRound {
     private final Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
     private Vote primaryVote;
 
-    private final Map<Hash256, Set<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
-    private final Map<Hash256, Set<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
+    private Map<Hash256, List<SignedVote>> pvEquivocations = new ConcurrentHashMap<>();
+    private Map<Hash256, List<SignedVote>> pcEquivocations = new ConcurrentHashMap<>();
 
     private final List<CommitMessage> commitMessagesArchive = new ArrayList<>();
 
@@ -140,13 +139,13 @@ public class GrandpaRound {
 
     public long getPvEquivocationsCount() {
         return this.pvEquivocations.values().stream()
-                .mapToLong(Set::size)
+                .mapToLong(List::size)
                 .sum();
     }
 
     public long getPcEquivocationsCount() {
         return this.pcEquivocations.values().stream()
-                .mapToInt(Set::size)
+                .mapToInt(List::size)
                 .sum();
     }
 
