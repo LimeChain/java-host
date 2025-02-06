@@ -4,6 +4,7 @@ import com.limechain.babe.api.BabeApiConfiguration;
 import com.limechain.babe.api.BlockEquivocationProof;
 import com.limechain.babe.api.OpaqueKeyOwnershipProof;
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.network.protocol.grandpa.messages.vote.GrandpaEquivocation;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import com.limechain.rpc.methods.author.dto.DecodedKey;
@@ -23,9 +24,13 @@ public interface Runtime {
 
     BabeApiConfiguration getBabeApiConfiguration();
 
-    Optional<OpaqueKeyOwnershipProof> generateKeyOwnershipProof(BigInteger slotNumber, byte[] authorityPublicKey);
+    Optional<OpaqueKeyOwnershipProof> generateBabeKeyOwnershipProof(BigInteger slotNumber, byte[] authorityPublicKey);
 
-    void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof, byte[] keyOwnershipProof);
+    void submitReportBabeEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof, byte[] keyOwnershipProof);
+
+    Optional<OpaqueKeyOwnershipProof> generateGrandpaKeyOwnershipProof(BigInteger authoritySetId, byte[] authorityPublicKey);
+
+    void submitReportGrandpaEquivocationUnsignedExtrinsic(GrandpaEquivocation grandpaEquivocation, byte[] keyOwnershipProof);
 
     List<DecodedKey> decodeSessionKeys(String sessionKeys);
 
