@@ -201,10 +201,10 @@ public class BlockProductionVerifier implements SlotChangeListener {
                 blockEquivocationProof.setFirstBlockHeader(firstBlockHeader);
                 blockEquivocationProof.setSecondBlockHeader(blockHeader);
 
-                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateKeyOwnershipProof(
+                Optional<OpaqueKeyOwnershipProof> opaqueKeyOwnershipProof = runtime.generateBabeKeyOwnershipProof(
                         currentSlotNumber, authorityPublicKey);
                 opaqueKeyOwnershipProof.ifPresentOrElse(
-                        key -> runtime.submitReportEquivocationUnsignedExtrinsic(blockEquivocationProof, key.getProof()),
+                        key -> runtime.submitReportBabeEquivocationUnsignedExtrinsic(blockEquivocationProof, key.getProof()),
                         () -> log.warning(String.format(
                                 "Failure to report equivocation for authority: %s. Authorship verification marked as failure.",
                                 hexPublicKey)));
