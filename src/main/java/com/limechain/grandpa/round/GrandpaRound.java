@@ -45,6 +45,9 @@ import java.util.concurrent.ScheduledExecutorService;
 @RequiredArgsConstructor
 public class GrandpaRound {
 
+    // Based on https://github.com/paritytech/polkadot/pull/6217
+    public static final long DURATION = 1000;
+
     private final GrandpaRound previous;
     private final BigInteger roundNumber;
 
