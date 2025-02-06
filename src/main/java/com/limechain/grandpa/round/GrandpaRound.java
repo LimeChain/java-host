@@ -248,7 +248,7 @@ public class GrandpaRound {
      *
      * @return if the current round is completable
      */
-    private boolean isCompletable() {
+    public boolean isCompletable() {
 
         Map<Vote, Long> votes = getDirectVotes(SubRound.PRE_COMMIT);
         long votesCount = votes.values().stream()
