@@ -9,7 +9,9 @@ import com.limechain.babe.api.scale.OpaqueKeyOwnershipProofReader;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.scale.AuthorityReader;
 import com.limechain.exception.scale.ScaleEncodingException;
+import com.limechain.network.protocol.grandpa.messages.vote.GrandpaEquivocation;
 import com.limechain.network.protocol.blockannounce.scale.BlockHeaderScaleWriter;
+import com.limechain.network.protocol.grandpa.messages.vote.GrandpaEquivocationScaleWriter;
 import com.limechain.network.protocol.transaction.scale.TransactionReader;
 import com.limechain.network.protocol.warp.dto.Block;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
@@ -70,8 +72,8 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
-    public Optional<OpaqueKeyOwnershipProof> generateKeyOwnershipProof(BigInteger slotNumber,
-                                                                       byte[] authorityPublicKey) {
+    public Optional<OpaqueKeyOwnershipProof> generateBabeKeyOwnershipProof(BigInteger slotNumber,
+                                                                           byte[] authorityPublicKey) {
         byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(
                 new UInt64Writer(), slotNumber), authorityPublicKey);
         byte[] encodedResponse = call(RuntimeEndpoint.BABE_API_GENERATE_KEY_OWNERSHIP_PROOF, encodedProof);
@@ -79,13 +81,35 @@ public class RuntimeImpl implements Runtime {
     }
 
     @Override
-    public void submitReportEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof,
-                                                          byte[] keyOwnershipProof) {
+    public void submitReportBabeEquivocationUnsignedExtrinsic(BlockEquivocationProof blockEquivocationProof,
+                                                              byte[] keyOwnershipProof) {
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
              ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
             BlockEquivocationProofWriter.getInstance().write(scaleCodecWriter, blockEquivocationProof);
             scaleCodecWriter.writeAsList(keyOwnershipProof);
             call(RuntimeEndpoint.BABE_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, buffer.toByteArray());
+        } catch (IOException e) {
+            throw new ScaleEncodingException("Unexpected exception while encoding.");
+        }
+    }
+
+    @Override
+    public Optional<OpaqueKeyOwnershipProof> generateGrandpaKeyOwnershipProof(BigInteger authoritySetId,
+                                                                       byte[] authorityPublicKey) {
+        byte[] encodedProof = ArrayUtils.addAll(ScaleUtils.Encode.encode(
+                new UInt64Writer(), authoritySetId), authorityPublicKey);
+        byte[] encodedResponse = call(RuntimeEndpoint.GRANDPA_API_GENERATE_KEY_OWNERSHIP_PROOF, encodedProof);
+        return new ScaleCodecReader(encodedResponse).readOptional(OpaqueKeyOwnershipProofReader.getInstance());
+    }
+
+    @Override
+    public void submitReportGrandpaEquivocationUnsignedExtrinsic(GrandpaEquivocation grandpaEquivocation,
+                                                                 byte[] keyOwnershipProof) {
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+             ScaleCodecWriter scaleCodecWriter = new ScaleCodecWriter(buffer)) {
+            GrandpaEquivocationScaleWriter.getInstance().write(scaleCodecWriter, grandpaEquivocation);
+            scaleCodecWriter.writeAsList(keyOwnershipProof);
+            call(RuntimeEndpoint.GRANDPA_API_SUBMIT_REPORT_EQUIVOCATION_UNSIGNED_EXTRINSIC, buffer.toByteArray());
         } catch (IOException e) {
             throw new ScaleEncodingException("Unexpected exception while encoding.");
         }
