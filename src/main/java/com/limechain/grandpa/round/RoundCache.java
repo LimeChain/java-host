@@ -50,7 +50,7 @@ public class RoundCache {
             return;
         }
 
-        BigInteger roundNumberBeforeLastFinalizedRound = lastFinalizedRoundNumber.subtract(BigInteger.ONE);
+//        BigInteger roundNumberBeforeLastFinalizedRound = lastFinalizedRoundNumber.subtract(BigInteger.ONE);
 //        rounds.stream()
 //                .filter(r -> r.getRoundNumber().equals(roundNumberBeforeLastFinalizedRound))
 //                .findFirst().ifPresent(roundBeforeFinalized -> roundBeforeFinalized.setPrevious(null));
