@@ -104,9 +104,9 @@ public class GrandpaRound {
     private Vote preCommitChoice;
 
     /**
-     * Is current round completable
+     * Updated when the Grandpa Ghost is calculated.<BR>
+     * Default value is false.
      */
-    @Nullable
     private boolean isCompletable;
 
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
