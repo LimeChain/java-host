@@ -1,5 +1,6 @@
 package com.limechain.grandpa.round;
 
+import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.network.protocol.warp.dto.BlockHeader;
 import lombok.extern.java.Log;
 
@@ -35,12 +36,16 @@ public class FinalizeStage implements StageState {
     }
 
     private boolean isRoundReadyToBeFinalized(GrandpaRound round) {
-        BlockHeader finalized = round.getFinalizedBlock();
-        BlockHeader prevBestFinalCandidate = round.getPrevBestFinalCandidate();
-
-        if (finalized == null || prevBestFinalCandidate == null) {
+        BlockHeader finalized;
+        try {
+            finalized = round.getFinalizedBlock();
+        } catch (GrandpaGenericException e) {
             return false;
         }
-        return finalized.getBlockNumber().compareTo(prevBestFinalCandidate.getBlockNumber()) >= 0;
+
+        BlockHeader prevBestFinalCandidate = round.getPrevBestFinalCandidate();
+
+        return prevBestFinalCandidate != null
+                && finalized.getBlockNumber().compareTo(prevBestFinalCandidate.getBlockNumber()) >= 0;
     }
 }
