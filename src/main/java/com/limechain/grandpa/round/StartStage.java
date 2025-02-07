@@ -34,6 +34,7 @@ public class StartStage implements StageState {
 
     @Override
     public void end(GrandpaRound round) {
+
         log.fine(String.format("Round %d ended start stage.", round.getRoundNumber()));
         round.setState(new PreVoteStage());
         round.getState().start(round);
