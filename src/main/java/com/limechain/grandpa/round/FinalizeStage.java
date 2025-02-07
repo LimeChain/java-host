@@ -17,12 +17,11 @@ public class FinalizeStage implements StageState {
             return;
         }
 
-        Runnable onFinalizeHandler = () -> {
+        round.setOnFinalizeHandler(() -> {
             if (isRoundReadyToBeFinalized(round)) {
                 end(round);
             }
-        };
-        round.setOnFinalizeHandler(onFinalizeHandler);
+        });
     }
 
     @Override
@@ -40,6 +39,7 @@ public class FinalizeStage implements StageState {
         try {
             finalized = round.getFinalizedBlock();
         } catch (GrandpaGenericException e) {
+            log.warning("Finalized block not found, round cannot be finalized.");
             return false;
         }
 
