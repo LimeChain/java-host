@@ -103,6 +103,12 @@ public class GrandpaRound {
     @Nullable
     private Vote preCommitChoice;
 
+    /**
+     * Is current round completable
+     */
+    @Nullable
+    private boolean isCompletable;
+
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
     private Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
     private Vote primaryVote;
@@ -248,7 +254,7 @@ public class GrandpaRound {
      *
      * @return if the current round is completable
      */
-    public boolean isCompletable() {
+    public boolean checkIfRoundIsCompletable() {
 
         Map<Vote, Long> votes = getDirectVotes(SubRound.PRE_COMMIT);
         long votesCount = votes.values().stream()
@@ -362,10 +368,11 @@ public class GrandpaRound {
             throw new GhostExecutionException("GHOST not found");
         }
 
-        BlockHeader grandpaGhost = selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
-        this.grandpaGhost = grandpaGhost;
+        BlockHeader result = selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
+        this.grandpaGhost = result;
+        this.isCompletable = checkIfRoundIsCompletable();
 
-        return grandpaGhost;
+        return result;
     }
 
     /**

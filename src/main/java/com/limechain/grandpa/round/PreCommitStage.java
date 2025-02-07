@@ -17,6 +17,7 @@ public class PreCommitStage implements StageState {
 
         if (round.isCompletable()) {
             end(round);
+            return;
         }
 
         long timeElapsed = System.currentTimeMillis() - round.getStartTime().toEpochMilli();
@@ -33,10 +34,10 @@ public class PreCommitStage implements StageState {
     public void end(GrandpaRound round) {
         log.fine(String.format("Round %d ended pre-commit stage.", round.getRoundNumber()));
 
-        if (!round.getOnStageTimerHandler().isShutdown()) {
+        if (round.getOnStageTimerHandler() != null && !round.getOnStageTimerHandler().isShutdown()) {
             round.getOnStageTimerHandler().shutdown();
+            round.setOnStageTimerHandler(null);
         }
-        round.setOnStageTimerHandler(null);
 
         try {
 
@@ -47,7 +48,7 @@ public class PreCommitStage implements StageState {
             log.fine(String.format("Round %d ended start stage.", round.getRoundNumber()));
 
         } catch (GrandpaGenericException e) {
-            log.fine(String.format("Round %d could not end now: %s", round.getRoundNumber(), e.getMessage()));
+            log.fine(String.format("Round %d cannot end now: %s", round.getRoundNumber(), e.getMessage()));
         }
     }
 }
