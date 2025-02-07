@@ -11,13 +11,13 @@ public class FinalizeStage implements StageState {
 
         log.fine(String.format("Round %d entered the Finalize stage.", round.getRoundNumber()));
 
-        if (isRoundReadyToEnd(round)) {
+        if (isRoundReadyToFinalized(round)) {
             end(round);
             return;
         }
 
         Runnable onFinalizeHandler = () -> {
-            if (isRoundReadyToEnd(round)) {
+            if (isRoundReadyToFinalized(round)) {
                 end(round);
             }
         };
@@ -34,7 +34,7 @@ public class FinalizeStage implements StageState {
         round.end();
     }
 
-    private boolean isRoundReadyToEnd(GrandpaRound round) {
+    private boolean isRoundReadyToFinalized(GrandpaRound round) {
         BlockHeader finalized = round.getFinalizedBlock();
         BlockHeader prevBestFinalCandidate = round.getPrevBestFinalCandidate();
 
