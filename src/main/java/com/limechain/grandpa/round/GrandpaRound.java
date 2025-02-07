@@ -254,7 +254,7 @@ public class GrandpaRound {
      *
      * @return if the current round is completable
      */
-    public boolean checkIfRoundIsCompletable() {
+    public boolean checkIfCompletable() {
 
         Map<Vote, Long> votes = getDirectVotes(SubRound.PRE_COMMIT);
         long votesCount = votes.values().stream()
@@ -370,7 +370,7 @@ public class GrandpaRound {
 
         BlockHeader result = selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
         this.grandpaGhost = result;
-        this.isCompletable = checkIfRoundIsCompletable();
+        this.isCompletable = checkIfCompletable();
 
         return result;
     }
