@@ -25,7 +25,7 @@ public class PreCommitStage implements StageState {
 
         round.setOnStageTimerHandler(Executors.newScheduledThreadPool(1));
         round.getOnStageTimerHandler().schedule(() -> {
-            log.fine(String.format("Round %d 4 * T timer triggered.", round.getRoundNumber()));
+            log.fine(String.format("Round %d timer triggered.", round.getRoundNumber()));
             end(round);
         }, timeRemaining, TimeUnit.MILLISECONDS);
     }
