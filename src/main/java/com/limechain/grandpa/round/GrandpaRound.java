@@ -657,4 +657,11 @@ public class GrandpaRound {
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
     }
+
+    public void clearOnStageTimerHandler() {
+        if (onStageTimerHandler != null && onStageTimerHandler.isShutdown()) {
+            onStageTimerHandler.shutdown();
+            onStageTimerHandler = null;
+        }
+    }
 }

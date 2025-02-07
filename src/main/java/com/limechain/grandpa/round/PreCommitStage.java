@@ -32,12 +32,8 @@ public class PreCommitStage implements StageState {
 
     @Override
     public void end(GrandpaRound round) {
-        log.fine(String.format("Round %d ended pre-commit stage.", round.getRoundNumber()));
 
-        if (round.getOnStageTimerHandler() != null && !round.getOnStageTimerHandler().isShutdown()) {
-            round.getOnStageTimerHandler().shutdown();
-            round.setOnStageTimerHandler(null);
-        }
+        round.clearOnStageTimerHandler();
 
         try {
 
@@ -45,7 +41,7 @@ public class PreCommitStage implements StageState {
             round.broadcastVoteMessage(grandpaGhost, SubRound.PRE_COMMIT);
             round.setState(new FinalizeStage());
             round.getState().start(round);
-            log.fine(String.format("Round %d ended start stage.", round.getRoundNumber()));
+            log.fine(String.format("Round %d ended pre-commit stage.", round.getRoundNumber()));
 
         } catch (GrandpaGenericException e) {
             log.fine(String.format("Round %d cannot end now: %s", round.getRoundNumber(), e.getMessage()));
