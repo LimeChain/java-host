@@ -182,7 +182,7 @@ public class GrandpaRound {
         return Optional.ofNullable(finalizeEstimate).orElse(lastFinalizedBlock);
     }
 
-    private void attemptToFinalizeAt() {
+    public void attemptToFinalizeAt() {
 
         BlockState blockState = stateManager.getBlockState();
         BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
