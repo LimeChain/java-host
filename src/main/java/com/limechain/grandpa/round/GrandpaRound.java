@@ -350,7 +350,7 @@ public class GrandpaRound {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    private BlockHeader findGrandpaGhost() {
+    public BlockHeader findGrandpaGhost() {
 
         if (roundNumber.equals(BigInteger.ZERO)) {
             return lastFinalizedBlock;
