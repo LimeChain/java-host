@@ -103,6 +103,12 @@ public class GrandpaRound {
     @Nullable
     private Vote preCommitChoice;
 
+    /**
+     * Updated when the Grandpa Ghost is calculated.<BR>
+     * Default value is false.
+     */
+    private boolean isCompletable;
+
     private Map<Hash256, SignedVote> preVotes = new ConcurrentHashMap<>();
     private Map<Hash256, SignedVote> preCommits = new ConcurrentHashMap<>();
     private Vote primaryVote;
@@ -248,7 +254,7 @@ public class GrandpaRound {
      *
      * @return if the current round is completable
      */
-    private boolean isCompletable() {
+    public boolean checkIfCompletable() {
 
         Map<Vote, Long> votes = getDirectVotes(SubRound.PRE_COMMIT);
         long votesCount = votes.values().stream()
@@ -350,7 +356,7 @@ public class GrandpaRound {
      *
      * @return GRANDPA GHOST block as a vote
      */
-    private BlockHeader findGrandpaGhost() {
+    public BlockHeader findGrandpaGhost() {
 
         if (roundNumber.equals(BigInteger.ZERO)) {
             return lastFinalizedBlock;
@@ -362,10 +368,11 @@ public class GrandpaRound {
             throw new GhostExecutionException("GHOST not found");
         }
 
-        BlockHeader grandpaGhost = selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
-        this.grandpaGhost = grandpaGhost;
+        BlockHeader result = selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
+        this.grandpaGhost = result;
+        this.isCompletable = checkIfCompletable();
 
-        return grandpaGhost;
+        return result;
     }
 
     /**
@@ -649,5 +656,12 @@ public class GrandpaRound {
         commitMessage.setPreCommits(preCommits);
 
         peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
+    }
+
+    public void clearOnStageTimerHandler() {
+        if (onStageTimerHandler != null && onStageTimerHandler.isShutdown()) {
+            onStageTimerHandler.shutdown();
+            onStageTimerHandler = null;
+        }
     }
 }
