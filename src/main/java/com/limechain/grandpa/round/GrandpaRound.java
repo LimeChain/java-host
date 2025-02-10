@@ -121,43 +121,6 @@ public class GrandpaRound {
     private final StateManager stateManager = AppBean.getBean(StateManager.class);
     private final PeerMessageCoordinator peerMessageCoordinator = AppBean.getBean(PeerMessageCoordinator.class);
 
-    public BlockHeader getGrandpaGhost() {
-        if (grandpaGhost == null) throw new GrandpaGenericException("Grandpa GHOST has not been set.");
-        return grandpaGhost;
-    }
-
-    public BlockHeader getFinalizeEstimate() {
-        if (finalizeEstimate == null) throw new GrandpaGenericException("Finalize estimate has not been set.");
-        return finalizeEstimate;
-    }
-
-    public BlockHeader getFinalizedBlock() {
-        if (finalizedBlock == null) throw new GrandpaGenericException("Finalized block has not been set.");
-        return finalizedBlock;
-    }
-
-    public Vote getPreVoteChoice() {
-        if (preVoteChoice == null) throw new GrandpaGenericException("Pre-voted block has not been set");
-        return preVoteChoice;
-    }
-
-    public Vote getPreCommitChoice() {
-        if (preCommitChoice == null) throw new GrandpaGenericException("Best final candidate has not been set");
-        return preCommitChoice;
-    }
-
-    public long getPvEquivocationsCount() {
-        return this.pvEquivocations.values().stream()
-                .mapToLong(List::size)
-                .sum();
-    }
-
-    public long getPcEquivocationsCount() {
-        return this.pcEquivocations.values().stream()
-                .mapToInt(List::size)
-                .sum();
-    }
-
     public void play() {
         state.start(this);
     }
@@ -167,28 +130,7 @@ public class GrandpaRound {
         state.start(this);
     }
 
-    public void addCommitMessageToArchive(CommitMessage message) {
-        commitMessagesArchive.add(message);
-    }
-
-    public boolean isCommitMessageInArchive(Vote vote) {
-        return commitMessagesArchive.stream()
-                .anyMatch(cm -> cm.getVote().equals(vote));
-    }
-
-    public BlockHeader getPrevBestFinalCandidate() {
-        if (previous != null) {
-            return previous.getBestFinalCandidate();
-        }
-
-        return lastFinalizedBlock;
-    }
-
-    public BlockHeader getBestFinalCandidate() {
-        return Optional.ofNullable(finalizeEstimate).orElse(lastFinalizedBlock);
-    }
-
-    public void attemptToFinalizeAt() {
+    public void attemptToFinalize() {
 
         BlockState blockState = stateManager.getBlockState();
         BigInteger lastFinalizedBlockNumber = blockState.getHighestFinalizedNumber();
@@ -663,5 +605,63 @@ public class GrandpaRound {
             onStageTimerHandler.shutdown();
             onStageTimerHandler = null;
         }
+    }
+
+    public void addCommitMessageToArchive(CommitMessage message) {
+        commitMessagesArchive.add(message);
+    }
+
+    public boolean isCommitMessageInArchive(Vote vote) {
+        return commitMessagesArchive.stream()
+                .anyMatch(cm -> cm.getVote().equals(vote));
+    }
+
+    public BlockHeader getBestFinalCandidate() {
+        return Optional.ofNullable(finalizeEstimate).orElse(lastFinalizedBlock);
+    }
+
+    public BlockHeader getPrevBestFinalCandidate() {
+        if (previous != null) {
+            return previous.getBestFinalCandidate();
+        }
+
+        return lastFinalizedBlock;
+    }
+
+    public BlockHeader getGrandpaGhost() {
+        if (grandpaGhost == null) throw new GrandpaGenericException("Grandpa GHOST has not been set.");
+        return grandpaGhost;
+    }
+
+    public BlockHeader getFinalizeEstimate() {
+        if (finalizeEstimate == null) throw new GrandpaGenericException("Finalize estimate has not been set.");
+        return finalizeEstimate;
+    }
+
+    public BlockHeader getFinalizedBlock() {
+        if (finalizedBlock == null) throw new GrandpaGenericException("Finalized block has not been set.");
+        return finalizedBlock;
+    }
+
+    public Vote getPreVoteChoice() {
+        if (preVoteChoice == null) throw new GrandpaGenericException("Pre-voted block has not been set");
+        return preVoteChoice;
+    }
+
+    public Vote getPreCommitChoice() {
+        if (preCommitChoice == null) throw new GrandpaGenericException("Best final candidate has not been set");
+        return preCommitChoice;
+    }
+
+    public long getPvEquivocationsCount() {
+        return this.pvEquivocations.values().stream()
+                .mapToLong(List::size)
+                .sum();
+    }
+
+    public long getPcEquivocationsCount() {
+        return this.pcEquivocations.values().stream()
+                .mapToInt(List::size)
+                .sum();
     }
 }
