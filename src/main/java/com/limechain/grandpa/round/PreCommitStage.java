@@ -20,6 +20,13 @@ public class PreCommitStage implements StageState {
             return;
         }
 
+        round.setOnFinalizeHandler(() -> {
+            log.fine(String.format("Round %d is completable", round.getRoundNumber()));
+            if (round.isCompletable()) {
+                end(round);
+            }
+        });
+
         long timeElapsed = System.currentTimeMillis() - round.getStartTime().toEpochMilli();
         long timeRemaining = (4 * GrandpaRound.DURATION) - timeElapsed;
 
@@ -41,6 +48,7 @@ public class PreCommitStage implements StageState {
             log.fine(String.format("Round %d ended pre-commit stage.", round.getRoundNumber()));
 
             round.broadcastVoteMessage(grandpaGhost, SubRound.PRE_COMMIT);
+            round.setOnFinalizeHandler(null);
             round.setState(new FinalizeStage());
             round.getState().start(round);
 
