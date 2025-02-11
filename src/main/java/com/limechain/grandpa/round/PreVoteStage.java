@@ -1,8 +1,14 @@
 package com.limechain.grandpa.round;
 
+import com.limechain.exception.grandpa.GrandpaGenericException;
+import com.limechain.grandpa.vote.SubRound;
+import com.limechain.grandpa.vote.Vote;
 import lombok.extern.java.Log;
 
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import static com.limechain.grandpa.round.GrandpaRound.DURATION;
 
 @Log
 public class PreVoteStage implements StageState {
@@ -15,42 +21,28 @@ public class PreVoteStage implements StageState {
             return;
         }
 
-        long duration = 0; //TODO: choose appropriate value
-        long delay = (duration * 2) - (System.currentTimeMillis() - round.getStartTime().toEpochMilli());
+        log.info(String.format("Round #{}: Start prevote stage", round.getRoundNumber()));
+        long delay = (DURATION * 2) - (System.currentTimeMillis() - round.getStartTime().toEpochMilli());
 
+        round.setOnStageTimerHandler(Executors.newScheduledThreadPool(1));
         round.getOnStageTimerHandler().schedule(() -> {
             log.info(String.format("Round #%d: Time of prevote stage is out", round.getRoundNumber()));
             end(round);
         }, delay, TimeUnit.MILLISECONDS);
-
     }
 
     @Override
     public void end(GrandpaRound round) {
-        log.info(String.format("Round %d ended pre-vote stage", round.getRoundNumber()));
-        round.setState(new PreCommitStage());
+        round.clearOnStageTimerHandler();
+        try {
+            log.info(String.format("Round %d ended pre-vote stage", round.getRoundNumber()));
+            Vote bestPreVoteCandidate = round.findBestPreVoteCandidate();
+            round.broadcastVoteMessage(bestPreVoteCandidate, SubRound.PRE_VOTE);
+            round.setState(new PreCommitStage());
+            round.getState().start(round);
+        } catch (GrandpaGenericException e) {
+            log.fine(String.format("Round %d cannot end prevote stage now: %s", round.getRoundNumber(), e.getMessage()));
+        }
     }
-
-//    stage_timer_handle_ = scheduler_->scheduleWithHandle(
-//        [wself{weak_from_this()}] {
-//        if (auto self = wself.lock()) {
-//            if (self->stage_ == Stage::PREVOTE_RUNS) {
-//                SL_DEBUG(self->logger_,
-//                        "Round #{}: Time of prevote stage is out",
-//                        self->round_number_);
-//                self->endPrevoteStage();
-//            }
-//        }
-//    },
-//    toMilliseconds(duration_ * 2 - (scheduler_->now() - start_time_)));
-//
-//    on_complete_handler_ = [this] {
-//        if (stage_ == Stage::PREVOTE_RUNS) {
-//            SL_DEBUG(logger_, "Round #{}: Became completable", round_number_);
-//            endPrevoteStage();
-//        }
-//    };
-//
-//    stage_ = Stage::PREVOTE_RUNS;
 }
 
