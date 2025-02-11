@@ -8,7 +8,7 @@ public class CompletedStage implements StageState {
     @Override
     public void start(GrandpaRound round) {
         round.setOnFinalizeHandler(null);
-        round.getOnStageTimerHandler().shutdown();
+        round.clearOnStageTimerHandler();
         end(round);
     }
 
