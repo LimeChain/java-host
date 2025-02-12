@@ -28,7 +28,7 @@ public class FinalizeStage implements StageState {
     public void end(GrandpaRound round) {
         log.info(String.format("Round %d met finalization conditions and will be finalized.", round.getRoundNumber()));
         round.setOnFinalizeHandler(null);
-        round.attemptToFinalizeAt();
+        round.attemptToFinalize();
         log.fine(String.format("Round %d exits Finalize stage.", round.getRoundNumber()));
 
         round.end();

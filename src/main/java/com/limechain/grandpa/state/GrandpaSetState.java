@@ -115,7 +115,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             BigInteger threshold = getThreshold();
 
             GrandpaRound initGrandpaRound = new GrandpaRound(
-                    null,
+                    currentGrandpaRound,
                     BigInteger.ZERO,
                     false,
                     threshold,
@@ -132,7 +132,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                     AbstractState.getGrandpaKeyPair().getValue0());
 
             GrandpaRound grandpaRound = new GrandpaRound(
-                    initGrandpaRound,
+                    currentGrandpaRound,
                     BigInteger.ONE,
                     isPrimary,
                     threshold,
