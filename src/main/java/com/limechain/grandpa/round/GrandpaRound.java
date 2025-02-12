@@ -159,8 +159,8 @@ public class GrandpaRound {
             BlockHeader header = blockState.getHeader(bestFinalCandidate.getBlockHash());
             blockState.setFinalizedHash(header, roundNumber, grandpaSetState.getSetId());
 
-            // Persisting round and set data into the database when a block is finalized
-            grandpaSetState.persistState();
+            // Persisting round data into the database when a block is finalized
+            grandpaSetState.persistFinalizedRoundState(roundNumber);
 
             if (!isCommitMessageInArchive(bestFinalCandidate)) {
                 broadcastCommitMessage();

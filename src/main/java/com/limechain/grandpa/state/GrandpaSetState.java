@@ -24,7 +24,6 @@ import io.emeraldpay.polkaj.types.Hash256;
 import io.libp2p.core.crypto.PubKey;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.java.Log;
 import org.javatuples.Pair;
 import org.springframework.stereotype.Component;
@@ -74,13 +73,28 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         loadPersistedState();
     }
 
+    // persists data connected to the current round which may not be finalized
     @Override
     public void persistState() {
         saveGrandpaAuthorities();
         saveAuthoritySetId();
-        saveLatestRoundNumber();
+        saveLatestRoundNumber(getCurrentGrandpaRound().getRoundNumber());
         savePreCommits(getCurrentGrandpaRound().getRoundNumber());
         savePreVotes(getCurrentGrandpaRound().getRoundNumber());
+    }
+
+    // Persisting of the round data should happen when a round is finalized
+    // Round 0 from every set is finalized instantly after creation
+    public void persistFinalizedRoundState(BigInteger roundNumber) {
+        saveLatestRoundNumber(roundNumber);
+        savePreCommits(roundNumber);
+        savePreVotes(roundNumber);
+    }
+
+    // persists set data into the database
+    public void persistNewSetState() {
+        saveAuthoritySetId();
+        saveGrandpaAuthorities();
     }
 
     /**
@@ -105,6 +119,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         this.setId = setId != null ? setId.add(BigInteger.ONE) : BigInteger.ONE;
         this.authorities = authorities;
 
+        persistNewSetState();
+
         updateAuthorityStatus();
 
         if (AbstractState.isActiveAuthority()) {
@@ -122,8 +138,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             initGrandpaRound.setGrandpaGhost(lastFinalized);
 
             addNewGrandpaRound(initGrandpaRound);
-            // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
-            persistState();
+
+            persistFinalizedRoundState(initGrandpaRound.getRoundNumber());
 
             BigInteger primaryIndex = derivePrimary(BigInteger.ONE);
             boolean isPrimary = Arrays.equals(authorities.get(primaryIndex.intValueExact()).getPublicKey(),
@@ -233,8 +249,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         return repository.find(DBConstants.SET_ID, BigInteger.ZERO);
     }
 
-    public void saveLatestRoundNumber() {
-        repository.save(DBConstants.LATEST_ROUND, currentGrandpaRound.getRoundNumber());
+    public void saveLatestRoundNumber(BigInteger roundNumber) {
+        repository.save(DBConstants.LATEST_ROUND, roundNumber);
     }
 
     public BigInteger fetchLatestRoundNumber() {
