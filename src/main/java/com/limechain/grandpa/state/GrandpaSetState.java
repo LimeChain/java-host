@@ -86,12 +86,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         return totalWeight.subtract(faulty);
     }
 
-    private BigInteger getAuthoritiesTotalWeight() {
-        return authorities.stream()
-                .map(Authority::getWeight)
-                .reduce(BigInteger.ZERO, BigInteger::add);
-    }
-
     public BigInteger derivePrimary(BigInteger roundNumber) {
         var authoritiesCount = BigInteger.valueOf(authorities.size());
         return roundNumber.remainder(authoritiesCount);
@@ -141,11 +135,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     public Map<PubKey, Vote> fetchPreCommits(BigInteger roundNumber) {
         return repository.find(StateUtil.generatePreCommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId),
                 Collections.emptyMap());
-    }
-
-    private void loadPersistedState() {
-        this.setId = fetchAuthoritiesSetId();
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 
     @Override
@@ -247,6 +236,19 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
     }
 
+    public Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
+        return authorities.stream()
+                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
+                .findFirst()
+                .map(Authority::getWeight);
+    }
+
+    public BigInteger getAuthoritiesTotalWeight() {
+        return authorities.stream()
+                .map(Authority::getWeight)
+                .reduce(BigInteger.ZERO, BigInteger::add);
+    }
+
     private void updateAuthorityStatus() {
         Optional<Pair<byte[], byte[]>> keyPair = authorities.stream()
                 .map(a -> keyStore.getKeyPair(KeyType.GRANDPA, a.getPublicKey()))
@@ -255,5 +257,10 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .findFirst();
 
         keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::clearAuthorityStatus);
+    }
+
+    private void loadPersistedState() {
+        this.setId = fetchAuthoritiesSetId();
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 }
