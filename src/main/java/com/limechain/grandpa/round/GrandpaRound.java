@@ -24,7 +24,6 @@ import io.emeraldpay.polkaj.types.Hash256;
 import io.emeraldpay.polkaj.types.Hash512;
 import jakarta.annotation.Nullable;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.java.Log;
 import org.javatuples.Pair;
@@ -42,18 +41,16 @@ import java.util.concurrent.ScheduledExecutorService;
 @Log
 @Getter
 @Setter
-@RequiredArgsConstructor
 public class GrandpaRound {
 
     // Based on https://github.com/paritytech/polkadot/pull/6217
     public static final long DURATION = 1000;
 
-    private final GrandpaRound previous;
     private final BigInteger roundNumber;
-
     private final boolean isPrimaryVoter;
     private final BigInteger threshold;
 
+    private GrandpaRound previous;
     private StageState state = new StartStage();
 
     /**
@@ -120,6 +117,19 @@ public class GrandpaRound {
 
     private final StateManager stateManager = AppBean.getBean(StateManager.class);
     private final PeerMessageCoordinator peerMessageCoordinator = AppBean.getBean(PeerMessageCoordinator.class);
+
+    public GrandpaRound(GrandpaRound previous,
+                        BigInteger roundNumber,
+                        boolean isPrimaryVoter,
+                        BigInteger threshold,
+                        BlockHeader lastFinalizedBlock) {
+
+        this.previous = previous;
+        this.roundNumber = roundNumber;
+        this.threshold = threshold;
+        this.isPrimaryVoter = isPrimaryVoter;
+        this.lastFinalizedBlock = lastFinalizedBlock;
+    }
 
     public BlockHeader getGrandpaGhost() {
         if (grandpaGhost == null) throw new GrandpaGenericException("Grandpa GHOST has not been set.");

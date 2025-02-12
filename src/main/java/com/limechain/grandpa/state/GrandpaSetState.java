@@ -3,8 +3,8 @@ package com.limechain.grandpa.state;
 import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
+import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.grandpa.round.GrandpaRound;
-import com.limechain.grandpa.round.RoundCache;
 import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.protocol.grandpa.messages.consensus.GrandpaConsensusMessage;
@@ -57,12 +57,37 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     private BigInteger setId;
 
     private final BlockState blockState;
-    private final RoundCache roundCache;
     private final KeyStore keyStore;
     private final KVRepository<String, Object> repository;
 
     private final PriorityQueue<AuthoritySetChange> authoritySetChanges =
             new PriorityQueue<>(AuthoritySetChange.getComparator());
+
+    private GrandpaRound currentGrandpaRound;
+
+    // We keep a maximum of 3 rounds at a time
+    public synchronized void addNewGrandpaRound(GrandpaRound grandpaRound) {
+        if (currentGrandpaRound.getPrevious() != null && currentGrandpaRound.getPrevious().getPrevious() != null) {
+            // Setting the previous to null make it
+            currentGrandpaRound.getPrevious().setPrevious(null);
+        }
+
+        currentGrandpaRound = grandpaRound;
+    }
+
+    public GrandpaRound getGrandpaRound(BigInteger roundNumber) {
+
+        GrandpaRound current = currentGrandpaRound;
+        while (!current.getRoundNumber().equals(roundNumber)) {
+
+            current = current.getPrevious();
+            if (current == null) {
+                throw new GrandpaGenericException("Target round not found");
+            }
+        }
+
+        return current;
+    }
 
     @Override
     public void populateDataFromRuntime(Runtime runtime) {
@@ -114,7 +139,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     }
 
     public void saveLatestRoundNumber() {
-        repository.save(DBConstants.LATEST_ROUND, roundCache.getLatestRound(setId).getRoundNumber());
+        repository.save(DBConstants.LATEST_ROUND, currentGrandpaRound.getRoundNumber());
     }
 
     public BigInteger fetchLatestRoundNumber() {
@@ -122,7 +147,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     }
 
     public void savePreVotes(BigInteger roundNumber) {
-        GrandpaRound round = roundCache.getRound(setId, roundNumber);
+        GrandpaRound round = getGrandpaRound(roundNumber);
         Map<Hash256, SignedVote> preVotes = round.getPreVotes();
         repository.save(StateUtil.generatePreVotesKey(DBConstants.GRANDPA_PREVOTES, roundNumber, setId), preVotes);
     }
@@ -133,7 +158,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     }
 
     public void savePreCommits(BigInteger roundNumber) {
-        GrandpaRound round = roundCache.getRound(setId, roundNumber);
+        GrandpaRound round = getGrandpaRound(roundNumber);
         Map<Hash256, SignedVote> preCommits = round.getPreCommits();
         repository.save(StateUtil.generatePreCommitsKey(DBConstants.GRANDPA_PRECOMMITS, roundNumber, setId), preCommits);
     }
@@ -153,8 +178,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         saveGrandpaAuthorities();
         saveAuthoritySetId();
         saveLatestRoundNumber();
-        savePreCommits(roundCache.getLatestRoundNumber(setId));
-        savePreVotes(roundCache.getLatestRoundNumber(setId));
+        savePreCommits(getCurrentGrandpaRound().getRoundNumber());
+        savePreVotes(getCurrentGrandpaRound().getRoundNumber());
     }
 
     public void startNewSet(List<Authority> authorities) {
@@ -168,7 +193,8 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
             BigInteger threshold = getThreshold();
 
-            GrandpaRound initGrandpaRound = new GrandpaRound(null,
+            GrandpaRound initGrandpaRound = new GrandpaRound(
+                    null,
                     BigInteger.ZERO,
                     false,
                     threshold,
@@ -176,7 +202,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             );
             initGrandpaRound.setGrandpaGhost(lastFinalized);
 
-            roundCache.addRound(setId, initGrandpaRound);
+            addNewGrandpaRound(initGrandpaRound);
             // Persisting of the round happens when a block is finalized and for round ZERO we should do it manually
             persistState();
 
@@ -184,13 +210,14 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             boolean isPrimary = Arrays.equals(authorities.get(primaryIndex.intValueExact()).getPublicKey(),
                     AbstractState.getGrandpaKeyPair().getValue0());
 
-            GrandpaRound grandpaRound = new GrandpaRound(initGrandpaRound,
+            GrandpaRound grandpaRound = new GrandpaRound(
+                    initGrandpaRound,
                     BigInteger.ONE,
                     isPrimary,
                     threshold,
                     lastFinalized);
 
-            roundCache.addRound(setId, grandpaRound);
+            addNewGrandpaRound(grandpaRound);
 
             log.log(Level.INFO, "Successfully transitioned to authority set id: " + setId);
         }

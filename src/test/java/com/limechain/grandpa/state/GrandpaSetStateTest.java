@@ -1,12 +1,10 @@
 package com.limechain.grandpa.state;
 
 import com.limechain.chain.lightsyncstate.Authority;
-import com.limechain.grandpa.round.RoundCache;
 import com.limechain.utils.Ed25519Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigInteger;
@@ -16,9 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 class GrandpaSetStateTest {
-
-    @Mock
-    private RoundCache roundCache;
 
     @InjectMocks
     private GrandpaSetState grandpaSetState;

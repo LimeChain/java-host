@@ -21,7 +21,7 @@ public class ProtocolMessageBuilder {
 
         return new NeighbourMessage(
                 NEIGHBOUR_MESSAGE_VERSION,
-                stateManager.getGrandpaSetState().getRoundCache().getLatestRoundNumber(setId),
+                stateManager.getGrandpaSetState().getCurrentGrandpaRound().getRoundNumber(),
                 setId,
                 stateManager.getSyncState().getLastFinalizedBlockNumber()
         );
