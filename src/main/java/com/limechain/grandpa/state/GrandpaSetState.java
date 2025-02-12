@@ -102,9 +102,7 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
 
     public void startNewSet(List<Authority> authorities) {
 
-        if (setId == null) setId = BigInteger.ZERO;
-        this.setId = setId.add(BigInteger.ONE);
-
+        this.setId = setId != null ? setId.add(BigInteger.ONE) : BigInteger.ONE;
         this.authorities = authorities;
 
         updateAuthorityStatus();
