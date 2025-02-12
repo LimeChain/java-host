@@ -1,10 +1,12 @@
 package com.limechain.grandpa.state;
 
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.storage.crypto.KeyStore;
 import com.limechain.utils.Ed25519Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigInteger;
@@ -17,6 +19,9 @@ class GrandpaSetStateTest {
 
     @InjectMocks
     private GrandpaSetState grandpaSetState;
+
+    @Mock
+    private KeyStore keyStore;
 
     @Test
     void testGetThreshold() {
@@ -31,7 +36,7 @@ class GrandpaSetStateTest {
         Authority authority9 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority10 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaSetState.setAuthorities(
+        grandpaSetState.startNewSet(
                 List.of(
                         authority1, authority2, authority3, authority4, authority5,
                         authority6, authority7, authority8, authority9, authority10
@@ -50,11 +55,9 @@ class GrandpaSetStateTest {
         Authority authority2 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority3 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaSetState.setAuthorities(List.of(
+        grandpaSetState.startNewSet((List.of(
                 authority1, authority2, authority3
-        ));
-
-        grandpaSetState.setSetId(BigInteger.ONE);
+        )));
 
         // 4 % voters.size = 1
         assertEquals(BigInteger.ONE, grandpaSetState.derivePrimary(BigInteger.valueOf(4)));

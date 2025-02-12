@@ -45,7 +45,6 @@ import java.util.logging.Level;
  */
 @Log
 @Getter
-@Setter //TODO: remove it when initialize() method is implemented
 @Component
 @RequiredArgsConstructor
 public class GrandpaSetState extends AbstractState implements ServiceConsensusState {
@@ -102,7 +101,10 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
     }
 
     public void startNewSet(List<Authority> authorities) {
+
+        if (setId == null) setId = BigInteger.ZERO;
         this.setId = setId.add(BigInteger.ONE);
+
         this.authorities = authorities;
 
         updateAuthorityStatus();
