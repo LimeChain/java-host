@@ -44,17 +44,17 @@ class GrandpaSetStateTest {
         Authority authority9 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority10 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaSetState.startNewSet(
-                List.of(
-                        authority1, authority2, authority3, authority4, authority5,
-                        authority6, authority7, authority8, authority9, authority10
-                )
+        List<Authority> authorities = List.of(
+                authority1, authority2, authority3, authority4, authority5,
+                authority6, authority7, authority8, authority9, authority10
         );
+
+        grandpaSetState.startNewSet(authorities);
 
         // Total weight: 10
         // Faulty: (10 - 1) / 3 = 3
         // Threshold: 10 - faulty = 7
-        assertEquals(BigInteger.valueOf(7), grandpaSetState.getThreshold());
+        assertEquals(BigInteger.valueOf(7), grandpaSetState.getThreshold(authorities));
     }
 
     @Test

@@ -103,10 +103,17 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
      *
      * @return threshold for achieving a super-majority vote
      */
-    public BigInteger getThreshold() {
-        var totalWeight = getAuthoritiesTotalWeight();
+    public BigInteger getThreshold(List<Authority> authorities) {
+        var totalWeight = getAuthoritiesTotalWeight(authorities);
         var faulty = (totalWeight.subtract(BigInteger.ONE)).divide(THRESHOLD_DENOMINATOR);
         return totalWeight.subtract(faulty);
+    }
+
+
+    public BigInteger getAuthoritiesTotalWeight(List<Authority> authorities) {
+        return authorities.stream()
+                .map(Authority::getWeight)
+                .reduce(BigInteger.ZERO, BigInteger::add);
     }
 
     public BigInteger derivePrimary(BigInteger roundNumber) {
@@ -126,15 +133,16 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         if (AbstractState.isActiveAuthority()) {
             BlockHeader lastFinalized = blockState.getHighestFinalizedHeader();
 
-            BigInteger threshold = getThreshold();
-
             GrandpaRound initGrandpaRound = new GrandpaRound(
                     currentGrandpaRound,
                     BigInteger.ZERO,
+                    setId,
+                    authorities,
+                    getThreshold(authorities),
                     false,
-                    threshold,
                     lastFinalized
             );
+
             initGrandpaRound.setGrandpaGhost(lastFinalized);
 
             addNewGrandpaRound(initGrandpaRound);
@@ -148,9 +156,12 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
             GrandpaRound grandpaRound = new GrandpaRound(
                     currentGrandpaRound,
                     BigInteger.ONE,
+                    setId,
+                    authorities,
+                    getThreshold(authorities),
                     isPrimary,
-                    threshold,
-                    lastFinalized);
+                    lastFinalized
+            );
 
             addNewGrandpaRound(grandpaRound);
 
@@ -284,12 +295,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
                 .map(Authority::getWeight)
                 .findFirst();
-    }
-
-    public BigInteger getAuthoritiesTotalWeight() {
-        return authorities.stream()
-                .map(Authority::getWeight)
-                .reduce(BigInteger.ZERO, BigInteger::add);
     }
 
     private void loadPersistedState() {

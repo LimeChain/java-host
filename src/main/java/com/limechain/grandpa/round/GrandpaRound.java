@@ -1,5 +1,6 @@
 package com.limechain.grandpa.round;
 
+import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.grandpa.EstimateExecutionException;
 import com.limechain.exception.grandpa.GhostExecutionException;
 import com.limechain.exception.grandpa.GrandpaGenericException;
@@ -50,6 +51,10 @@ public class GrandpaRound {
 
     // Based on https://github.com/paritytech/polkadot/pull/6217
     public static final long DURATION = 1000;
+
+    // Copy of GrandpaSetState information at round creation
+    private BigInteger setId;
+    private List<Authority> authorities;
 
     private final BigInteger roundNumber;
     private final boolean isPrimaryVoter;
@@ -126,12 +131,16 @@ public class GrandpaRound {
 
     public GrandpaRound(GrandpaRound previous,
                         BigInteger roundNumber,
-                        boolean isPrimaryVoter,
+                        BigInteger setId,
+                        List<Authority> authorities,
                         BigInteger threshold,
+                        boolean isPrimaryVoter,
                         BlockHeader lastFinalizedBlock) {
 
         this.previous = previous;
         this.roundNumber = roundNumber;
+        this.setId = setId;
+        this.authorities = authorities;
         this.threshold = threshold;
         this.isPrimaryVoter = isPrimaryVoter;
         this.lastFinalizedBlock = lastFinalizedBlock;
@@ -224,7 +233,7 @@ public class GrandpaRound {
     public void broadcastVoteMessage(Vote vote, SubRound subround) {
         FullVote fullVote = new FullVote();
         fullVote.setRound(roundNumber);
-        fullVote.setSetId(stateManager.getGrandpaSetState().getSetId());
+        fullVote.setSetId(setId);
         fullVote.setVote(vote);
         fullVote.setStage(subround);
 
@@ -262,7 +271,7 @@ public class GrandpaRound {
         SignedVote[] preCommits = getPreCommits().values().toArray(new SignedVote[0]);
 
         CommitMessage commitMessage = new CommitMessage();
-        commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
+        commitMessage.setSetId(setId);
         commitMessage.setRoundNumber(roundNumber);
         commitMessage.setVote(Vote.fromBlockHeader(getBestFinalCandidate()));
         commitMessage.setPreCommits(preCommits);
@@ -345,11 +354,10 @@ public class GrandpaRound {
         }
 
         if (finalizedBlock != null) {
-            GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-
-            blockState.setFinalizedHash(finalizedBlock, roundNumber, grandpaSetState.getSetId());
+            blockState.setFinalizedHash(finalizedBlock, roundNumber, setId);
 
             // Persisting round data into the database when a block is finalized
+            GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
             grandpaSetState.persistFinalizedRoundState(roundNumber);
 
             if (!isCommitMessageInArchive(Vote.fromBlockHeader(finalizedBlock))) {
@@ -521,7 +529,7 @@ public class GrandpaRound {
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
 
-        BigInteger totalAuthWeight = grandpaSetState.getAuthoritiesTotalWeight();
+        BigInteger totalAuthWeight = grandpaSetState.getAuthoritiesTotalWeight(authorities);
         BigInteger totalPcWeight = getVoteWeight(preCommits.values());
 
         // Calculate how many more pre commit equivocations we are allowed to receive.

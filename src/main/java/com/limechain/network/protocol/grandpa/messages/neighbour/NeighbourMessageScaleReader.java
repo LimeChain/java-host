@@ -31,7 +31,7 @@ public class NeighbourMessageScaleReader implements ScaleReader<NeighbourMessage
         }
         NeighbourMessage neighbourMessage = new NeighbourMessage();
         neighbourMessage.setVersion(reader.readByte());
-        neighbourMessage.setRound(uint64Reader.read(reader));
+        neighbourMessage.setRoundNumber(uint64Reader.read(reader));
         neighbourMessage.setSetId(uint64Reader.read(reader));
         neighbourMessage.setLastFinalizedBlock(BigInteger.valueOf(reader.readUint32()));
         return neighbourMessage;
