@@ -101,7 +101,7 @@ public class GrandpaMessageHandler {
 
         if (isVoteEquivocationExist(signedVote, round, subround, voteMessageSetId)) {
             log.warning(
-                    String.format("Detected vote equivocation for round %s, set %s, block hash %s, block number %s",
+                    String.format("Detected vote equivocation or duplication for round %s, set %s, block hash %s, block number %s",
                             voteMessageSetId, voteMessageSetId, signedMessage.getBlockHash(), signedMessage.getBlockNumber()));
             return;
         }
@@ -148,21 +148,31 @@ public class GrandpaMessageHandler {
         Hash256 authorityPublicKey = signedVote.getAuthorityPublicKey();
 
         if (votes.containsKey(authorityPublicKey)) {
-            equivocations.computeIfAbsent(authorityPublicKey, _ -> new ArrayList<>()).add(signedVote);
+
+            SignedVote firstSignedVote = votes.get(authorityPublicKey);
+            Hash256 firstVoteBlockHash = firstSignedVote.getVote().getBlockHash();
+            Hash256 signedVoteBlockHash = signedVote.getVote().getBlockHash();
+
+            if (firstVoteBlockHash.equals(signedVoteBlockHash)) {
+                log.warning(String.format(
+                        "Voter : %s sent duplicated vote with block hash: %s",
+                        authorityPublicKey, signedVoteBlockHash));
+                return true;
+            }
+
             BlockState blockState = stateManager.getBlockState();
             Runtime runtime = blockState.getRuntime(blockState.getHighestFinalizedHash());
-            SignedVote firstSignedVote = votes.get(authorityPublicKey);
-
+            equivocations.computeIfAbsent(authorityPublicKey, _ -> new ArrayList<>()).add(signedVote);
             GrandpaEquivocation grandpaEquivocation =
                     GrandpaEquivocation.builder().
                             setId(voteMessageSetId).
                             equivocationStage((byte) (PRE_COMMIT.equals(subRound) ? 1 : 0)).
                             roundNumber(round.getRoundNumber()).
                             firstBlockNumber(firstSignedVote.getVote().getBlockNumber()).
-                            firstBlockHash(firstSignedVote.getVote().getBlockHash()).
+                            firstBlockHash(firstVoteBlockHash).
                             firstSignature(firstSignedVote.getSignature()).
                             secondBlockNumber(signedVote.getVote().getBlockNumber()).
-                            secondBlockHash(signedVote.getVote().getBlockHash()).
+                            secondBlockHash(signedVoteBlockHash).
                             secondSignature(signedVote.getSignature())
                             .build();
 
