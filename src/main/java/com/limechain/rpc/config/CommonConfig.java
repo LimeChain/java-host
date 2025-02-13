@@ -8,7 +8,6 @@ import com.limechain.cli.CliArguments;
 import com.limechain.config.HostConfig;
 import com.limechain.config.SystemInfo;
 import com.limechain.constants.GenesisBlockHash;
-import com.limechain.grandpa.round.RoundCache;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.network.NetworkService;
 import com.limechain.network.PeerMessageCoordinator;
@@ -83,11 +82,10 @@ public class CommonConfig {
     }
 
     @Bean
-    public GrandpaSetState grandpaSetState(RoundCache roundCache,
-                                           KeyStore keyStore,
+    public GrandpaSetState grandpaSetState(KeyStore keyStore,
                                            KVRepository<String, Object> repository,
                                            BlockState blockState) {
-        return new GrandpaSetState(blockState, roundCache, keyStore, repository);
+        return new GrandpaSetState(blockState, keyStore, repository);
     }
 
     @Bean
