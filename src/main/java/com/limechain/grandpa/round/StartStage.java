@@ -36,8 +36,7 @@ public class StartStage implements StageState {
     public void end(GrandpaRound round) {
 
         log.fine(String.format("Round %d ended start stage.", round.getRoundNumber()));
-        round.setState(new PreVoteStage());
-        round.getState().start(round);
+        round.switchStage();
     }
 
     private void doProposal(GrandpaRound round) {
