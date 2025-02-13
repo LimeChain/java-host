@@ -411,13 +411,13 @@ public class GrandpaRound {
             Function<BigInteger, Boolean> condition = getPotentialCondition();
 
             finalizeEstimate = findBestFinalCandidate(condition, SubRound.PRE_COMMIT, pvGhost);
-            BlockHeader current_estimate = finalizeEstimate;
+            BlockHeader currentEstimate = finalizeEstimate;
 
-            if (!current_estimate.getHash().equals(pvGhost.getHash())) {
+            if (!currentEstimate.getHash().equals(pvGhost.getHash())) {
                 isCompletable = true;
                 log.fine("updateEstimate: estimate != ghost");
             } else {
-                checkPotentialGhost(condition, current_estimate);
+                checkPotentialGhost(condition, currentEstimate);
             }
         } catch (EstimateExecutionException e) {
             log.fine("updateEstimate: " + e.getMessage());
@@ -449,8 +449,9 @@ public class GrandpaRound {
      * and selecting the block with the highest block number. If no such block exists, the pre-voted
      * block is returned as the best candidate.
      *
-     * @param condition a boolean expression that serves the purpose of a customizable threshold.
-     * @param round     the subround that we check votes against a condition for.
+     * @param condition   a boolean expression that serves the purpose of a customizable threshold.
+     * @param round       the subround that we check votes against a condition for.
+     * @param borderBlock the anchor block from which we start traversing backwards.
      * @return the best final candidate block
      */
     private BlockHeader findBestFinalCandidate(Function<BigInteger, Boolean> condition,
@@ -534,8 +535,12 @@ public class GrandpaRound {
      * If there are multiple blocks with the same number of votes, selects the block with the highest number.
      * If no block meets the criteria, throws an exception indicating no valid GHOST candidate.
      *
-     * @return GRANDPA GHOST block as a vote
-     */
+     * @param condition   a boolean expression that serves the purpose of a customizable threshold.
+     * @param subround    the subround that we check votes against a condition for.
+     * @param currentBest the anchor block from which we start traversing forward.
+     * @return GRANDPA GHOST block as a vote.
+     * @throws GhostExecutionException if no blocks match the condition.
+     **/
     private BlockHeader findGrandpaGhost(Function<BigInteger, Boolean> condition,
                                          SubRound subround,
                                          BlockHeader currentBest) {
@@ -559,6 +564,7 @@ public class GrandpaRound {
      * Starts with the last finalized block as the initial candidate.
      *
      * @param blocks map of block that exceed the required threshold
+     * @param start  the anchor block from which we start traversing forward.
      * @return the block with the most votes from the provided map
      */
     private BlockHeader selectBlockWithMostVotes(Map<Hash256, BigInteger> blocks, BlockHeader start) {
