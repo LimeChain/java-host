@@ -138,17 +138,17 @@ public class GrandpaRound {
     }
 
     public void switchStage() {
-        state = switch (state) {
+        stage = switch (stage) {
             case StartStage ignored -> new PreVoteStage();
             case PreVoteStage ignored -> new PreCommitStage();
             case PreCommitStage ignored -> new FinalizeStage();
             case FinalizeStage ignored -> new CompletedStage();
             case CompletedStage ignored -> null;
-            default -> throw new IllegalStateException("Unexpected stage state: " + state);
+            default -> throw new IllegalStateException("Unexpected stage state: " + stage);
         };
 
-        if (state != null) {
-            state.start(this);
+        if (stage != null) {
+            stage.start(this);
         }
     }
 
