@@ -137,6 +137,21 @@ public class GrandpaRound {
         this.lastFinalizedBlock = lastFinalizedBlock;
     }
 
+    public void switchStage() {
+        state = switch (state) {
+            case StartStage ignored -> new PreVoteStage();
+            case PreVoteStage ignored -> new PreCommitStage();
+            case PreCommitStage ignored -> new FinalizeStage();
+            case FinalizeStage ignored -> new CompletedStage();
+            case CompletedStage ignored -> null;
+            default -> throw new IllegalStateException("Unexpected stage state: " + state);
+        };
+
+        if (state != null) {
+            state.start(this);
+        }
+    }
+
     public void play() {
         stage.start(this);
     }
