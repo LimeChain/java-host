@@ -96,7 +96,7 @@ public class GrandpaMessageHandler {
         }
 
         SignedMessage signedMessage = voteMessage.getMessage();
-        SignedVote signedVote = new SignedVote(
+        SignedVote receivedSignedVote = new SignedVote(
                 new Vote(signedMessage.getBlockHash(), signedMessage.getBlockNumber()),
                 signedMessage.getSignature(),
                 signedMessage.getAuthorityPublicKey()
@@ -112,7 +112,7 @@ public class GrandpaMessageHandler {
 
         GrandpaRound grandpaRound = grandpaSetState.getGrandpaRound(voteMessageRoundNumber);
         SubRound subround = signedMessage.getStage();
-        if (isVoteEquivocationDetected(signedVote, grandpaRound, subround, voteMessageSetId)) {
+        if (isVoteEquivocationDetected(receivedSignedVote, grandpaRound, subround, voteMessageSetId)) {
             log.warning(String.format(
                     "Detected vote equivocation or duplication for round %s, set %s, block hash %s, block number %s",
                     voteMessageRoundNumber, voteMessageSetId, signedMessage.getBlockHash(), signedMessage.getBlockNumber()
@@ -123,14 +123,14 @@ public class GrandpaMessageHandler {
         Hash256 authorityPublicKey = signedMessage.getAuthorityPublicKey();
         switch (subround) {
             case SubRound.PRE_VOTE -> {
-                grandpaRound.getPreVotes().put(authorityPublicKey, signedVote);
+                grandpaRound.getPreVotes().put(authorityPublicKey, receivedSignedVote);
                 grandpaRound.update(false, true, false);
             }
             case SubRound.PRE_COMMIT -> {
-                grandpaRound.getPreCommits().put(authorityPublicKey, signedVote);
+                grandpaRound.getPreCommits().put(authorityPublicKey, receivedSignedVote);
                 grandpaRound.update(false, false, true);
             }
-            case SubRound.PRIMARY_PROPOSAL -> grandpaRound.setPrimaryVote(signedVote.getVote());
+            case SubRound.PRIMARY_PROPOSAL -> grandpaRound.setPrimaryVote(receivedSignedVote.getVote());
             default -> throw new GrandpaGenericException("Unknown subround: " + subround);
         }
     }
@@ -364,7 +364,7 @@ public class GrandpaMessageHandler {
         return Ed25519Utils.verifySignature(verifySignature);
     }
 
-    private boolean isVoteEquivocationDetected(SignedVote signedVote,
+    private boolean isVoteEquivocationDetected(SignedVote receivedSignedVote,
                                                GrandpaRound round,
                                                SubRound subRound,
                                                BigInteger voteMessageSetId) {
@@ -375,50 +375,51 @@ public class GrandpaMessageHandler {
 
         boolean isPreCommit = (subRound == SubRound.PRE_COMMIT);
         Map<Hash256, SignedVote> votes = isPreCommit ? round.getPreCommits() : round.getPreVotes();
+        Hash256 authorityPublicKey = receivedSignedVote.getAuthorityPublicKey();
 
-        if (!votes.containsKey(signedVote.getAuthorityPublicKey())) {
+        SignedVote foundSignedVote = votes.get(authorityPublicKey);
+        if (foundSignedVote == null) {
             return false;
         }
 
-        reportVoteEquivocation(signedVote, votes, voteMessageSetId, round, isPreCommit);
+        Hash256 foundVoteBlockHash = foundSignedVote.getVote().getBlockHash();
+        Hash256 receivedVoteBlockHash = receivedSignedVote.getVote().getBlockHash();
+
+        if (foundVoteBlockHash.equals(receivedVoteBlockHash)) {
+            log.warning(String.format(
+                    "Voter : %s sent duplicated vote with block hash: %s",
+                    authorityPublicKey, receivedVoteBlockHash));
+            return true;
+        }
+
+        reportVoteEquivocation(receivedSignedVote, foundSignedVote, voteMessageSetId, round, isPreCommit);
         return true;
     }
 
-    private void reportVoteEquivocation(SignedVote signedVote,
-                                        Map<Hash256, SignedVote> votes,
+    private void reportVoteEquivocation(SignedVote receivedSignedVote,
+                                        SignedVote foundSignedVote,
                                         BigInteger voteMessageSetId,
                                         GrandpaRound round,
                                         boolean isPreCommit) {
 
+        Hash256 authorityPublicKey = receivedSignedVote.getAuthorityPublicKey();
         Map<Hash256, List<SignedVote>> equivocations = isPreCommit ?
                 round.getPcEquivocations() : round.getPvEquivocations();
-        Hash256 authorityPublicKey = signedVote.getAuthorityPublicKey();
-
-        SignedVote firstSignedVote = votes.get(authorityPublicKey);
-        Hash256 firstVoteBlockHash = firstSignedVote.getVote().getBlockHash();
-        Hash256 signedVoteBlockHash = signedVote.getVote().getBlockHash();
-
-        if (firstVoteBlockHash.equals(signedVoteBlockHash)) {
-            log.warning(String.format(
-                    "Voter : %s sent duplicated vote with block hash: %s",
-                    authorityPublicKey, signedVoteBlockHash));
-            return;
-        }
 
         BlockState blockState = stateManager.getBlockState();
         Runtime runtime = blockState.getRuntime(blockState.getHighestFinalizedHash());
-        equivocations.computeIfAbsent(authorityPublicKey, _ -> new ArrayList<>()).add(signedVote);
+        equivocations.computeIfAbsent(authorityPublicKey, _ -> new ArrayList<>()).add(receivedSignedVote);
         GrandpaEquivocation grandpaEquivocation =
                 GrandpaEquivocation.builder()
                         .setId(voteMessageSetId)
                         .equivocationStage((byte) (isPreCommit ? 1 : 0))
                         .roundNumber(round.getRoundNumber())
-                        .firstBlockNumber(firstSignedVote.getVote().getBlockNumber())
-                        .firstBlockHash(firstSignedVote.getVote().getBlockHash())
-                        .firstSignature(firstSignedVote.getSignature())
-                        .secondBlockNumber(signedVote.getVote().getBlockNumber())
-                        .secondBlockHash(signedVote.getVote().getBlockHash())
-                        .secondSignature(signedVote.getSignature())
+                        .firstBlockNumber(foundSignedVote.getVote().getBlockNumber())
+                        .firstBlockHash(foundSignedVote.getVote().getBlockHash())
+                        .firstSignature(foundSignedVote.getSignature())
+                        .secondBlockNumber(receivedSignedVote.getVote().getBlockNumber())
+                        .secondBlockHash(receivedSignedVote.getVote().getBlockHash())
+                        .secondSignature(receivedSignedVote.getSignature())
                         .build();
 
         runtime.generateGrandpaKeyOwnershipProof(voteMessageSetId, authorityPublicKey.getBytes())
