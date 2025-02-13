@@ -9,6 +9,7 @@ import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.SubRound;
 import com.limechain.grandpa.vote.Vote;
 import com.limechain.network.PeerMessageCoordinator;
+import com.limechain.network.protocol.grandpa.GrandpaMessageHandler;
 import com.limechain.network.protocol.grandpa.messages.commit.CommitMessage;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVote;
 import com.limechain.network.protocol.grandpa.messages.vote.FullVoteScaleWriter;
@@ -34,6 +35,7 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +123,10 @@ public class GrandpaRound {
     private final List<CommitMessage> commitMessagesArchive = new ArrayList<>();
 
     private final StateManager stateManager = Objects.requireNonNull(AppBean.getBean(StateManager.class));
+
+    private final GrandpaMessageHandler grandpaMessageHandler = Objects.requireNonNull(
+            AppBean.getBean(GrandpaMessageHandler.class));
+
     private final PeerMessageCoordinator peerMessageCoordinator = Objects.requireNonNull(
             AppBean.getBean(PeerMessageCoordinator.class));
 
@@ -247,6 +253,10 @@ public class GrandpaRound {
         voteMessage.setRound(fullVote.getRound());
         voteMessage.setSetId(fullVote.getSetId());
         voteMessage.setMessage(signedMessage);
+
+        if (EnumSet.of(SubRound.PRE_VOTE, SubRound.PRE_COMMIT).contains(subround)) {
+            grandpaMessageHandler.handleVoteMessage(voteMessage);
+        }
 
         peerMessageCoordinator.sendVoteMessageToPeers(voteMessage);
     }
