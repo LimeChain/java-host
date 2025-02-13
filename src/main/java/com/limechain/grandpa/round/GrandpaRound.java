@@ -146,183 +146,6 @@ public class GrandpaRound {
         stage.start(this);
     }
 
-    public void attemptToFinalizeAt() {
-
-        BlockState blockState = stateManager.getBlockState();
-
-        if (stage instanceof CompletedStage) {
-            log.fine("attemptToFinalize: round is already complete.");
-            return;
-        }
-
-        if (finalizedBlock != null) {
-            GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-
-            blockState.setFinalizedHash(finalizedBlock, roundNumber, grandpaSetState.getSetId());
-
-            // Persisting round data into the database when a block is finalized
-            grandpaSetState.persistFinalizedRoundState(roundNumber);
-
-            if (!isCommitMessageInArchive(Vote.fromBlockHeader(finalizedBlock))) {
-                broadcastCommitMessage();
-            }
-
-            if (onFinalizeHandler != null) {
-                onFinalizeHandler.run();
-            }
-        }
-    }
-
-    private boolean updateEstimate() {
-
-        BigInteger pvWeight = getVoteWeight(preVotes.values());
-        if (pvWeight.compareTo(threshold) < 0) {
-            log.fine("updateEstimate: pre vote weight is lower than threshold");
-            return false;
-        }
-
-        if (grandpaGhost == null) {
-            log.fine("updateEstimate: grandpa ghost is null");
-            return false;
-        }
-        final BlockHeader pv_ghost = grandpaGhost;
-
-        BigInteger pcWeight = getVoteWeight(preCommits.values());
-        if (pcWeight.compareTo(threshold) >= 0) {
-            finalizedBlock = findBestFinalCandidate(weight -> weight.compareTo(threshold) >= 0,
-                    SubRound.PRE_COMMIT,
-                    pv_ghost);
-        }
-
-        if (pcWeight.compareTo(threshold) < 0) {
-            finalizeEstimate = pv_ghost;
-            log.fine("updateEstimate: pre commit weight is lower than threshold");
-            return false;
-        }
-
-
-        try {
-            Function<BigInteger, Boolean> condition = getPotentialCondition();
-
-            finalizeEstimate = findBestFinalCandidate(condition, SubRound.PRE_COMMIT, pv_ghost);
-            BlockHeader current_estimate = finalizeEstimate;
-
-            if (!current_estimate.getHash().equals(pv_ghost.getHash())) {
-                isCompletable = true;
-                log.fine("updateEstimate: estimate != ghost");
-            } else {
-                checkPotentialGhost(condition, current_estimate);
-            }
-        } catch (EstimateExecutionException e) {
-            log.fine("updateEstimate: " + e.getMessage());
-        }
-
-        return true;
-    }
-
-    private void checkPotentialGhost(Function<BigInteger, Boolean> condition, BlockHeader estimate) {
-
-        try {
-            BlockHeader pc_ghost = findGrandpaGhost(condition, SubRound.PRE_COMMIT, estimate);
-
-            if (pc_ghost.getHash().equals(estimate.getHash())) {
-                isCompletable = true;
-                log.fine("updateEstimate: estimate == pc_ghost");
-            } else {
-                log.fine("updateEstimate: estimate != pc_ghost");
-            }
-        } catch (EstimateExecutionException e) {
-            isCompletable = true;
-            log.fine("updateEstimate: no pc_ghost");
-        }
-    }
-
-    /**
-     * Finds and returns the best final candidate block for the current round.
-     * The best final candidate is determined by analyzing blocks with more than 2/3 pre-commit votes,
-     * and selecting the block with the highest block number. If no such block exists, the pre-voted
-     * block is returned as the best candidate.
-     *
-     * @param condition a boolean expression that serves the purpose of a customizable threshold.
-     * @param round     the subround that we check votes against a condition for.
-     * @return the best final candidate block
-     */
-    public BlockHeader findBestFinalCandidate(Function<BigInteger, Boolean> condition,
-                                               SubRound round,
-                                               BlockHeader borderBlock) {
-        BlockState blockState = stateManager.getBlockState();
-
-        if (roundNumber.equals(BigInteger.ZERO)) {
-            return grandpaGhost;
-        }
-
-        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(
-                condition,
-                round
-        );
-
-        if (possibleSelectedBlocks.isEmpty()) {
-            throw new EstimateExecutionException("Estimate not found.");
-        }
-
-        var bestFinalCandidate = lastFinalizedBlock;
-
-        for (Map.Entry<Hash256, BigInteger> block : possibleSelectedBlocks.entrySet()) {
-
-            Hash256 blockHash = block.getKey();
-
-            boolean isDescendant = blockState.isDescendantOf(blockHash, borderBlock.getHash());
-
-            if (!isDescendant) {
-
-                Hash256 lowestCommonAncestor;
-                try {
-                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, borderBlock.getHash());
-                } catch (IllegalArgumentException e) {
-                    log.warning("Error finding the lowest common ancestor: " + e.getMessage());
-                    continue;
-                }
-
-                blockHash = lowestCommonAncestor;
-            }
-
-            BlockHeader header = BlockHeader.fromHash(blockHash);
-            if (header.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) > 0) {
-                bestFinalCandidate = header;
-            }
-        }
-
-        return bestFinalCandidate;
-    }
-
-    private Function<BigInteger, Boolean> getPotentialCondition() {
-
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-
-        BigInteger totalAuthWeight = grandpaSetState.getAuthoritiesTotalWeight();
-        BigInteger totalPcWeight = getVoteWeight(preCommits.values());
-
-        // Calculate how many more pre commit equivocations we are allowed to receive.
-        BigInteger totalAllowedEqs = totalAuthWeight.subtract(threshold);
-        BigInteger currentEqs = BigInteger.valueOf(getPcEquivocationsWeight());
-        BigInteger remainingAllowedEqs = totalAllowedEqs.subtract(currentEqs);
-
-        // Calculate how many more pre commits we can expect.
-        BigInteger remainingPcs = totalAuthWeight.subtract(totalPcWeight);
-
-        return totalWeight -> {
-
-            BigInteger possibleEqsForBlock = totalPcWeight.subtract(totalWeight)
-                    .min(remainingAllowedEqs);
-
-            BigInteger potentialWeightForBlock = totalWeight
-                    .add(remainingPcs)
-                    .add(possibleEqsForBlock);
-
-            return potentialWeightForBlock.compareTo(threshold) >= 0;
-        };
-    }
-
     public void update(boolean isPrevRoundChanged, boolean isPreVoteChanged, boolean isPreCommitChanged) {
 
         boolean shouldUpdateGhost = isPrevRoundChanged || isPreVoteChanged;
@@ -340,67 +163,13 @@ public class GrandpaRound {
             }
         }
 
-        if (shouldUpdateEstimate) {
-            if (updateEstimate()) {
-                attemptToFinalize();
+        if (shouldUpdateEstimate && updateEstimate()) {
+            attemptToFinalize();
 
-                //TODO update R + 1
-            }
+            //TODO update R + 1
         }
 
         //TODO check if we can start next round.
-    }
-
-    private boolean updateGrandpaGhost() {
-        BigInteger preVotesWeight = getVoteWeight(preVotes.values());
-
-        if (preVotesWeight.compareTo(threshold) < 0) {
-            log.fine("updateGrandpaGhost: pre vote weight is lower than threshold");
-            return false;
-        }
-
-        BlockHeader newGrandpaGhost;
-        try {
-            newGrandpaGhost = findGrandpaGhost(weight -> weight.compareTo(threshold) >= 0, SubRound.PRE_VOTE);
-        } catch (RuntimeException e) {
-            log.warning("updateGrandpaGhost: error when updating grandpa ghost: " + e.getMessage());
-            return false;
-        }
-
-        boolean changed = grandpaGhost == null ||
-                !newGrandpaGhost.getHash().equals(grandpaGhost.getHash());
-        grandpaGhost = newGrandpaGhost;
-
-        if (changed) {
-            log.fine(String.format("updateGrandpaGhost: round: %d updated ghost to %s.",
-                    roundNumber, newGrandpaGhost.getHash()));
-        } else {
-            log.fine(String.format("updateGrandpaGhost: round: %d did not update ghost.", roundNumber));
-        }
-
-        return changed;
-    }
-
-    /**
-     * Finds and returns the block with the most votes in the GRANDPA pre-vote stage.
-     * If there are multiple blocks with the same number of votes, selects the block with the highest number.
-     * If no block meets the criteria, throws an exception indicating no valid GHOST candidate.
-     *
-     * @return GRANDPA GHOST block as a vote
-     */
-    public BlockHeader findGrandpaGhost(Function<BigInteger, Boolean> condition, SubRound subround) {
-
-        if (roundNumber.equals(BigInteger.ZERO)) {
-            return lastFinalizedBlock;
-        }
-
-        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(condition, subround);
-
-        if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
-            throw new GhostExecutionException("GHOST not found");
-        }
-
-        return selectBlockWithMostVotes(blocks, getPrevBestFinalCandidate());
     }
 
     /**
@@ -551,34 +320,237 @@ public class GrandpaRound {
                 .sum();
     }
 
+    void attemptToFinalize() {
+
+        BlockState blockState = stateManager.getBlockState();
+
+        if (stage instanceof CompletedStage) {
+            log.fine("attemptToFinalize: round is already complete.");
+            return;
+        }
+
+        if (finalizedBlock != null) {
+            GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+
+            blockState.setFinalizedHash(finalizedBlock, roundNumber, grandpaSetState.getSetId());
+
+            // Persisting round data into the database when a block is finalized
+            grandpaSetState.persistFinalizedRoundState(roundNumber);
+
+            if (!isCommitMessageInArchive(Vote.fromBlockHeader(finalizedBlock))) {
+                broadcastCommitMessage();
+            }
+
+            if (onFinalizeHandler != null) {
+                onFinalizeHandler.run();
+            }
+        }
+    }
+
+    private boolean updateGrandpaGhost() {
+        BigInteger preVotesWeight = getVoteWeight(preVotes.values());
+
+        if (preVotesWeight.compareTo(threshold) < 0) {
+            log.fine("updateGrandpaGhost: pre vote weight is lower than threshold");
+            return false;
+        }
+
+        BlockHeader newGrandpaGhost;
+        try {
+            newGrandpaGhost = findGrandpaGhost(weight -> weight.compareTo(threshold) >= 0,
+                    SubRound.PRE_VOTE,
+                    getPrevBestFinalCandidate());
+        } catch (RuntimeException e) {
+            log.warning("updateGrandpaGhost: error when updating grandpa ghost: " + e.getMessage());
+            return false;
+        }
+
+        boolean changed = grandpaGhost == null ||
+                !newGrandpaGhost.getHash().equals(grandpaGhost.getHash());
+        grandpaGhost = newGrandpaGhost;
+
+        if (changed) {
+            log.fine(String.format("updateGrandpaGhost: round: %d updated ghost to %s.",
+                    roundNumber, newGrandpaGhost.getHash()));
+        } else {
+            log.fine(String.format("updateGrandpaGhost: round: %d did not update ghost.", roundNumber));
+        }
+
+        return changed;
+    }
+
+    private boolean updateEstimate() {
+
+        BigInteger pvWeight = getVoteWeight(preVotes.values());
+        if (pvWeight.compareTo(threshold) < 0) {
+            log.fine("updateEstimate: pre vote weight is lower than threshold");
+            return false;
+        }
+
+        if (grandpaGhost == null) {
+            log.fine("updateEstimate: grandpa ghost is null");
+            return false;
+        }
+        final BlockHeader pvGhost = grandpaGhost;
+
+        BigInteger pcWeight = getVoteWeight(preCommits.values());
+        if (pcWeight.compareTo(threshold) >= 0) {
+            finalizedBlock = findBestFinalCandidate(weight -> weight.compareTo(threshold) >= 0,
+                    SubRound.PRE_COMMIT,
+                    pvGhost);
+        }
+
+        if (pcWeight.compareTo(threshold) < 0) {
+            finalizeEstimate = pvGhost;
+            log.fine("updateEstimate: pre commit weight is lower than threshold");
+            return false;
+        }
+
+
+        try {
+            Function<BigInteger, Boolean> condition = getPotentialCondition();
+
+            finalizeEstimate = findBestFinalCandidate(condition, SubRound.PRE_COMMIT, pvGhost);
+            BlockHeader current_estimate = finalizeEstimate;
+
+            if (!current_estimate.getHash().equals(pvGhost.getHash())) {
+                isCompletable = true;
+                log.fine("updateEstimate: estimate != ghost");
+            } else {
+                checkPotentialGhost(condition, current_estimate);
+            }
+        } catch (EstimateExecutionException e) {
+            log.fine("updateEstimate: " + e.getMessage());
+        }
+
+        return true;
+    }
+
+    private void checkPotentialGhost(Function<BigInteger, Boolean> condition, BlockHeader estimate) {
+
+        try {
+            BlockHeader pcGhost = findGrandpaGhost(condition, SubRound.PRE_COMMIT, estimate);
+
+            if (pcGhost.getHash().equals(estimate.getHash())) {
+                isCompletable = true;
+                log.fine("updateEstimate: estimate == pcGhost");
+            } else {
+                log.fine("updateEstimate: estimate != pcGhost");
+            }
+        } catch (EstimateExecutionException e) {
+            isCompletable = true;
+            log.fine("updateEstimate: no pcGhost");
+        }
+    }
+
     /**
-     * Determines if the specified round can be finalized.
-     * 1) Checks for a valid preVote candidate and ensures it's completable.
-     * 2) Retrieves the best final candidate for the current round, archives it,
-     * and compares it to the previous round’s candidate.
+     * Finds and returns the best final candidate block for the current round.
+     * The best final candidate is determined by analyzing blocks with more than 2/3 pre-commit votes,
+     * and selecting the block with the highest block number. If no such block exists, the pre-voted
+     * block is returned as the best candidate.
      *
-     * @return if given round is finalizable
+     * @param condition a boolean expression that serves the purpose of a customizable threshold.
+     * @param round     the subround that we check votes against a condition for.
+     * @return the best final candidate block
      */
-    private boolean isFinalizable() {
+    private BlockHeader findBestFinalCandidate(Function<BigInteger, Boolean> condition,
+                                               SubRound round,
+                                               BlockHeader borderBlock) {
+        BlockState blockState = stateManager.getBlockState();
 
-        if (!isCompletable()) {
-            return false;
+        if (roundNumber.equals(BigInteger.ZERO)) {
+            return grandpaGhost;
         }
 
-        BlockHeader currentBfc = getBestFinalCandidate();
-        if (currentBfc == null) {
-            return false;
+        Map<Hash256, BigInteger> possibleSelectedBlocks = getPossibleSelectedBlocks(
+                condition,
+                round
+        );
+
+        if (possibleSelectedBlocks.isEmpty()) {
+            throw new EstimateExecutionException("Estimate not found.");
         }
 
-        if (previous == null) {
-            return false;
+        var bestFinalCandidate = lastFinalizedBlock;
+
+        for (Map.Entry<Hash256, BigInteger> block : possibleSelectedBlocks.entrySet()) {
+
+            Hash256 blockHash = block.getKey();
+
+            boolean isDescendant = blockState.isDescendantOf(blockHash, borderBlock.getHash());
+
+            if (!isDescendant) {
+
+                Hash256 lowestCommonAncestor;
+                try {
+                    lowestCommonAncestor = blockState.lowestCommonAncestor(blockHash, borderBlock.getHash());
+                } catch (IllegalArgumentException e) {
+                    log.warning("Error finding the lowest common ancestor: " + e.getMessage());
+                    continue;
+                }
+
+                blockHash = lowestCommonAncestor;
+            }
+
+            BlockHeader header = BlockHeader.fromHash(blockHash);
+            if (header.getBlockNumber().compareTo(bestFinalCandidate.getBlockNumber()) > 0) {
+                bestFinalCandidate = header;
+            }
         }
 
-        BlockHeader ghost = getGrandpaGhost();
-        BlockHeader prevBfc = getPrevBestFinalCandidate();
+        return bestFinalCandidate;
+    }
 
-        return prevBfc.getBlockNumber().compareTo(currentBfc.getBlockNumber()) <= 0
-                && currentBfc.getBlockNumber().compareTo(ghost.getBlockNumber()) <= 0;
+    private Function<BigInteger, Boolean> getPotentialCondition() {
+
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+
+        BigInteger totalAuthWeight = grandpaSetState.getAuthoritiesTotalWeight();
+        BigInteger totalPcWeight = getVoteWeight(preCommits.values());
+
+        // Calculate how many more pre commit equivocations we are allowed to receive.
+        BigInteger totalAllowedEqs = totalAuthWeight.subtract(threshold);
+        BigInteger currentEqs = BigInteger.valueOf(getPcEquivocationsCount());
+        BigInteger remainingAllowedEqs = totalAllowedEqs.subtract(currentEqs);
+
+        // Calculate how many more pre commits we can expect.
+        BigInteger remainingPcs = totalAuthWeight.subtract(totalPcWeight);
+
+        return totalWeight -> {
+
+            BigInteger possibleEqsForBlock = totalPcWeight.subtract(totalWeight)
+                    .min(remainingAllowedEqs);
+
+            BigInteger potentialWeightForBlock = totalWeight
+                    .add(remainingPcs)
+                    .add(possibleEqsForBlock);
+
+            return potentialWeightForBlock.compareTo(threshold) >= 0;
+        };
+    }
+
+    /**
+     * Finds and returns the block with the most votes in the GRANDPA pre-vote stage.
+     * If there are multiple blocks with the same number of votes, selects the block with the highest number.
+     * If no block meets the criteria, throws an exception indicating no valid GHOST candidate.
+     *
+     * @return GRANDPA GHOST block as a vote
+     */
+    private BlockHeader findGrandpaGhost(Function<BigInteger, Boolean> condition,
+                                         SubRound subround,
+                                         BlockHeader currentBest) {
+
+        if (roundNumber.equals(BigInteger.ZERO)) {
+            return lastFinalizedBlock;
+        }
+
+        Map<Hash256, BigInteger> blocks = getPossibleSelectedBlocks(condition, subround);
+
+        if (blocks.isEmpty() || threshold.equals(BigInteger.ZERO)) {
+            throw new GhostExecutionException("GHOST not found");
+        }
+
+        return selectBlockWithMostVotes(blocks, currentBest);
     }
 
     /**
@@ -724,8 +696,8 @@ public class GrandpaRound {
 
         //TODO check if we have to retrieve only weight of equivocator (1) or actual number of eq votes.
         long equivocationCount = switch (subround) {
-            case SubRound.PRE_VOTE -> getPvEquivocationsWeight();
-            case SubRound.PRE_COMMIT -> getPcEquivocationsWeight();
+            case SubRound.PRE_VOTE -> getPvEquivocationsCount();
+            case SubRound.PRE_COMMIT -> getPcEquivocationsCount();
             default -> 0;
         };
 
@@ -758,6 +730,11 @@ public class GrandpaRound {
         return votesForBlock;
     }
 
+    private List<Vote> getVotes(SubRound subround) {
+        HashMap<Vote, Long> votes = getDirectVotes(subround);
+        return new ArrayList<>(votes.keySet());
+    }
+
     /**
      * Aggregates direct (explicit) votes for a given subround into a map of Vote to their count
      *
@@ -776,72 +753,6 @@ public class GrandpaRound {
         votes.values().forEach(vote -> voteCounts.merge(vote.getVote(), 1L, Long::sum));
 
         return voteCounts;
-    }
-
-    private List<Vote> getVotes(SubRound subround) {
-        HashMap<Vote, Long> votes = getDirectVotes(subround);
-        return new ArrayList<>(votes.keySet());
-    }
-
-    /**
-     * Broadcasts a vote message to network peers for the given round as part of the GRANDPA consensus process.
-     * <p>
-     * This method is used when broadcasting a vote message for the best preVote candidate block of the current round.
-     */
-    public void broadcastVoteMessage(Vote vote, SubRound subround) {
-        FullVote fullVote = new FullVote();
-        fullVote.setRound(roundNumber);
-        fullVote.setSetId(stateManager.getGrandpaSetState().getSetId());
-        fullVote.setVote(vote);
-        fullVote.setStage(subround);
-
-        byte[] encodedFullVote = ScaleUtils.Encode.encode(FullVoteScaleWriter.getInstance(), fullVote);
-
-        SignedMessage signedMessage = new SignedMessage();
-        signedMessage.setStage(fullVote.getStage());
-        signedMessage.setBlockNumber(vote.getBlockNumber());
-        signedMessage.setBlockHash(vote.getBlockHash());
-
-        Pair<byte[], byte[]> grandpaKeyPair = AbstractState.getGrandpaKeyPair();
-
-        byte[] pubKey = grandpaKeyPair.getValue0();
-        byte[] privateKey = grandpaKeyPair.getValue1();
-        byte[] signature = Ed25519Utils.signMessage(privateKey, encodedFullVote);
-        signedMessage.setAuthorityPublicKey(new Hash256(pubKey));
-        signedMessage.setSignature(new Hash512(signature));
-
-        VoteMessage voteMessage = new VoteMessage();
-        voteMessage.setRound(fullVote.getRound());
-        voteMessage.setSetId(fullVote.getSetId());
-        voteMessage.setMessage(signedMessage);
-
-        peerMessageCoordinator.sendVoteMessageToPeers(voteMessage);
-    }
-
-    /**
-     * Broadcasts a commit message to network peers for the given round as part of the GRANDPA consensus process.
-     * <p>
-     * This method is used in two scenarios:
-     * 1. As the primary validator, broadcasting a commit message for the best candidate block of the previous round.
-     * 2. During attempt-to-finalize, broadcasting a commit message for the best candidate block of the current round.
-     */
-    public void broadcastCommitMessage() {
-        SignedVote[] preCommits = getPreCommits().values().toArray(new SignedVote[0]);
-
-        CommitMessage commitMessage = new CommitMessage();
-        commitMessage.setSetId(stateManager.getGrandpaSetState().getSetId());
-        commitMessage.setRoundNumber(roundNumber);
-        commitMessage.setVote(Vote.fromBlockHeader(getBestFinalCandidate()));
-        commitMessage.setPreCommits(preCommits);
-
-        peerMessageCoordinator.sendCommitMessageToPeers(commitMessage);
-    }
-
-    public void clearOnStageTimerHandler() {
-        if (onStageTimerHandler != null && onStageTimerHandler.isShutdown()) {
-            onStageTimerHandler.shutdown();
-            onStageTimerHandler = null;
-        }
     }
 
     private BigInteger getVoteWeight(Collection<SignedVote> votes) {

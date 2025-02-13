@@ -3,6 +3,7 @@ package com.limechain.grandpa.state;
 import com.limechain.ServiceConsensusState;
 import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.chain.lightsyncstate.LightSyncState;
+import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.Vote;
@@ -208,19 +209,6 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
         log.fine(String.format("Updated grandpa set config: %s", consensusMessage.getFormat().toString()));
     }
 
-    public Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
-        return authorities.stream()
-                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
-                .findFirst()
-                .map(Authority::getWeight);
-    }
-
-    public BigInteger getAuthoritiesTotalWeight() {
-        return authorities.stream()
-                .map(Authority::getWeight)
-                .reduce(BigInteger.ZERO, BigInteger::add);
-    }
-
     // We keep a maximum of 3 rounds at a time
     public synchronized void addNewGrandpaRound(GrandpaRound grandpaRound) {
         if (currentGrandpaRound.getPrevious() != null && currentGrandpaRound.getPrevious().getPrevious() != null) {
@@ -291,15 +279,22 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 Collections.emptyMap());
     }
 
-    private void loadPersistedState() {
-        this.setId = fetchAuthoritiesSetId();
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
+    public Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
+        return authorities.stream()
+                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
+                .map(Authority::getWeight)
+                .findFirst();
     }
 
-    private BigInteger getAuthoritiesTotalWeight() {
+    public BigInteger getAuthoritiesTotalWeight() {
         return authorities.stream()
                 .map(Authority::getWeight)
                 .reduce(BigInteger.ZERO, BigInteger::add);
+    }
+
+    private void loadPersistedState() {
+        this.setId = fetchAuthoritiesSetId();
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 
     private void updateAuthorityStatus() {
@@ -310,10 +305,5 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 .findFirst();
 
         keyPair.ifPresentOrElse(AbstractState::setAuthorityStatus, AbstractState::clearAuthorityStatus);
-    }
-
-    private void loadPersistedState() {
-        this.setId = fetchAuthoritiesSetId();
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 }
