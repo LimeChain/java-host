@@ -25,7 +25,7 @@ public class NeighbourMessageScaleWriter implements ScaleWriter<NeighbourMessage
     public void write(ScaleCodecWriter writer, NeighbourMessage neighbourMessage) throws IOException {
         writer.writeByte(GrandpaMessageType.NEIGHBOUR.getType());
         writer.writeByte(neighbourMessage.getVersion());
-        uint64Writer.write(writer, neighbourMessage.getRound());
+        uint64Writer.write(writer, neighbourMessage.getRoundNumber());
         uint64Writer.write(writer, neighbourMessage.getSetId());
         writer.writeUint32(neighbourMessage.getLastFinalizedBlock().longValue());
     }

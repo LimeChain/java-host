@@ -40,7 +40,7 @@ public class CatchUpResMessageScaleReader implements ScaleReader<CatchUpResMessa
 
         CatchUpResMessage catchUpResMessage = new CatchUpResMessage();
         catchUpResMessage.setSetId(uint64Reader.read(reader));
-        catchUpResMessage.setRound(uint64Reader.read(reader));
+        catchUpResMessage.setRoundNumber(uint64Reader.read(reader));
         catchUpResMessage.setPreVotes(signedVoteListReader
                 .read(reader).toArray(SignedVote[]::new));
         catchUpResMessage.setPreCommits(signedVoteListReader

@@ -14,7 +14,7 @@ import java.math.BigInteger;
 @NoArgsConstructor
 @Builder
 public class CatchUpResMessage {
-    private BigInteger round;
+    private BigInteger roundNumber;
     private BigInteger setId;
     private SignedVote[] preVotes;
     private SignedVote[] preCommits;

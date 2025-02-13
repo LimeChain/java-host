@@ -38,7 +38,7 @@ public class Justification {
         ).toArray(SignedVote[]::new);
 
         Justification justification = new Justification();
-        justification.setRoundNumber(catchUpResMessage.getRound());
+        justification.setRoundNumber(catchUpResMessage.getRoundNumber());
         justification.setTargetHash(catchUpResMessage.getBlockHash());
         justification.setTargetBlock(catchUpResMessage.getBlockNumber());
         justification.setSignedVotes(allVotes);

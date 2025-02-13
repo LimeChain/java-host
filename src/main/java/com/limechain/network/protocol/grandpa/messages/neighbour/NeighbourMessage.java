@@ -11,7 +11,7 @@ import java.math.BigInteger;
 @NoArgsConstructor
 public class NeighbourMessage {
     private int version;
-    private BigInteger round;
+    private BigInteger roundNumber;
     private BigInteger setId;
     private BigInteger lastFinalizedBlock;
 }

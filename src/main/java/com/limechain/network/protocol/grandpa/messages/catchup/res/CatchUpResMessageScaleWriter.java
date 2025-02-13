@@ -29,7 +29,7 @@ public class CatchUpResMessageScaleWriter implements ScaleWriter<CatchUpResMessa
     public void write(ScaleCodecWriter writer, CatchUpResMessage catchUpResMessage) throws IOException {
         writer.writeByte(GrandpaMessageType.CATCH_UP_RESPONSE.getType());
         uint64Writer.write(writer, catchUpResMessage.getSetId());
-        uint64Writer.write(writer, catchUpResMessage.getRound());
+        uint64Writer.write(writer, catchUpResMessage.getRoundNumber());
         signedVoteListWriter.write(writer, Arrays.asList(catchUpResMessage.getPreVotes()));
         signedVoteListWriter.write(writer, Arrays.asList(catchUpResMessage.getPreCommits()));
         writer.writeUint256(catchUpResMessage.getBlockHash().getBytes());
