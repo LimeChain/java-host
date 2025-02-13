@@ -57,7 +57,6 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.limechain.grandpa.vote.SubRound.PRE_COMMIT;
 
 @Log
 @RequiredArgsConstructor
@@ -127,7 +126,7 @@ public class GrandpaMessageHandler {
                 grandpaRound.getPreVotes().put(authorityPublicKey, signedVote);
                 grandpaRound.update(false, true, false);
             }
-            case PRE_COMMIT -> {
+            case SubRound.PRE_COMMIT -> {
                 grandpaRound.getPreCommits().put(authorityPublicKey, signedVote);
                 grandpaRound.update(false, false, true);
             }
@@ -370,11 +369,11 @@ public class GrandpaMessageHandler {
                                                SubRound subRound,
                                                BigInteger voteMessageSetId) {
 
-        if (!EnumSet.of(SubRound.PRE_VOTE, PRE_COMMIT).contains(subRound)) {
+        if (!EnumSet.of(SubRound.PRE_VOTE, SubRound.PRE_COMMIT).contains(subRound)) {
             return false;
         }
 
-        boolean isPreCommit = (subRound == PRE_COMMIT);
+        boolean isPreCommit = (subRound == SubRound.PRE_COMMIT);
         Map<Hash256, SignedVote> votes = isPreCommit ? round.getPreCommits() : round.getPreVotes();
 
         if (!votes.containsKey(signedVote.getAuthorityPublicKey())) {
