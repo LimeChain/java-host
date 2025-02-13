@@ -5,7 +5,6 @@ import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.exception.sync.JustificationVerificationException;
 import com.limechain.grandpa.round.GrandpaRound;
-import com.limechain.grandpa.round.RoundCache;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.grandpa.vote.SignedVote;
 import com.limechain.grandpa.vote.SubRound;
@@ -80,7 +79,6 @@ public class GrandpaMessageHandler {
      * @param voteMessage received vote message.
      */
     public void handleVoteMessage(VoteMessage voteMessage) {
-        RoundCache roundCache = stateManager.getGrandpaSetState().getRoundCache();
         BigInteger voteMessageSetId = voteMessage.getSetId();
         BigInteger voteMessageRoundNumber = voteMessage.getRound();
         SignedMessage signedMessage = voteMessage.getMessage();
@@ -97,7 +95,8 @@ public class GrandpaMessageHandler {
             return;
         }
 
-        GrandpaRound round = roundCache.getRound(voteMessageSetId, voteMessageRoundNumber);
+        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
+        GrandpaRound round = grandpaSetState.getGrandpaRound(voteMessageRoundNumber);
 
         SubRound subround = signedMessage.getStage();
 
@@ -209,9 +208,8 @@ public class GrandpaMessageHandler {
         }
 
         GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-        Optional.ofNullable(grandpaSetState.getRoundCache()
-                        .getRound(commitMessage.getSetId(), commitMessage.getRoundNumber()))
-                .ifPresent(round -> round.addCommitMessageToArchive(commitMessage));
+        GrandpaRound grandpaRound = grandpaSetState.getGrandpaRound(commitMessage.getRoundNumber());
+        grandpaRound.addCommitMessageToArchive(commitMessage);
 
         if (warpSyncState.isWarpSyncFinished() && !AbstractState.isActiveAuthority()) {
             updateSyncStateAndRuntime(commitMessage);
@@ -305,16 +303,15 @@ public class GrandpaMessageHandler {
             throw new GrandpaGenericException("Catching up on a round in the future.");
         }
 
-        GrandpaRound selectedGrandpaRound = selectRound(catchUpReqMessage.getRound(), catchUpReqMessage.getSetId())
-                .orElseThrow(() -> new GrandpaGenericException("Target round was no found."));
+        GrandpaRound grandpaRound = grandpaSetState.getGrandpaRound(catchUpReqMessage.getRound());
 
-        SignedVote[] preVotes = getPreVoteJustification(selectedGrandpaRound);
-        SignedVote[] preCommits = getPreCommitJustification(selectedGrandpaRound);
+        SignedVote[] preVotes = getPreVoteJustification(grandpaRound);
+        SignedVote[] preCommits = getPreCommitJustification(grandpaRound);
 
-        BlockHeader finalizedBlockHeader = selectedGrandpaRound.getFinalizedBlock();
+        BlockHeader finalizedBlockHeader = grandpaRound.getFinalizedBlock();
 
         CatchUpResMessage catchUpResMessage = CatchUpResMessage.builder()
-                .round(selectedGrandpaRound.getRoundNumber())
+                .round(grandpaRound.getRoundNumber())
                 .setId(grandpaSetState.getSetId())
                 .preCommits(preCommits)
                 .preVotes(preVotes)
@@ -347,8 +344,7 @@ public class GrandpaMessageHandler {
             throw new GrandpaGenericException("Catch up response has a different setId.");
         }
 
-        RoundCache roundCache = grandpaSetState.getRoundCache();
-        GrandpaRound latestRound = roundCache.getLatestRound(grandpaSetState.getSetId());
+        GrandpaRound latestRound = grandpaSetState.getCurrentGrandpaRound();
         if (catchUpResMessage.getRound().compareTo(latestRound.getRoundNumber()) <= 0) {
             throw new GrandpaGenericException("Catching up into a round in the past.");
         }
@@ -454,26 +450,6 @@ public class GrandpaMessageHandler {
         if (warpSyncState.isWarpSyncFinished() && changeInAuthoritySet) {
             new Thread(messageCoordinator::sendMessagesToPeers).start();
         }
-    }
-
-    private Optional<GrandpaRound> selectRound(BigInteger peerRoundNumber, BigInteger peerSetId) {
-        GrandpaSetState grandpaSetState = stateManager.getGrandpaSetState();
-
-        GrandpaRound round = grandpaSetState.getRoundCache().getLatestRound(grandpaSetState.getSetId());
-
-        while (round != null) {
-            // Round found
-            // Check voter set
-            if (round.getRoundNumber().equals(peerRoundNumber)) {
-                if (round.getCommitMessagesArchive().getFirst().getSetId().equals(peerSetId)) {
-                    break;
-                }
-            }
-            // Go to the previous round
-            round = round.getPrevious();
-        }
-
-        return Optional.ofNullable(round);
     }
 
     private SignedVote[] getPreVoteJustification(GrandpaRound requestedRound) {

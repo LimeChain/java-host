@@ -1,7 +1,9 @@
 package com.limechain.grandpa.state;
 
 import com.limechain.chain.lightsyncstate.Authority;
-import com.limechain.grandpa.round.RoundCache;
+import com.limechain.storage.KVRepository;
+import com.limechain.storage.block.state.BlockState;
+import com.limechain.storage.crypto.KeyStore;
 import com.limechain.utils.Ed25519Utils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,11 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ExtendWith(MockitoExtension.class)
 class GrandpaSetStateTest {
 
-    @Mock
-    private RoundCache roundCache;
-
     @InjectMocks
     private GrandpaSetState grandpaSetState;
+
+    @Mock
+    private KeyStore keyStore;
+
+    @Mock
+    private KVRepository repository;
+
+    @Mock
+    private BlockState blockState;
 
     @Test
     void testGetThreshold() {
@@ -36,7 +44,7 @@ class GrandpaSetStateTest {
         Authority authority9 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority10 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaSetState.setAuthorities(
+        grandpaSetState.startNewSet(
                 List.of(
                         authority1, authority2, authority3, authority4, authority5,
                         authority6, authority7, authority8, authority9, authority10
@@ -55,11 +63,9 @@ class GrandpaSetStateTest {
         Authority authority2 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
         Authority authority3 = new Authority(Ed25519Utils.generateKeyPair().publicKey().bytes(), BigInteger.ONE);
 
-        grandpaSetState.setAuthorities(List.of(
+        grandpaSetState.startNewSet((List.of(
                 authority1, authority2, authority3
-        ));
-
-        grandpaSetState.setSetId(BigInteger.ONE);
+        )));
 
         // 4 % voters.size = 1
         assertEquals(BigInteger.ONE, grandpaSetState.derivePrimary(BigInteger.valueOf(4)));
