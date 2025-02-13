@@ -15,11 +15,19 @@ public class PreVoteStage implements StageState {
 
     @Override
     public void start(GrandpaRound round) {
+
         if (round.isCompletable()) {
             log.fine(String.format("Round %d is completable.", round.getRoundNumber()));
             end(round);
             return;
         }
+
+        round.setOnFinalizeHandler(() -> {
+            log.fine(String.format("Round %d is completable", round.getRoundNumber()));
+            if (round.isCompletable()) {
+                end(round);
+            }
+        });
 
         log.info(String.format("Round #{}: Start prevote stage", round.getRoundNumber()));
         long delay = (DURATION * 2) - (System.currentTimeMillis() - round.getStartTime().toEpochMilli());
@@ -33,13 +41,14 @@ public class PreVoteStage implements StageState {
 
     @Override
     public void end(GrandpaRound round) {
+
         round.clearOnStageTimerHandler();
+
         try {
             log.info(String.format("Round %d ended pre-vote stage", round.getRoundNumber()));
             Vote bestPreVoteCandidate = round.findBestPreVoteCandidate();
             round.broadcastVoteMessage(bestPreVoteCandidate, SubRound.PRE_VOTE);
-            round.setState(new PreCommitStage());
-            round.getState().start(round);
+            round.switchStage();
         } catch (GrandpaGenericException e) {
             log.fine(String.format("Round %d cannot end prevote stage now: %s", round.getRoundNumber(), e.getMessage()));
         }
