@@ -279,15 +279,22 @@ public class GrandpaSetState extends AbstractState implements ServiceConsensusSt
                 Collections.emptyMap());
     }
 
-    private void loadPersistedState() {
-        this.setId = fetchAuthoritiesSetId();
-        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
+    public Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
+        return authorities.stream()
+                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
+                .map(Authority::getWeight)
+                .findFirst();
     }
 
-    private BigInteger getAuthoritiesTotalWeight() {
+    public BigInteger getAuthoritiesTotalWeight() {
         return authorities.stream()
                 .map(Authority::getWeight)
                 .reduce(BigInteger.ZERO, BigInteger::add);
+    }
+
+    private void loadPersistedState() {
+        this.setId = fetchAuthoritiesSetId();
+        this.authorities = Arrays.asList(fetchGrandpaAuthorities());
     }
 
     private void updateAuthorityStatus() {

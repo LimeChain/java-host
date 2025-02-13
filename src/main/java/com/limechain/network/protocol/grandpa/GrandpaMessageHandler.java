@@ -1,10 +1,8 @@
 package com.limechain.network.protocol.grandpa;
 
 import com.limechain.babe.api.OpaqueKeyOwnershipProof;
-import com.limechain.chain.lightsyncstate.Authority;
 import com.limechain.exception.grandpa.GrandpaGenericException;
 import com.limechain.exception.sync.JustificationVerificationException;
-import com.limechain.grandpa.GrandpaService;
 import com.limechain.grandpa.round.GrandpaRound;
 import com.limechain.grandpa.state.GrandpaSetState;
 import com.limechain.grandpa.vote.SignedVote;
@@ -69,7 +67,6 @@ public class GrandpaMessageHandler {
     private static final BigInteger CATCH_UP_THRESHOLD = BigInteger.TWO;
 
     private final StateManager stateManager;
-    private final GrandpaService grandpaService;
     private final PeerMessageCoordinator messageCoordinator;
     private final WarpSyncState warpSyncState;
     private final PeerRequester requester;
@@ -141,8 +138,12 @@ public class GrandpaMessageHandler {
     }
 
     private boolean isVoteEquivocationExist(SignedVote signedVote, GrandpaRound round, SubRound subRound, BigInteger voteMessageSetId) {
-        Map<Hash256, SignedVote> votes = PRE_COMMIT.equals(subRound) ? round.getPreCommits() : round.getPreVotes();
-        Map<Hash256, List<SignedVote>> equivocations = PRE_COMMIT.equals(subRound) ? round.getPcEquivocations() : round.getPvEquivocations();
+        Map<Hash256, SignedVote> votes = PRE_COMMIT.equals(subRound)
+                ? round.getPreCommits()
+                : round.getPreVotes();
+        Map<Hash256, List<SignedVote>> equivocations = PRE_COMMIT.equals(subRound)
+                ? round.getPcEquivocations()
+                : round.getPvEquivocations();
 
         Hash256 authorityPublicKey = signedVote.getAuthorityPublicKey();
 
@@ -495,19 +496,14 @@ public class GrandpaMessageHandler {
         if (finalizedBlock.getBlockNumber().compareTo(vote.getVote().getBlockNumber()) <= 0 &&
                 blockState.isDescendantOf(finalizedBlock.getHash(), vote.getVote().getBlockHash())) {
 
-            BigInteger voterWeight = getAuthorityWeight(vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
+            BigInteger voterWeight = stateManager.getGrandpaSetState().getAuthorityWeight(
+                    vote.getAuthorityPublicKey()).orElse(BigInteger.ZERO);
+
             if (voterWeight.compareTo(BigInteger.ZERO) > 0) {
                 totalWeight = totalWeight.add(voterWeight);
                 result.add(vote);
             }
         }
         return totalWeight;
-    }
-
-    private Optional<BigInteger> getAuthorityWeight(Hash256 authorityPublicKey) {
-        return stateManager.getGrandpaSetState().getAuthorities().stream()
-                .filter(authority -> new Hash256(authority.getPublicKey()).equals(authorityPublicKey))
-                .map(Authority::getWeight)
-                .findFirst();
     }
 }

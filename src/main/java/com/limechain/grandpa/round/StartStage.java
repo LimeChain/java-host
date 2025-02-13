@@ -24,7 +24,7 @@ public class StartStage implements StageState {
             round.getPrevious().broadcastCommitMessage();
 
             if (previous.getBestFinalCandidate().getBlockNumber()
-                    .compareTo(round.getLastFinalizedBlock().getBlockNumber()) < 0) {
+                    .compareTo(round.getLastFinalizedBlock().getBlockNumber()) > 0) {
                 doProposal(round);
             }
         }
