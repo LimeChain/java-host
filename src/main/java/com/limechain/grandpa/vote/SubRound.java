@@ -9,7 +9,8 @@ public enum SubRound {
 
     PRE_VOTE(0),
     PRE_COMMIT(1),
-    PRIMARY_PROPOSAL(2);
+    PRIMARY_PROPOSAL(2),
+    UNKNOWN(-1);
 
     SubRound(int stage) {
         this.stage = stage;
@@ -21,6 +22,6 @@ public enum SubRound {
         return Arrays.stream(values())
                 .filter(t -> t.stage == stage)
                 .findFirst()
-                .orElse(null);
+                .orElse(UNKNOWN);
     }
 }
