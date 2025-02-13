@@ -153,13 +153,19 @@ public class GrandpaEngine {
         VoteMessage voteMessage = reader.read(VoteMessageScaleReader.getInstance());
         log.log(Level.INFO, "Received vote message from Peer " + peerId + "\n" + voteMessage);
         //Maybe we need to add possible roundNumber check
-        grandpaMessageHandler.handleVoteMessage(voteMessage);
+        if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
+            grandpaMessageHandler.handleVoteMessage(voteMessage);
+        }
     }
 
     private void handleCommitMessage(byte[] message, PeerId peerId) {
         ScaleCodecReader reader = new ScaleCodecReader(message);
         CommitMessage commitMessage = reader.read(CommitMessageScaleReader.getInstance());
-        grandpaMessageHandler.handleCommitMessage(commitMessage, peerId);
+        log.log(Level.INFO, "Received commit message from Peer " + peerId + "\n" + commitMessage);
+
+        if (AbstractState.isActiveAuthority() && connectionManager.checkIfPeerIsAuthorNode(peerId)) {
+            grandpaMessageHandler.handleCommitMessage(commitMessage, peerId);
+        }
     }
 
     private void handleCatchupRequestMessage(byte[] message, PeerId peerId) {
