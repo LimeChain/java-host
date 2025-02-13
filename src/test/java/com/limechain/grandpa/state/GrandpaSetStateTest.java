@@ -1,6 +1,8 @@
 package com.limechain.grandpa.state;
 
 import com.limechain.chain.lightsyncstate.Authority;
+import com.limechain.storage.KVRepository;
+import com.limechain.storage.block.state.BlockState;
 import com.limechain.storage.crypto.KeyStore;
 import com.limechain.utils.Ed25519Utils;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,12 @@ class GrandpaSetStateTest {
 
     @Mock
     private KeyStore keyStore;
+
+    @Mock
+    private KVRepository repository;
+
+    @Mock
+    private BlockState blockState;
 
     @Test
     void testGetThreshold() {
